@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes - Instituto Jorge Müller{% endblock %}
+{% block page_id %}reportes{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 19px; margin-bottom: 24px; text-align: center;">
+    📊 REPORTES Y EXPORTACIONES
+</h2>
+
+<div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    
+    <!-- Exportar Asistencia -->
+    <div class="card-dashboard" onclick="exportarExcel('asistencia')">
+        <div class="card-icon">✅</div>
+        <div class="card-title">ASISTENCIA</div>
+        <div class="card-description">Exportar registros de asistencia</div>
+    </div>
+    
+    <!-- Exportar Pagos -->
+    <div class="card-dashboard" onclick="exportarExcel('pagos')">
+        <div class="card-icon">💰</div>
+        <div class="card-title">PAGOS</div>
+        <div class="card-description">Exportar historial de pagos</div>
+    </div>
+    
+    <!-- Exportar Exámenes -->
+    <div class="card-dashboard" onclick="exportarExcel('examenes')">
+        <div class="card-icon">📝</div>
+        <div class="card-title">EXÁMENES</div>
+        <div class="card-description">Exportar calificaciones</div>
+    </div>
+    
+    <!-- Exportar Miembros -->
+    <div class="card-dashboard" onclick="exportarExcel('miembros')">
+        <div class="card-icon">👥</div>
+        <div class="card-title">MIEMBROS</div>
+        <div class="card-description">Exportar lista de miembros</div>
+    </div>
+    
+</div>
+
+<div class="alert alert-info" style="margin-top: 24px;">
+    <span style="font-size: 19px;">ℹ️</span>
+    <div>
+        <strong>Información sobre exportaciones</strong>
+        <br>
+        Los archivos Excel se descargarán automáticamente en su carpeta de Descargas.
+        <br>
+        Cada exportación incluye todos los registros hasta la fecha actual.
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+<div style="background: white; border-radius: 12px; padding: 40px; margin-top: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3 style="font-size: 28px; margin-bottom: 30px; text-align: center;">
+        📈 Estadísticas Generales
+    </h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px;">
+        <div style="text-align: center;">
+            <div style="font-size: 48px; font-weight: bold; color: #3b82f6;">
+                {{ miembros|length }}
+            </div>
+            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
+                Miembros Activos
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <div style="font-size: 48px; font-weight: bold; color: #10b981;">
+                {{ pagos|length }}
+            </div>
+            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
+                Pagos Registrados
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <div style="font-size: 48px; font-weight: bold; color: #f59e0b;">
+                {{ examenes|length }}
+            </div>
+            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
+                Exámenes Rendidos
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <div style="font-size: 48px; font-weight: bold; color: #ef4444;">
+                {{ asistencia|length }}
+            </div>
+            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
+                Registros de Asistencia
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

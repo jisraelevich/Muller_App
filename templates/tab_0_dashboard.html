@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Instituto Jorge Müller{% endblock %}
+{% block page_id %}dashboard{% endblock %}
+
+{% block content %}
+
+{% if clase_hoy %}
+<div class="clase-actual">
+    <div class="clase-titulo">📅 Clase de Hoy</div>
+    <div class="clase-info">
+        <strong>{{ clase_hoy.tema }}</strong> - {{ clase_hoy.orador }}
+        <br>
+        Modalidad: {{ clase_hoy.modalidad }}
+    </div>
+</div>
+{% endif %}
+
+<div class="dashboard-grid">
+    
+    <!-- ASISTENCIA -->
+    <div class="card-dashboard card-asistencia" onclick="navigateToTab(1)">
+        <div class="card-icon">✅</div>
+        <div class="card-title">ASISTENCIA</div>
+        <div class="card-description">Marcar quién vino hoy</div>
+    </div>
+    
+    <!-- PAGOS -->
+    <div class="card-dashboard card-pagos" onclick="navigateToTab(2)">
+        <div class="card-icon">💰</div>
+        <div class="card-title">PAGOS</div>
+        <div class="card-stats">{{ "${:,.0f}".format(stats.pagos) }}</div>
+        <div class="card-description">Registrar un pago</div>
+    </div>
+    
+    <!-- MIEMBROS -->
+    <div class="card-dashboard card-miembros" onclick="navigateToTab(3)">
+        <div class="card-icon">👥</div>
+        <div class="card-title">MIEMBROS</div>
+        <div class="card-stats">{{ stats.miembros }}</div>
+        <div class="card-description">Ver lista completa</div>
+    </div>
+    
+    <!-- CLASES -->
+    <div class="card-dashboard card-clases" onclick="navigateToTab(4)">
+        <div class="card-icon">📚</div>
+        <div class="card-title">CLASES</div>
+        <div class="card-stats">{{ stats.clases }}</div>
+        <div class="card-description">Ver calendario</div>
+    </div>
+    
+    <!-- REPORTES -->
+    <div class="card-dashboard card-reportes" onclick="navigateToTab(5)">
+        <div class="card-icon">📊</div>
+        <div class="card-title">REPORTES</div>
+        <div class="card-description">Ver estadísticas</div>
+    </div>
+    
+    <!-- RETIROS -->
+    <div class="card-dashboard card-retiros" onclick="navigateToTab(6)">
+        <div class="card-icon">💸</div>
+        <div class="card-title">RETIROS</div>
+        <div class="card-description">Registrar retiro</div>
+    </div>
+    
+</div>
+
+{% endblock %}

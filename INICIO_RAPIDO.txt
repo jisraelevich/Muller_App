@@ -1,0 +1,153 @@
+═══════════════════════════════════════════════════════════
+  GUÍA DE INICIO RÁPIDO - INSTITUTO JORGE MÜLLER
+═══════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────┐
+│  PASO 1: INSTALAR PYTHON (SOLO LA PRIMERA VEZ)         │
+└─────────────────────────────────────────────────────────┘
+
+1. Ir a: https://www.python.org/downloads/
+2. Descargar Python 3.10 o superior
+3. Durante la instalación:
+   ☑️ MARCAR: "Add Python to PATH"  ← ¡IMPORTANTE!
+4. Hacer click en "Install Now"
+5. Esperar que termine la instalación
+
+┌─────────────────────────────────────────────────────────┐
+│  PASO 2: INICIAR LA APLICACIÓN                         │
+└─────────────────────────────────────────────────────────┘
+
+1. Ir a la carpeta "Muller_App"
+2. 🖱️ DOBLE CLICK en "iniciar.bat"
+3. Esperar que se abra una ventana negra (consola)
+4. Esperar que se abra el navegador automáticamente
+
+   ⏱️ Primera vez: 2-3 minutos (instala dependencias)
+   ⏱️ Siguientes veces: 5-10 segundos
+
+┌─────────────────────────────────────────────────────────┐
+│  PASO 3: USAR LA APLICACIÓN                            │
+└─────────────────────────────────────────────────────────┘
+
+Verás 6 botones grandes en la pantalla:
+
+  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+  │     ✅      │  │     💰      │  │     📝      │
+  │ ASISTENCIA  │  │   PAGOS     │  │  EXÁMENES   │
+  └─────────────┘  └─────────────┘  └─────────────┘
+
+  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+  │     👥      │  │     📚      │  │     📊      │
+  │  MIEMBROS   │  │   CLASES    │  │  REPORTES   │
+  └─────────────┘  └─────────────┘  └─────────────┘
+
+CLICK en cualquier botón para entrar.
+
+┌─────────────────────────────────────────────────────────┐
+│  FUNCIONES PRINCIPALES                                  │
+└─────────────────────────────────────────────────────────┘
+
+✅ ASISTENCIA
+   - Marca quién vino a la clase de hoy
+   - Botones grandes: AUSENTE / PRESENTE
+   - Al final: click en "GUARDAR ASISTENCIA"
+
+💰 PAGOS
+   - Paso 1: Elegir quién pagó
+   - Paso 2: Ingresar monto con teclado numérico
+   - Click en "GUARDAR PAGO"
+
+📝 EXÁMENES
+   - Paso 1: Elegir el alumno
+   - Paso 2: Elegir el tema
+   - Paso 3: Ingresar nota (1-10)
+   - Click en "GUARDAR EXAMEN"
+
+👥 MIEMBROS
+   - Ver lista completa de estudiantes
+   - Buscar por nombre
+   - Exportar a Excel
+
+📚 CLASES
+   - Ver calendario completo 2026
+   - 35 clases programadas
+   - Fechas, oradores, modalidad
+
+📊 REPORTES
+   - Exportar todo a Excel
+   - Ver estadísticas generales
+
+┌─────────────────────────────────────────────────────────┐
+│  CERRAR LA APLICACIÓN                                   │
+└─────────────────────────────────────────────────────────┘
+
+❌ Cerrar la ventana negra (consola)
+   O
+⌨️ Presionar Ctrl+C en la consola
+
+┌─────────────────────────────────────────────────────────┐
+│  EXPORTAR A EXCEL                                       │
+└─────────────────────────────────────────────────────────┘
+
+1. Click en "REPORTES"
+2. Click en el tipo de datos que querés exportar:
+   - Asistencia
+   - Pagos
+   - Exámenes
+   - Miembros
+3. El archivo .xlsx se descarga automáticamente
+4. Buscar en carpeta "Descargas"
+
+┌─────────────────────────────────────────────────────────┐
+│  BACKUP DE DATOS                                        │
+└─────────────────────────────────────────────────────────┘
+
+📂 TODOS los datos están en la carpeta: Muller_App/data/
+
+Para hacer backup:
+  1. Copiar la carpeta "data/" completa
+  2. Pegarla en otro lugar (USB, nube, etc.)
+
+Para restaurar backup:
+  1. Reemplazar carpeta "data/" con la copia guardada
+
+┌─────────────────────────────────────────────────────────┐
+│  PROBLEMAS COMUNES                                      │
+└─────────────────────────────────────────────────────────┘
+
+❌ "Python no está instalado"
+   → Instalar Python y marcar "Add to PATH"
+
+❌ El navegador no se abre
+   → Abrir manualmente: http://localhost:5000
+
+❌ No se guardan los datos
+   → Verificar que iniciar.bat se ejecute como Administrador
+
+❌ Ventana se cierra sola
+   → Python no está en PATH, reinstalar Python
+
+┌─────────────────────────────────────────────────────────┐
+│  DATOS MIGRADOS DESDE TU EXCEL                         │
+└─────────────────────────────────────────────────────────┘
+
+✓ 55 miembros
+✓ 9 oradores
+✓ 60 clases programadas
+✓ 11 temas de exámenes configurados
+
+Todo está listo para usar. Solo necesitás:
+  1. Instalar Python
+  2. Doble click en iniciar.bat
+  3. ¡Empezar a usar!
+
+═══════════════════════════════════════════════════════════
+  CONTACTO Y SOPORTE
+═══════════════════════════════════════════════════════════
+
+Para modificaciones, consultas o problemas:
+  - Leer README.txt (instrucciones completas)
+  - Verificar que Python esté instalado correctamente
+  - Comprobar que todos los archivos estén presentes
+
+═══════════════════════════════════════════════════════════

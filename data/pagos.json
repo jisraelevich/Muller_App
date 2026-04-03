@@ -1,0 +1,12 @@
+[
+  {
+    "id_miembro": 2,
+    "nombre_completo": "Alfaro, Lucas",
+    "monto": 52000,
+    "concepto": "Matrícula",
+    "metodo": "Efectivo",
+    "fecha": "2026-03-27",
+    "id": 1,
+    "fecha_registro": "2026-03-26T22:58:33.173738"
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "instituto": "Instituto Jorge Müller",
+  "ciudad": "Salta",
+  "nota_aprobacion": 6,
+  "puerto": 5000,
+  "temas_examenes": [
+    "Geografía",
+    "Cronología",
+    "Historia General",
+    "Libros Poéticos",
+    "Profetas Mayores",
+    "Profetas Menores",
+    "Evangelios",
+    "Hechos",
+    "Epístolas Paulinas",
+    "Epístolas Generales",
+    "Apocalipsis"
+  ]
+}

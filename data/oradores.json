@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "nombre": "Schafer",
+    "apellido": "Daniel",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 2,
+    "nombre": "Betze",
+    "apellido": "Esteban",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 3,
+    "nombre": "Lamas",
+    "apellido": "David",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 4,
+    "nombre": "Clemente",
+    "apellido": "Juan Humberto",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 5,
+    "nombre": "Senturia",
+    "apellido": "Andrés",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 6,
+    "nombre": "Gallito",
+    "apellido": "Nelson",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 7,
+    "nombre": "Olivera",
+    "apellido": "Daniel",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 8,
+    "nombre": "Pascual",
+    "apellido": "Osmar",
+    "telefono": "",
+    "email": ""
+  },
+  {
+    "id": 9,
+    "nombre": "Otro",
+    "apellido": "Otro",
+    "telefono": "",
+    "email": ""
+  }
+]

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Retiros - Instituto Jorge Müller{% endblock %}
+{% block page_id %}retiros{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
+    💸 REGISTRAR RETIRO
+</h2>
+
+<!-- Formulario de Retiro -->
+<div style="background: #f5f5f5; padding: 18px; border-radius: 7px; margin-bottom: 18px;">
+    
+    <!-- Selector de Concepto -->
+    <div class="form-group">
+        <label class="form-label">📋 Concepto del Retiro:</label>
+        <select id="concepto-retiro" class="form-select" style="cursor: pointer;">
+            <option value="">-- Seleccionar concepto --</option>
+            <option value="Gastos">💼 Gastos</option>
+            <option value="Pago Instituto">🏫 Pago al Instituto</option>
+            <option value="Pago Extra">💳 Pago Extra</option>
+        </select>
+    </div>
+    
+    <!-- Selector de Fecha -->
+    <div class="form-group">
+        <label class="form-label">📅 Fecha del Retiro:</label>
+        <input type="date" 
+               id="fecha-retiro" 
+               class="form-input">
+    </div>
+    
+    <!-- Selector de Método de Retiro -->
+    <div class="form-group">
+        <label class="form-label">💳 Método de Retiro:</label>
+        <select id="metodo-retiro" class="form-select" style="cursor: pointer;">
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">💰 Monto:</label>
+        <input type="text" 
+               id="monto-retiro" 
+               class="form-input" 
+               placeholder="$ 0" 
+               style="text-align: center; font-size: 24px; font-weight: bold; color: #f59e0b;">
+    </div>
+    
+    <!-- Campo de Notas -->
+    <div class="form-group">
+        <label class="form-label">📝 Notas / Descripción:</label>
+        <textarea id="notas-retiro" 
+                  class="form-input" 
+                  placeholder="Detalles adicionales..." 
+                  style="min-height: 80px; resize: vertical;"></textarea>
+    </div>
+    
+    <!-- Teclado Numérico Mini -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px;">
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('7')" style="font-size: 14px; padding: 9px;">7</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('8')" style="font-size: 14px; padding: 9px;">8</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('9')" style="font-size: 14px; padding: 9px;">9</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('4')" style="font-size: 14px; padding: 9px;">4</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('5')" style="font-size: 14px; padding: 9px;">5</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('6')" style="font-size: 14px; padding: 9px;">6</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('1')" style="font-size: 14px; padding: 9px;">1</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('2')" style="font-size: 14px; padding: 9px;">2</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('3')" style="font-size: 14px; padding: 9px;">3</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('0')" style="font-size: 14px; padding: 9px;">0</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('00')" style="font-size: 14px; padding: 9px;">00</button>
+        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('borrar')" style="font-size: 14px; padding: 9px;">⌫</button>
+    </div>
+    
+    <button id="btn-guardar-retiro" 
+            class="btn-touch btn-block"
+            onclick="RetirosModule.guardar()"
+            style="margin-top: 18px; background-color: #f59e0b; color: white; font-weight: bold; min-height: 48px;">
+        💸 GUARDAR RETIRO
+    </button>
+</div>
+
+<!-- Historial de Retiros -->
+<div style="background: white; border-radius: 7px; padding: 18px;">
+    <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: bold;">
+        📊 Últimos Retiros
+    </h3>
+    
+    {% if retiros %}
+    <div style="max-height: 300px; overflow-y: auto;">
+        {% for retiro in retiros|reverse %}
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; font-size: 9px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-weight: bold;">{{ retiro.concepto }}</span>
+                <span style="color: #f59e0b; font-weight: bold;">${{ "{:,.0f}".format(retiro.monto) }}</span>
+            </div>
+            <div style="color: #6b7280;">
+                📅 {{ retiro.fecha }} | {{ retiro.metodo }}
+            </div>
+            {% if retiro.notas %}
+            <div style="color: #9ca3af; margin-top: 4px;">
+                📝 {{ retiro.notas }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; color: #9ca3af; padding: 18px;">
+        No hay retiros registrados
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        RetirosModule.init();
+    });
+</script>
+
+{% endblock %}

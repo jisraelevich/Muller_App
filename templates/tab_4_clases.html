@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Clases - Instituto Jorge Müller{% endblock %}
+{% block page_id %}clases{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
+    📚 CALENDARIO DE CLASES 2026
+</h2>
+
+<!-- Opciones de Navegación -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 8px;">
+    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(1)" style="min-height: 48px;">
+        ✅ IR A ASISTENCIAS
+    </button>
+    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(2)" style="min-height: 48px;">
+        💰 IR A PAGOS
+    </button>
+    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(3)" style="min-height: 48px;">
+        📝 IR A EXAMINADORES
+    </button>
+    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(3)" style="min-height: 48px;">
+        👥 IR A MIEMBROS
+    </button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+    {% for clase in clases %}
+    <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 16px; text-align: center; min-height: 200px;" onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.tema }}', '{{ clase.orador }}', '{{ clase.modalidad }}', '{{ clase.estado }}')">
+        <div style="font-size: 32px; margin-bottom: 12px;">
+            {% if clase.estado == 'Realizada' %}
+                ✓
+            {% else %}
+                📅
+            {% endif %}
+        </div>
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; line-height: 1.3;">{{ clase.tema }}</div>
+        <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
+            {{ clase.fecha }}
+        </div>
+        <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+            👨‍🏫 {{ clase.orador }}
+        </div>
+        <div style="font-size: 13px; color: #6b7280;">
+            {% if clase.modalidad == 'Presencial' %}
+                🏫 Presencial
+            {% else %}
+                💻 Meet
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal de Edición -->
+<div id="modal-editar-clase" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
+        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
+            ✏️ EDITAR CLASE
+        </h2>
+        
+        <div class="form-group">
+            <label class="form-label">Tema:</label>
+            <input type="text" id="edit-tema" class="form-input" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Orador:</label>
+            <input type="text" id="edit-orador" class="form-input" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Fecha:</label>
+            <input type="text" id="edit-fecha" class="form-input" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📋 Modalidad:</label>
+            <select id="edit-modalidad" class="form-select" style="cursor: pointer;">
+                <option value="Presencial">🏫 Presencial</option>
+                <option value="Meet">💻 Meet</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📊 Estado:</label>
+            <select id="edit-estado" class="form-select" style="cursor: pointer;">
+                <option value="Programada">⏱ Programada</option>
+                <option value="Realizada">✓ Realizada</option>
+            </select>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
+            <button class="btn-touch btn-success" onclick="ClasesModule.guardarCambios()" style="min-height: 48px;">
+                💾 GUARDAR
+            </button>
+            <button class="btn-touch btn-secondary" onclick="ClasesModule.cerrarModal()" style="min-height: 48px;">
+                ✕ CANCELAR
+            </button>
+        </div>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 18px; font-size: 14px; color: #6b7280;">
+    Total: {{ clases|length }} clases programadas
+</div>
+
+<script>
+const ClasesModule = {
+    claseActual: null,
+    
+    navegarA(tabId) {
+        window.location.href = `/tab/${tabId}`;
+    },
+    
+    editarClase(id, fecha, tema, orador, modalidad, estado) {
+        this.claseActual = { id, fecha, tema, orador, modalidad, estado };
+        
+        document.getElementById('edit-tema').value = tema;
+        document.getElementById('edit-orador').value = orador;
+        document.getElementById('edit-fecha').value = fecha;
+        document.getElementById('edit-modalidad').value = modalidad;
+        document.getElementById('edit-estado').value = estado;
+        
+        document.getElementById('modal-editar-clase').style.display = 'block';
+    },
+    
+    cerrarModal() {
+        document.getElementById('modal-editar-clase').style.display = 'none';
+        this.claseActual = null;
+    },
+    
+    async guardarCambios() {
+        if (!this.claseActual) return;
+        
+        const modalidad = document.getElementById('edit-modalidad').value;
+        const estado = document.getElementById('edit-estado').value;
+        
+        try {
+            const response = await fetch('/api/clases/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    id: this.claseActual.id,
+                    modalidad: modalidad,
+                    estado: estado
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                mostrarAlerta('✅ Clase actualizada correctamente', 'success');
+                setTimeout(() => location.reload(), 1500);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarAlerta('Error al guardar', 'error');
+        }
+    }
+};
+</script>
+
+{% endblock %}

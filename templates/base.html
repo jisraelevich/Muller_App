@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{% block title %}Instituto Jorge Müller{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body data-page="{% block page_id %}{% endblock %}">
+    
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-start">
+                <div class="header-actions">
+                    {% block header_actions %}
+                    {% endblock %}
+                </div>
+                <div>
+                    <h1 class="header-title">{{ config.instituto }}</h1>
+                    <p class="header-subtitle">{{ config.ciudad }} - Sistema de Gestión</p>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- SCRIPTS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+    
+</body>
+</html>

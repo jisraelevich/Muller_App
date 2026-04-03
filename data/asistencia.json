@@ -1,0 +1,26 @@
+[
+  {
+    "fecha_clase": "2026-03-10",
+    "id_clase": 2,
+    "asistencias": [
+      {
+        "id_miembro": 4,
+        "nombre_completo": "Aramayo, Policarpio",
+        "presente": true
+      }
+    ],
+    "fecha_registro": "2026-03-26T23:06:05.161375"
+  },
+  {
+    "fecha_clase": "2026-03-31",
+    "id_clase": 5,
+    "asistencias": [
+      {
+        "id_miembro": 4,
+        "nombre_completo": "Aramayo, Policarpio",
+        "presente": true
+      }
+    ],
+    "fecha_registro": "2026-03-26T23:06:21.434066"
+  }
+]

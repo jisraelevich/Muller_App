@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Pagos - Instituto Jorge Müller{% endblock %}
+{% block page_id %}pagos{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- PASO 1: Seleccionar Miembro -->
+<div id="paso-1">
+    <h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
+        1️⃣ ¿QUIÉN PAGÓ?
+    </h2>
+    
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Buscar alumno..." 
+               onkeyup="PagosModule.filtrar(this.value)">
+    </div>
+    
+    <div class="item-list">
+        {% for miembro in miembros %}
+        {% if miembro.tipo_asistencia == 'Regular' %}
+        <div class="item-card" 
+             data-nombre="{{ miembro.apellido }}, {{ miembro.nombre }}"
+             onclick="PagosModule.seleccionarMiembro({{ miembro.id }}, '{{ miembro.apellido }}, {{ miembro.nombre }}')">
+            <div class="item-info">
+                <div class="item-name">{{ miembro.apellido }}, {{ miembro.nombre }}</div>
+                <div class="item-details">{{ miembro.congregacion or 'Sin congregación' }}</div>
+            </div>
+            <div style="font-size: 32px; color: #10b981;">▶</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- PASO 2: Ingresar Monto -->
+<div id="paso-2" class="hidden">
+    <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="font-size: 17px; color: #6b7280; margin-bottom: 6px;">
+            Registrar pago de:
+        </h2>
+        <div style="font-size: 21px; font-weight: bold; color: #3b82f6;" id="miembro-seleccionado">
+        </div>
+    </div>
+    
+    <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-secondary" style="margin-bottom: 18px;">
+        ◀ Cambiar Persona
+    </button>
+    
+    <h2 style="font-size: 19px; margin-bottom: 18px; text-align: center;">
+        2️⃣ ¿CUÁNTO PAGÓ?
+    </h2>
+    
+    <!-- Selector de Fecha -->
+    <div class="form-group">
+        <label class="form-label">📅 Fecha del Pago:</label>
+        <input type="date" 
+               id="fecha-pago" 
+               class="form-input">
+    </div>
+    
+    <!-- Selector de Tipo de Pago -->
+    <div class="form-group">
+        <label class="form-label">📋 Tipo de Pago:</label>
+        <select id="tipo-pago" class="form-select" style="cursor: pointer;">
+            <option value="Cuota">Cuota Mensual</option>
+            <option value="Matrícula">Matrícula</option>
+            <option value="Libro">Libro</option>
+            <option value="Pago Parcial">Pago Parcial</option>
+            <option value="Donación">Donación</option>
+        </select>
+    </div>
+    
+    <!-- Selector de Método de Pago -->
+    <div class="form-group">
+        <label class="form-label">💳 Método de Pago:</label>
+        <select id="metodo-pago" class="form-select" style="cursor: pointer;">
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <input type="text" 
+               id="monto-pago" 
+               class="form-input" 
+               placeholder="$ 0" 
+               readonly
+               style="text-align: center; font-size: 29px; font-weight: bold; color: #10b981;">
+    </div>
+    
+    <!-- Teclado Numérico -->
+    <div class="numpad">
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('7')">7</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('8')">8</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('9')">9</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('4')">4</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('5')">5</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('6')">6</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('1')">1</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('2')">2</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('3')">3</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('0')">0</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('00')">00</button>
+        <button class="numpad-btn" onclick="PagosModule.agregarDigito('borrar')">⌫</button>
+    </div>
+    
+    <button id="btn-guardar-pago" 
+            class="btn-touch btn-success btn-block"
+            onclick="PagosModule.guardar()"
+            style="margin-top: 24px;">
+        💰 GUARDAR PAGO
+    </button>
+</div>
+
+{% endblock %}

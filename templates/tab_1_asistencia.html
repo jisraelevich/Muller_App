@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Asistencia - Instituto Jorge Müller{% endblock %}
+{% block page_id %}asistencia{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Selector de Clases Disponibles -->
+<div style="background: #f5f5f5; padding: 12px; border-radius: 5px; margin-bottom: 8px;">
+    <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 6px; color: #374151;">
+        📅 Seleccionar Clase
+    </label>
+    <select id="selector-clase" 
+           class="form-select" 
+           onchange="AsistenciaModule.cargarClaseSeleccionada(this.value)"
+           style="cursor: pointer;">
+        <option value="">-- Cargando clases --</option>
+    </select>
+</div>
+
+<!-- Información de la clase seleccionada -->
+<div id="clase-info-container" style="display: none;">
+    <div style="text-align: center; margin-bottom: 10px;">
+        <h3 style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 2px;" id="clase-titulo">-</h3>
+        <div style="font-size: 14px; color: #10b981; font-weight: bold;">
+            <span id="contador-presentes">0</span> de <span id="total-presentes">55</span> presentes
+        </div>
+    </div>
+
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Buscar alumno..." 
+               onkeyup="AsistenciaModule.filtrar(this.value)">
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;" id="contenedor-alumnos">
+        <!-- Se llenarán dinámicamente con JavaScript -->
+    </div>
+
+    <div style="margin-top: 10px; text-align: center;">
+        <button id="btn-guardar-asistencia" 
+                class="btn-touch btn-success btn-block"
+                onclick="AsistenciaModule.guardarConFecha()">
+            ✅ GUARDAR
+        </button>
+    </div>
+</div>
+
+<!-- Mensaje cuando no hay clase -->
+<div id="sin-clase-container" style="display: none;">
+    <div class="alert alert-warning">
+        <span style="font-size: 19px;">⚠️</span>
+        <div style="font-size: 10px;">
+            <strong>No hay clase programada</strong>
+            <br>
+            Seleccione una clase del listado.
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pasar datos de miembros al módulo JavaScript
+    window.MIEMBROS_DATA = {{ miembros | tojson }};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        AsistenciaModule.init();
+    });
+</script>
+
+{% endblock %}
