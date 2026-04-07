@@ -10,95 +10,289 @@
 {% block content %}
 
 <h2 style="font-size: 19px; margin-bottom: 24px; text-align: center;">
-    📊 REPORTES Y EXPORTACIONES
+    REPORTES Y EXPORTACIONES
 </h2>
 
-<div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+<!-- TABS PARA SELECCIONAR REPORTE -->
+<div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+    <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: #3b82f6; color: white; min-height: 40px; padding: 0 16px; font-size: 12px;">Pagos</button>
+    <button onclick="mostrarReporte('asistencia')" class="btn-touch" id="tab-asistencia" style="background: #e0e0e0; color: #333; min-height: 40px; padding: 0 16px; font-size: 12px;">Asistencia</button>
+    <button onclick="mostrarReporte('miembros')" class="btn-touch" id="tab-miembros" style="background: #e0e0e0; color: #333; min-height: 40px; padding: 0 16px; font-size: 12px;">Miembros</button>
+</div>
+
+<!-- CONTENEDOR DE REPORTES -->
+<div id="contenedor-reportes" style="background: white; border-radius: 12px; padding: 20px; overflow-x: auto;">
     
-    <!-- Exportar Asistencia -->
-    <div class="card-dashboard" onclick="exportarExcel('asistencia')">
-        <div class="card-icon">✅</div>
-        <div class="card-title">ASISTENCIA</div>
-        <div class="card-description">Exportar registros de asistencia</div>
+    <!-- REPORTE PAGOS -->
+    <div id="reporte-pagos" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Reporte de Pagos</h3>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportarExcelReporte('pagos')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tabla-pagos" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Alumno</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Monto</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Fecha</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Método</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-pagos">
+                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <!-- Exportar Pagos -->
-    <div class="card-dashboard" onclick="exportarExcel('pagos')">
-        <div class="card-icon">💰</div>
-        <div class="card-title">PAGOS</div>
-        <div class="card-description">Exportar historial de pagos</div>
+    <!-- REPORTE ASISTENCIA -->
+    <div id="reporte-asistencia" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Reporte de Asistencia</h3>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportarExcelReporte('asistencia')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tabla-asistencia" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Alumno</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Clase</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Fecha</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-asistencia">
+                    <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <!-- Exportar Exámenes -->
-    <div class="card-dashboard" onclick="exportarExcel('examenes')">
-        <div class="card-icon">📝</div>
-        <div class="card-title">EXÁMENES</div>
-        <div class="card-description">Exportar calificaciones</div>
-    </div>
-    
-    <!-- Exportar Miembros -->
-    <div class="card-dashboard" onclick="exportarExcel('miembros')">
-        <div class="card-icon">👥</div>
-        <div class="card-title">MIEMBROS</div>
-        <div class="card-description">Exportar lista de miembros</div>
+    <!-- REPORTE MIEMBROS -->
+    <div id="reporte-miembros" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Reporte de Miembros</h3>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportarExcelReporte('miembros')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tabla-miembros" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Nombre</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Email</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Teléfono</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-miembros">
+                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
 </div>
-
-<div class="alert alert-info" style="margin-top: 24px;">
-    <span style="font-size: 19px;">ℹ️</span>
-    <div>
-        <strong>Información sobre exportaciones</strong>
-        <br>
-        Los archivos Excel se descargarán automáticamente en su carpeta de Descargas.
-        <br>
-        Cada exportación incluye todos los registros hasta la fecha actual.
     </div>
 </div>
 
-<!-- Estadísticas Rápidas -->
+<!-- REPORTE PAGOS POR MES -->
 <div style="background: white; border-radius: 12px; padding: 40px; margin-top: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
     <h3 style="font-size: 28px; margin-bottom: 30px; text-align: center;">
-        📈 Estadísticas Generales
+        Calendar de Pagos por Mes
     </h3>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px;">
-        <div style="text-align: center;">
-            <div style="font-size: 48px; font-weight: bold; color: #3b82f6;">
-                {{ miembros|length }}
-            </div>
-            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
-                Miembros Activos
-            </div>
-        </div>
-        
-        <div style="text-align: center;">
-            <div style="font-size: 48px; font-weight: bold; color: #10b981;">
-                {{ pagos|length }}
-            </div>
-            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
-                Pagos Registrados
-            </div>
-        </div>
-        
-        <div style="text-align: center;">
-            <div style="font-size: 48px; font-weight: bold; color: #f59e0b;">
-                {{ examenes|length }}
-            </div>
-            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
-                Exámenes Rendidos
-            </div>
-        </div>
-        
-        <div style="text-align: center;">
-            <div style="font-size: 48px; font-weight: bold; color: #ef4444;">
-                {{ asistencia|length }}
-            </div>
-            <div style="font-size: 20px; color: #6b7280; margin-top: 8px;">
-                Registros de Asistencia
-            </div>
-        </div>
+    <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;">
+        <button onclick="exportarExcelReporteCalendario()" class="btn-touch btn-success" style="min-height: 40px; padding: 0 16px; font-size: 12px; cursor: pointer;">
+            Exportar a Excel
+        </button>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table id="tabla-pagos-mes" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="background: #f0f0f0;">
+                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 150px;">Alumno</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">01</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">02</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">12</th>
+                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px; font-weight: bold;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-pagos-calendario">
+                <tr>
+                    <td colspan="14" style="text-align: center; padding: 20px; color: #999;">
+                        Cargando datos...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="text-align: center; margin-top: 18px; color: #666; font-size: 11px;">
+        Verde (>= $1000) = Pago completo | Amarillo ($1-999) = Pago parcial | Rojo ($0) = Sin pagar
     </div>
 </div>
+
+<script>
+async function mostrarReporte(tipo) {
+    // Cambiar tabs activos
+    document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+        btn.style.background = '#e0e0e0';
+        btn.style.color = '#333';
+    });
+    document.getElementById('tab-' + tipo).style.background = '#3b82f6';
+    document.getElementById('tab-' + tipo).style.color = 'white';
+    
+    // Mostrar/ocultar reportes
+    document.querySelectorAll('[id^="reporte-"]').forEach(div => {
+        div.style.display = 'none';
+    });
+    document.getElementById('reporte-' + tipo).style.display = 'block';
+    
+    // Cargar datos si no están cargados
+    if (tipo === 'pagos') {
+        await cargarReportePagos();
+    } else if (tipo === 'asistencia') {
+        await cargarReporteAsistencia();
+    } else if (tipo === 'miembros') {
+        await cargarReporteMiembros();
+    } else if (tipo === 'examenes') {
+        await cargarReporteExamenes();
+    }
+}
+
+async function cargarReportePagos() {
+    try {
+        const response = await fetch('/api/pagos/todos?t=' + new Date().getTime());
+        const data = await response.json();
+        const tbody = document.getElementById('tbody-pagos');
+        tbody.innerHTML = '';
+        
+        if (data.pagos && data.pagos.length > 0) {
+            const fragment = document.createDocumentFragment();
+            data.pagos.slice(0, 50).forEach(pago => {
+                const row = document.createElement('tr');
+                const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString() : '';
+                row.innerHTML = `
+                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.descripcion || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.metodo_pago || '-'}</td>
+                `;
+                fragment.appendChild(row);
+            });
+            tbody.appendChild(fragment);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No hay pagos registrados</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('tbody-pagos').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+    }
+}
+
+async function cargarReporteAsistencia() {
+    try {
+        const response = await fetch('/api/asistencia/todos?t=' + new Date().getTime());
+        const data = await response.json();
+        const tbody = document.getElementById('tbody-asistencia');
+        tbody.innerHTML = '';
+        
+        if (data.asistencias && data.asistencias.length > 0) {
+            const fragment = document.createDocumentFragment();
+            data.asistencias.slice(0, 50).forEach(asist => {
+                const row = document.createElement('tr');
+                const fecha = asist.fecha ? new Date(asist.fecha).toLocaleDateString() : '';
+                row.innerHTML = `
+                    <td style="padding: 8px; border: 1px solid #ddd;">${asist.miembro_nombre || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${asist.clase_nombre || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${asist.estado || 'Presente'}</td>
+                `;
+                fragment.appendChild(row);
+            });
+            tbody.appendChild(fragment);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No hay registros de asistencia</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('tbody-asistencia').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+    }
+}
+
+async function cargarReporteMiembros() {
+    try {
+        const response = await fetch('/api/miembros/todos?t=' + new Date().getTime());
+        const data = await response.json();
+        const tbody = document.getElementById('tbody-miembros');
+        tbody.innerHTML = '';
+        
+        if (data.miembros && data.miembros.length > 0) {
+            const fragment = document.createDocumentFragment();
+            data.miembros.forEach(miembro => {
+                const row = document.createElement('tr');
+                const nombre = `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim();
+                row.innerHTML = `
+                    <td style="padding: 8px; border: 1px solid #ddd;">${nombre}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${miembro.email || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${miembro.telefono || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${miembro.estado || 'Activo'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${miembro.tipo_asistencia || '-'}</td>
+                `;
+                fragment.appendChild(row);
+            });
+            tbody.appendChild(fragment);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No hay miembros registrados</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('tbody-miembros').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+    }
+}
+
+async function exportarExcelReporte(tipo) {
+    const btn = event.target;
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Generando...';
+    
+    try {
+        window.location.href = `/api/export/excel/${tipo}`;
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }, 2000);
+    } catch (error) {
+        console.error('Error:', error);
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    mostrarReporte('pagos');
+});
+</script>
 
 {% endblock %}

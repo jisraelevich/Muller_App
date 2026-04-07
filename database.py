@@ -1,36 +1,95 @@
 """
 Database Connection Handler for Muller App
-Uses Neon PostgreSQL with psycopg2
+Uses Neon PostgreSQL with psycopg
 """
 
 import os
-import psycopg2
 from contextlib import contextmanager
-from psycopg2.extras import RealDictCursor
 from datetime import datetime, date
+from dotenv import load_dotenv
+import time
+from functools import wraps
+
+# Load environment variables
+load_dotenv()
+
+# Try to import psycopg3, fall back to psycopg2
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+    USE_PSYCOPG3 = True
+except ImportError:
+    try:
+        import psycopg2
+        import psycopg2.extras
+        USE_PSYCOPG3 = False
+    except ImportError:
+        psycopg = None
+        psycopg2 = None
+        USE_PSYCOPG3 = None
 
 class DatabaseError(Exception):
     """Custom database error"""
     pass
+
+# Simple cache decorator - expires after N seconds
+# Store cache objects globally so we can clear them
+_cache_store = {}
+
+def cache_result(timeout=300, cache_key=None):
+    """Cache decorator with timeout (in seconds) and ability to clear cache"""
+    def decorator(func):
+        actual_key = cache_key or func.__name__
+        cache = {'result': None, 'timestamp': 0}
+        _cache_store[actual_key] = cache  # Store reference globally
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            now = time.time()
+            if now - cache['timestamp'] > timeout:
+                cache['result'] = func(*args, **kwargs)
+                cache['timestamp'] = now
+            return cache['result']
+        
+        return wrapper
+    return decorator
+
+def clear_cache(cache_key=None):
+    """Clear specific cache or all caches"""
+    if cache_key:
+        if cache_key in _cache_store:
+            _cache_store[cache_key]['timestamp'] = 0
+    else:
+        # Clear all caches
+        for cache in _cache_store.values():
+            cache['timestamp'] = 0
 
 class Database:
     """Handle PostgreSQL database operations"""
     
     def __init__(self, connection_string=None):
         """Initialize database connection"""
+        if USE_PSYCOPG3 is None:
+            raise DatabaseError("Neither psycopg nor psycopg2 installed. Install with: pip install psycopg[binary]")
+        
         self.connection_string = connection_string or os.getenv('DATABASE_URL')
         if not self.connection_string:
             raise DatabaseError("DATABASE_URL not found in environment variables")
         self.conn = None
+        self.use_psycopg3 = USE_PSYCOPG3
     
     @contextmanager
     def get_connection(self):
         """Context manager for database connections"""
+        conn = None
         try:
-            conn = psycopg2.connect(self.connection_string)
+            if self.use_psycopg3:
+                conn = psycopg.connect(self.connection_string)
+            else:
+                conn = psycopg2.connect(self.connection_string)
             yield conn
             conn.commit()
-        except psycopg2.Error as e:
+        except Exception as e:
             if conn:
                 conn.rollback()
             raise DatabaseError(f"Database error: {str(e)}")
@@ -42,7 +101,12 @@ class Database:
     def get_cursor(self):
         """Context manager for database cursor"""
         with self.get_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            if USE_PSYCOPG3:
+                # psycopg3 - use dict_row factory to return dicts instead of tuples
+                cursor = conn.cursor(row_factory=dict_row)
+            else:
+                # psycopg2 - use RealDictCursor
+                cursor = psycopg2.extras.RealDictCursor(conn)
             try:
                 yield cursor
             finally:
@@ -52,17 +116,20 @@ class Database:
     # MIEMBROS (Students/Members) Operations
     # ========================================================================
     
+    @cache_result(timeout=300, cache_key='get_miembros')  # Cache for 5 minutes
     def get_miembros(self, tipo_asistencia=None, estado='Activo'):
-        """Get all members, optionally filtered"""
+        """Get all members, optionally filtered - cached for 5 minutes"""
         with self.get_cursor() as cursor:
             if tipo_asistencia:
                 cursor.execute(
-                    "SELECT * FROM miembros WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre",
+                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre LIMIT 200",
                     (tipo_asistencia, estado)
                 )
             else:
                 cursor.execute(
-                    "SELECT * FROM miembros WHERE estado=%s ORDER BY nombre",
+                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "WHERE estado=%s ORDER BY nombre LIMIT 200",
                     (estado,)
                 )
             return cursor.fetchall()
@@ -81,7 +148,11 @@ class Database:
                 "VALUES (%s, %s, %s, %s, %s) RETURNING id",
                 (nombre, apellido, email, tipo_asistencia, matricula)
             )
-            return cursor.fetchone()['id']
+            result = cursor.fetchone()
+            # Handle both tuple and dict returns
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
     def update_miembro_tipo(self, miembro_id, nuevo_tipo):
         """Change member type (Regular/Oyente)"""
@@ -107,6 +178,16 @@ class Database:
             cursor.execute("SELECT * FROM clases WHERE id=%s", (clase_id,))
             return cursor.fetchone()
     
+    @cache_result(timeout=300, cache_key='get_clases')  # Cache for 5 minutes
+    def get_clases(self):
+        """Get all classes - cached for 5 minutes, limited to 100, ordered ascending by date"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, descripcion, fecha, hora_inicio, modalidad, estado, link_meet "
+                "FROM clases ORDER BY fecha ASC LIMIT 100"
+            )
+            return cursor.fetchall()
+    
     def add_clase(self, nombre, fecha, hora_inicio, modalidad, link_meet=None):
         """Add new class"""
         with self.get_cursor() as cursor:
@@ -115,15 +196,26 @@ class Database:
                 "VALUES (%s, %s, %s, %s, %s) RETURNING id",
                 (nombre, fecha, hora_inicio, modalidad, link_meet)
             )
-            return cursor.fetchone()['id']
+            result = cursor.fetchone()
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
-    def update_clase_estado(self, clase_id, nuevo_estado):
-        """Update class status (Programada/Realizada/Cancelada)"""
+    def update_clase_estado(self, clase_id, nuevo_estado, modalidad=None):
+        """Update class status (Programada/Realizada/Cancelada) and optionally modalidad"""
         with self.get_cursor() as cursor:
-            cursor.execute(
-                "UPDATE clases SET estado=%s, updated_at=NOW() WHERE id=%s",
-                (nuevo_estado, clase_id)
-            )
+            if modalidad:
+                cursor.execute(
+                    "UPDATE clases SET estado=%s, modalidad=%s, updated_at=NOW() WHERE id=%s",
+                    (nuevo_estado, modalidad, clase_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE clases SET estado=%s, updated_at=NOW() WHERE id=%s",
+                    (nuevo_estado, clase_id)
+                )
+        # Clear cache after updating
+        clear_cache('get_clases')
     
     # ========================================================================
     # ASISTENCIA (Attendance) Operations
@@ -137,6 +229,17 @@ class Database:
                 "JOIN miembros m ON a.miembro_id = m.id "
                 "WHERE a.fecha=%s ORDER BY m.nombre",
                 (fecha,)
+            )
+            return cursor.fetchall()
+    
+    def get_asistencia(self):
+        """Get recent attendance records - limited to 500 most recent"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, m.nombre, m.apellido "
+                "FROM asistencia a "
+                "JOIN miembros m ON a.miembro_id = m.id "
+                "ORDER BY a.fecha DESC, m.nombre LIMIT 500"
             )
             return cursor.fetchall()
     
@@ -156,11 +259,20 @@ class Database:
     # ========================================================================
     
     def get_pagos_miembro(self, miembro_id):
-        """Get all payments for a member"""
+        """Get payments for a member - limited to last 20 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC",
+                "SELECT id, miembro_id, monto, fecha, mes, descripcion AS tipo_pago, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
                 (miembro_id,)
+            )
+            return cursor.fetchall()
+    
+    def get_pagos(self):
+        """Get recent payments - limited to 300 most recent"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, miembro_id, monto, fecha, mes, descripcion, metodo_pago FROM pagos "
+                "ORDER BY fecha DESC LIMIT 300"
             )
             return cursor.fetchall()
     
@@ -172,7 +284,10 @@ class Database:
                 "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
                 (miembro_id, monto, fecha, mes, descripcion, metodo_pago)
             )
-            return cursor.fetchone()['id']
+            result = cursor.fetchone()
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
     def delete_pago(self, pago_id):
         """Delete/remove a payment"""
@@ -200,7 +315,10 @@ class Database:
                 "VALUES (%s, %s, %s, %s, %s) RETURNING id",
                 (miembro_id, monto, fecha, razon, tipo_retiro)
             )
-            return cursor.fetchone()['id']
+            result = cursor.fetchone()
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
     def get_retiros_miembro(self, miembro_id):
         """Get all refunds for a member"""
@@ -210,6 +328,55 @@ class Database:
                 (miembro_id,)
             )
             return cursor.fetchall()
+    
+    def get_retiros(self):
+        """Get recent refunds - limited to 200 most recent"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, miembro_id, monto, fecha, razon, tipo_retiro FROM retiros "
+                "ORDER BY fecha DESC LIMIT 200"
+            )
+            return cursor.fetchall()
+    
+    def delete_retiro(self, retiro_id):
+        """Delete a refund record"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM retiros WHERE id=%s",
+                (retiro_id,)
+            )
+    
+    def update_retiro(self, retiro_id, concepto, monto, fecha, metodo, notas):
+        """Update a refund record"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE retiros SET tipo_retiro=%s, monto=%s, fecha=%s, razon=%s "
+                "WHERE id=%s",
+                (concepto, monto, fecha, f"{metodo} | {notas}" if notas else metodo, retiro_id)
+            )
+    
+    @cache_result(timeout=600, cache_key='get_oradores')  # Cache for 10 minutes
+    def get_oradores(self):
+        """Get all speakers - cached for 10 minutes"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, apellido, email, telefono, especialidad FROM oradores "
+                "ORDER BY apellido, nombre LIMIT 50"
+            )
+            return cursor.fetchall()
+    
+    def add_orador(self, nombre, apellido='', email='', telefono='', especialidad=''):
+        """Add a speaker"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO oradores (nombre, apellido, email, telefono, especialidad) "
+                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (nombre, apellido, email, telefono, especialidad)
+            )
+            result = cursor.fetchone()
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
     # ========================================================================
     # REPORTS / QUERIES
@@ -260,7 +427,10 @@ class Database:
                 "ON CONFLICT (email) DO UPDATE SET last_login=NOW() RETURNING id",
                 (email, google_id, nombre)
             )
-            return cursor.fetchone()['id']
+            result = cursor.fetchone()
+            if isinstance(result, tuple):
+                return result[0]
+            return result.get('id') if hasattr(result, 'get') else result[0]
     
     def update_last_login(self, email):
         """Update user's last login timestamp"""

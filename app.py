@@ -13,46 +13,107 @@ import io
 from dotenv import load_dotenv
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import time
+from functools import wraps
 
 # Cargar variables de entorno
 load_dotenv()
 
-# Importar módulo de base de datos
-from database import Database, DatabaseError
-
 # Importar autenticación OAuth
 from auth import GoogleOAuth, login_required, GOOGLE_CLIENT_ID, ADMIN_EMAILS
+
+# Importar módulo de base de datos (opcional - para testing sin DB)
+try:
+    from database import Database, DatabaseError, clear_cache
+    db_available = True
+except ImportError as e:
+    print(f"⚠️  Módulo database no disponible: {e}")
+    db_available = False
+    db = None
+
+# Simple HTTP response cache decorator for API endpoints
+_api_cache_store = {}
+
+def cache_route(timeout=60, cache_key=None):
+    """Cache JSON responses from endpoints for specified seconds"""
+    def decorator(f):
+        actual_key = cache_key or f.__name__
+        cache = {'response': None, 'timestamp': 0}
+        _api_cache_store[actual_key] = cache
+        
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Don't cache if user is logged in or if it's a POST request
+            if request.method == 'POST' or session.get('user_email'):
+                return f(*args, **kwargs)
+            
+            now = time.time()
+            if now - cache['timestamp'] > timeout:
+                cache['response'] = f(*args, **kwargs)
+                cache['timestamp'] = now
+            return cache['response']
+        
+        return decorated_function
+    return decorator
+
+def clear_api_cache(cache_key=None):
+    """Clear specific API cache or all API caches"""
+    if cache_key:
+        if cache_key in _api_cache_store:
+            _api_cache_store[cache_key]['timestamp'] = 0
+    else:
+        for cache in _api_cache_store.values():
+            cache['timestamp'] = 0
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.permanent_session_lifetime = timedelta(days=7)
 
-# Inicializar base de datos
-try:
-    db = Database()
-    print("✓ Conexión a base de datos establecida")
-except DatabaseError as e:
-    print(f"❌ Error de conexión: {e}")
+# Inicializar base de datos si está disponible
+if db_available:
+    try:
+        db = Database()
+        print("[OK] Conexion a base de datos establecida")
+        
+        # Auto-migrate data from JSON if needed (disabled for performance)
+        # Uncomment only if you need to reset data
+        # try:
+        #     from inline_migrate import migrate_from_json
+        #     migrate_from_json(db)
+        # except Exception as e:
+        #     print(f"  ! Migration warning: {str(e)[:50]}")
+            
+    except Exception as e:
+        print(f"[ERROR] Error de conexion: {e}")
+        db = None
+else:
     db = None
+    print("[WARN] Base de datos deshabilitada para testing")
+    
+# Mostrar estado de la app
+print("\n[OK] APP INICIADA")
+print(f"   Google OAuth: {'OK' if GOOGLE_CLIENT_ID else 'ERROR'}")
+print(f"   Base de datos: {'OK' if db else 'ERROR'}\n")
 
 # ========== CONFIGURACIÓN TABS ==========
 TABS = {
-    0: {"id": "tab_0", "label": "Inicio", "icon": "🏠", "route": "dashboard"},
-    1: {"id": "tab_1", "label": "Asistencia", "icon": "✅", "route": "asistencia"},
-    2: {"id": "tab_2", "label": "Pagos", "icon": "💰", "route": "pagos"},
-    3: {"id": "tab_3", "label": "Miembros", "icon": "👥", "route": "miembros"},
-    4: {"id": "tab_4", "label": "Clases", "icon": "📚", "route": "clases"},
-    5: {"id": "tab_5", "label": "Reportes", "icon": "📊", "route": "reportes"},
-    6: {"id": "tab_6", "label": "Retiros", "icon": "💸", "route": "retiros"}
+    0: {"id": "tab_0", "label": "Inicio", "icon": "Home", "route": "dashboard"},
+    1: {"id": "tab_1", "label": "Asistencia", "icon": "Check", "route": "asistencia"},
+    2: {"id": "tab_2", "label": "Pagos", "icon": "Money", "route": "pagos"},
+    3: {"id": "tab_3", "label": "Miembros", "icon": "Users", "route": "miembros"},
+    4: {"id": "tab_4", "label": "Clases", "icon": "Book", "route": "clases"},
+    5: {"id": "tab_5", "label": "Reportes", "icon": "BarChart", "route": "reportes"},
+    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"}
 }
 
 # ========== FUNCIONES AUXILIARES ==========
 
 def check_db():
-    """Verificar que la base de datos está disponible"""
+    """Verificar que la base de datos está disponible (aviso solo, no bloquea)"""
     if not db:
-        return None, {"status": "error", "message": "Conexión a base de datos no disponible"}, 503
+        print("⚠️  Aviso: Base de datos NO disponible")
+        return None, None, None  # No bloquear, solo devolver None
     return db, None, None
 
 def get_clase_hoy():
@@ -97,11 +158,12 @@ def auth_google():
         # Guardar en sesión
         GoogleOAuth.set_session(user_info)
         
-        # Actualizar última conexión en base de datos
-        try:
-            db.update_last_login(user_info['email'])
-        except:
-            pass  # No crítico si DB no está disponible
+        # Log en base de datos (si disponible)
+        if db and hasattr(db, 'update_last_login'):
+            try:
+                db.update_last_login(user_info['email'])
+            except:
+                pass  # No crítico si DB no está disponible
         
         return jsonify({"status": "success", "message": "Sesión iniciada"})
     
@@ -121,44 +183,54 @@ def logout():
 @login_required
 def index():
     """Dashboard principal"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     try:
         # Obtener usuario actual
         current_user = GoogleOAuth.get_session_user()
         
-        # Obtener estadísticas de la base de datos
-        miembros = db.get_miembros()
-        miembros_regulares = db.get_miembros(tipo_asistencia='Regular')
-        
-        # Obtener pagos este mes
-        start_date = date(date.today().year, date.today().month, 1)
-        if date.today().month == 12:
-            end_date = date(date.today().year + 1, 1, 1)
+        if db:
+            # Si hay base de datos, obtener datos reales
+            try:
+                miembros = db.get_miembros()
+                miembros_regulares = db.get_miembros(tipo_asistencia='Regular')
+                clases = db.get_clases()
+                
+                # Obtener pagos este mes
+                start_date = date(date.today().year, date.today().month, 1)
+                if date.today().month == 12:
+                    end_date = date(date.today().year + 1, 1, 1)
+                else:
+                    end_date = date(date.today().year, date.today().month + 1, 1)
+                
+                pagos_mes = db.get_resumen_pagos(start_date, end_date)
+                total_pagos = sum(float(p.get('total_pagos') or 0) for p in pagos_mes)
+                
+                stats = {
+                    'miembros': len(miembros),
+                    'miembros_regulares': len(miembros_regulares),
+                    'clases': len(clases),
+                    'pagos': total_pagos
+                }
+            except Exception as e:
+                print(f"Error obteniendo datos: {e}")
+                stats = {'error': 'No se pudieron obtener datos de la base de datos'}
         else:
-            end_date = date(date.today().year, date.today().month + 1, 1)
-        
-        pagos_mes = db.get_resumen_pagos(start_date, end_date)
-        total_pagos = sum(float(p['total_pagos'] or 0) for p in pagos_mes)
-        
-        # Obtener clases de hoy
-        clases_hoy = get_clase_hoy()
+            # Sin base de datos - mostrar mensaje de prueba
+            stats = {
+                'miembros': 0,
+                'miembros_regulares': 0,
+                'clases': 0,
+                'pagos': 0,
+                'info': '⚠️ Base de datos no disponible - Modo testing'
+            }
         
         return render_template('tab_0_dashboard.html',
                              tabs=TABS,
                              active_tab=0,
                              current_user=current_user,
-                             stats={
-                                 'miembros': len(miembros),
-                                 'miembros_regulares': len(miembros_regulares),
-                                 'clases': 0,  # Se puede obtener de otro lugar
-                                 'pagos': total_pagos
-                             },
-                             clases_hoy=clases_hoy)
+                             stats=stats,
+                             clases_hoy=[])
     
-    except DatabaseError as e:
+    except Exception as e:
         print(f"Error en dashboard: {e}")
         current_user = GoogleOAuth.get_session_user()
         return render_template('tab_0_dashboard.html',
@@ -172,12 +244,8 @@ def index():
 @login_required
 def render_tab(tab_id):
     """Renderizar tab específico"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     if tab_id not in TABS:
-        return "Tab no encontrado", 404
+        return jsonify({"status": "error", "message": "Tab no encontrado"}), 404
     
     try:
         current_user = GoogleOAuth.get_session_user()
@@ -187,33 +255,45 @@ def render_tab(tab_id):
         # Cargar datos según el tab desde base de datos
         data = {}
         
-        if tab_id == 1:  # Asistencia
-            data['miembros'] = db.get_miembros()
-            # Para clases, podríamos tener un endpoint para obtener todas las clases
+        if db:
+            # Si base de datos está disponible, obtener datos reales
+            try:
+                if tab_id == 1:  # Asistencia
+                    data['miembros'] = db.get_miembros()
+                    data['clases'] = db.get_clases()
+                    data['asistencia'] = db.get_asistencia()
+                    data['clases_hoy'] = get_clase_hoy()
+                
+                elif tab_id == 2:  # Pagos
+                    data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
+                    data['pagos'] = db.get_pagos()
+                
+                elif tab_id == 3:  # Miembros
+                    data['miembros'] = db.get_miembros()
+                
+                elif tab_id == 4:  # Clases
+                    data['clases'] = db.get_clases()
+                    data['oradores'] = db.get_oradores()
+                
+                elif tab_id == 5:  # Reportes
+                    data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
+                    data['reporte_pagos'] = db.get_reporte_pagos_por_mes()
+                    data['asistencia'] = db.get_asistencia()
+                    data['pagos'] = db.get_pagos()
+                
+                elif tab_id == 6:  # Retiros
+                    data['retiros'] = db.get_retiros()
+            except Exception as e:
+                print(f"Error obteniendo datos: {e}")
+                data['error'] = f"Error obteniendo datos: {str(e)}"
+        else:
+            # Sin base de datos - mostrar mensaje de prueba
+            data['miembros'] = []
             data['clases'] = []
-            data['asistencia'] = db.get_asistencia_fecha(date.today())
-            data['clases_hoy'] = get_clase_hoy()
-        
-        elif tab_id == 2:  # Pagos
-            data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
-            # Se cargarán pagos vía API en el frontend
-            data['pagos'] = []
-        
-        elif tab_id == 3:  # Miembros
-            data['miembros'] = db.get_miembros()
-        
-        elif tab_id == 4:  # Clases
-            data['clases'] = []
-            data['oradores'] = []
-        
-        elif tab_id == 5:  # Reportes
-            data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
-            data['reporte_pagos'] = db.get_reporte_pagos_por_mes()
             data['asistencia'] = []
             data['pagos'] = []
-        
-        elif tab_id == 6:  # Retiros
             data['retiros'] = []
+            data['error'] = "⚠️ Base de datos no disponible - Modo testing (solo autenticación)"
         
         return render_template(template,
                              tabs=TABS,
@@ -221,104 +301,174 @@ def render_tab(tab_id):
                              current_user=current_user,
                              **data)
     
-    except DatabaseError as e:
+    except Exception as e:
         print(f"Error al cargar tab {tab_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - ASISTENCIA ==========
 
 @app.route('/api/asistencia/save', methods=['POST'])
 def save_asistencia():
-    """Guardar asistencia en la base de datos"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
+    """Guardar asistencia en la base de datos - soporta múltiples registros"""
     try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
         datos = request.json
         
-        miembro_id = datos.get('id_miembro')
-        fecha = datos.get('fecha', str(date.today()))
-        asistio = datos.get('asistio', True)
+        # Check if it's an array of attendance records (from UI)
+        if isinstance(datos, list):
+            # Multiple attendance records
+            for asistencia in datos:
+                miembro_id = asistencia.get('id_miembro')
+                fecha = asistencia.get('fecha', str(date.today()))
+                asistio = asistencia.get('asistio', asistencia.get('presente', True))
+                clase_id = asistencia.get('clase_id', 1)
+                
+                if miembro_id:
+                    db.add_asistencia(miembro_id, clase_id, fecha, asistio)
         
-        # La clase_id se obtendría de la clase para esa fecha
-        # Por ahora usamos 1 como placeholder (deberías expandir esto)
-        clase_id = datos.get('clase_id', 1)
+        # Check if it's the new format with fecha_clase and asistencias array
+        elif 'asistencias' in datos:
+            fecha_clase = datos.get('fecha_clase', str(date.today()))
+            clase_id = datos.get('id_clase', 1)
+            asistencias = datos.get('asistencias', [])
+            
+            for asistencia in asistencias:
+                miembro_id = asistencia.get('id_miembro')
+                presente = asistencia.get('presente', True)
+                
+                if miembro_id:
+                    db.add_asistencia(miembro_id, clase_id, fecha_clase, presente)
         
-        # Guardar en base de datos
-        db.add_asistencia(miembro_id, clase_id, fecha, asistio)
+        # Old format - single record
+        else:
+            miembro_id = datos.get('id_miembro')
+            fecha = datos.get('fecha', str(date.today()))
+            asistio = datos.get('asistio', True)
+            clase_id = datos.get('clase_id', 1)
+            
+            if miembro_id:
+                db.add_asistencia(miembro_id, clase_id, fecha, asistio)
         
         return jsonify({"status": "success", "message": "Asistencia guardada correctamente"})
     
-    except DatabaseError as e:
-        print(f"Error al guardar asistencia: {e}")
-        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error al guardar asistencia: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/asistencia/por-fecha/<fecha>', methods=['GET'])
 def get_asistencia_fecha(fecha):
     """Obtener asistencia para una fecha específica"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     try:
-        asistencia = db.get_asistencia_fecha(fecha)
-        return jsonify({"status": "success", "asistencia": [dict(a) for a in asistencia]})
+        if db:
+            asistencia = db.get_asistencia_fecha(fecha)
+            return jsonify({"status": "success", "asistencia": [dict(a) for a in asistencia]})
+        else:
+            return jsonify({"status": "success", "asistencia": []})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"Error: {e}")
+        return jsonify({"status": "success", "asistencia": []})
 
 # ========== API ENDPOINTS - CLASES ==========
+
+@app.route('/api/clases/todas', methods=['GET'])
+@cache_route(timeout=120, cache_key='get_todas_clases')  # Cache for 2 minutes
+def get_todas_clases():
+    """Obtener TODAS las clases disponibles"""
+    try:
+        if db:
+            # Limit to 50 most recent classes for performance
+            clases = db.get_clases()[:50]  
+            # Convert to expected format for frontend
+            clases_formatted = []
+            for c in clases:
+                c_dict = dict(c) if hasattr(c, 'items') else c
+                clases_formatted.append({
+                    'id': c_dict.get('id'),
+                    'fecha': str(c_dict.get('fecha', '')),
+                    'tema': c_dict.get('nombre', ''),  # Map nombre to tema
+                    'orador': c_dict.get('descripcion', ''),  # Map descripcion to orador
+                    'modalidad': c_dict.get('modalidad', ''),
+                    'estado': c_dict.get('estado', ''),
+                    'link_meet': c_dict.get('link_meet', '')
+                })
+            return jsonify({"status": "success", "clases": clases_formatted})
+        else:
+            # Sin base de datos - devolver ejemplo vacío
+            return jsonify({"status": "success", "clases": []})
+    except Exception as e:
+        print(f"Error en /api/clases/todas: {e}")
+        return jsonify({"status": "success", "clases": []})  # Devolver vacío en error
 
 @app.route('/api/clases/por-fecha/<fecha>', methods=['GET'])
 def get_clase_por_fecha(fecha):
     """Obtener clase para una fecha específica"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     try:
-        clase = db.get_clase(1)  # Implementar búsqueda por fecha
-        if clase:
-            return jsonify({"status": "success", "clase": dict(clase)})
+        if db:
+            clase = db.get_clase(1)  # Implementar búsqueda por fecha
+            if clase:
+                return jsonify({"status": "success", "clase": dict(clase)})
+            else:
+                return jsonify({"status": "success", "clase": None})
         else:
             return jsonify({"status": "success", "clase": None})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"Error: {e}")
+        return jsonify({"status": "success", "clase": None})
 
 @app.route('/api/clases/hoy', methods=['GET'])
+@cache_route(timeout=60, cache_key='get_clases_hoy')  # Cache for 1 minute
 def get_clases_hoy_api():
     """Obtener clases de hoy (última, hoy, próxima)"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     try:
-        clases = get_clase_hoy()
-        return jsonify({"status": "success", "clases": [dict(c) for c in clases]})
+        if db:
+            clases = get_clase_hoy()
+            return jsonify({"status": "success", "clases": [dict(c) for c in clases]})
+        else:
+            return jsonify({"status": "success", "clases": []})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"Error: {e}")
+        return jsonify({"status": "success", "clases": []})
 
 @app.route('/api/clases/update', methods=['POST'])
 def update_clase():
     """Actualizar estado de una clase"""
-    db_check, error, code = check_db()
-    if error:
-        return error, code
-    
     try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
         datos = request.json
-        clase_id = datos.get('id')
-        nuevo_estado = datos.get('estado')
+        clase_id = int(datos.get('id'))  # Asegurar que es int
+        nuevo_estado = datos.get('estado', '').strip()
+        modalidad = datos.get('modalidad', '').strip()
         
-        db.update_clase_estado(clase_id, nuevo_estado)
+        # Validar datos
+        if not clase_id or not nuevo_estado:
+            return jsonify({"status": "error", "message": "Datos incompletos"}), 400
         
+        if nuevo_estado not in ['Programada', 'Realizada', 'Cancelada']:
+            return jsonify({"status": "error", "message": "Estado inválido"}), 400
+        
+        print(f"[UPDATE] Clase ID: {clase_id}, Nuevo Estado: {nuevo_estado}, Modalidad: {modalidad}")
+        
+        db.update_clase_estado(clase_id, nuevo_estado, modalidad if modalidad else None)
+        
+        # Clear caches so next request gets fresh data
+        clear_cache('get_clases')  # Database cache
+        clear_api_cache('get_todas_clases')  # API response cache
+        clear_api_cache('get_clases_hoy')  # API response cache
+        
+        print(f"[SUCCESS] Clase {clase_id} actualizada a {nuevo_estado}")
         return jsonify({"status": "success", "message": "Clase actualizada correctamente"})
-    except DatabaseError as e:
-        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
     except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - PAGOS ==========
@@ -332,23 +482,40 @@ def save_pago():
     
     try:
         datos = request.json
+        print(f"[PAGOS] Datos recibidos: {datos}")
         
-        miembro_id = datos.get('id_miembro')
+        # Aceptar tanto 'miembro_id' como 'id_miembro' para compatibilidad
+        miembro_id = datos.get('miembro_id') or datos.get('id_miembro')
         monto = float(datos.get('monto', 0))
         fecha = datos.get('fecha', str(date.today()))
         mes = datos.get('mes', '')
-        descripcion = datos.get('descripcion', '')
+        tipo_pago = datos.get('tipo_pago', 'Cuota')  # Campo adicional
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
         
-        pago_id = db.add_pago(miembro_id, monto, fecha, mes, descripcion, metodo_pago)
+        if not miembro_id:
+            return jsonify({"status": "error", "message": "ID de miembro es requerido"}), 400
         
+        if monto <= 0:
+            return jsonify({"status": "error", "message": "Monto debe ser mayor a 0"}), 400
+        
+        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}")
+        
+        # Pasar tipo_pago como descripcion (para compatibilidad con schema actual)
+        pago_id = db.add_pago(miembro_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        
+        print(f"[PAGOS] Pago guardado exitosamente con ID: {pago_id}")
         return jsonify({"status": "success", "message": "Pago registrado correctamente", "id": pago_id})
     
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
     except DatabaseError as e:
-        print(f"Error al guardar pago: {e}")
+        print(f"[ERROR] Error de BD: {e}")
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/pagos/miembro/<int:miembro_id>', methods=['GET'])
@@ -360,8 +527,27 @@ def get_pagos_miembro(miembro_id):
     
     try:
         pagos = db.get_pagos_miembro(miembro_id)
-        return jsonify({"status": "success", "pagos": [dict(p) for p in pagos]})
+        pagos_list = []
+        
+        for p in pagos:
+            pago_dict = dict(p)
+            # Convertir fecha a string en formato YYYY-MM-DD
+            if pago_dict.get('fecha'):
+                fecha = pago_dict['fecha']
+                if hasattr(fecha, 'isoformat'):
+                    pago_dict['fecha'] = fecha.isoformat().split('T')[0]
+                else:
+                    pago_dict['fecha'] = str(fecha)
+            # Convertir monto a int
+            if pago_dict.get('monto'):
+                pago_dict['monto'] = int(pago_dict['monto'])
+            pagos_list.append(pago_dict)
+        
+        return jsonify({"status": "success", "pagos": pagos_list})
     except Exception as e:
+        print(f"[ERROR PAGOS] Error al obtener pagos del miembro {miembro_id}: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/pagos/delete/<int:pago_id>', methods=['DELETE'])
@@ -372,11 +558,17 @@ def delete_pago(pago_id):
         return error, code
     
     try:
+        print(f"[PAGOS DELETE] Eliminando pago {pago_id}")
         db.delete_pago(pago_id)
+        print(f"[PAGOS DELETE] Pago {pago_id} eliminado exitosamente")
         return jsonify({"status": "success", "message": "Pago eliminado correctamente"})
     except DatabaseError as e:
+        print(f"[ERROR] Error de BD al eliminar pago {pago_id}: {e}")
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
+        print(f"[ERROR] Exception al eliminar pago {pago_id}: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/pagos/update/<int:pago_id>', methods=['POST'])
@@ -388,19 +580,30 @@ def update_pago(pago_id):
     
     try:
         datos = request.json
+        print(f"[PAGOS UPDATE] Datos recibidos para pago {pago_id}: {datos}")
         
         monto = float(datos.get('monto'))
         fecha = datos.get('fecha', str(date.today()))
         mes = datos.get('mes', '')
-        descripcion = datos.get('descripcion', '')
+        tipo_pago = datos.get('tipo_pago', datos.get('descripcion', ''))  # Aceptar ambos nombres
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
         
-        db.update_pago(pago_id, monto, fecha, mes, descripcion, metodo_pago)
+        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}")
         
+        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        
+        print(f"[PAGOS UPDATE] Pago {pago_id} actualizado exitosamente")
         return jsonify({"status": "success", "message": "Pago actualizado correctamente"})
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
     except DatabaseError as e:
+        print(f"[ERROR] Error de BD: {e}")
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - RETIROS ==========
@@ -414,22 +617,145 @@ def save_retiro():
     
     try:
         datos = request.json
+        print(f"[RETIROS] Datos recibidos: {datos}")
         
-        miembro_id = datos.get('id_miembro')
+        concepto = datos.get('concepto', '')
         monto = float(datos.get('monto', 0))
         fecha = datos.get('fecha', str(date.today()))
-        razon = datos.get('razon', '')
-        tipo_retiro = datos.get('tipo_retiro', 'Reembolso')
+        metodo = datos.get('metodo', 'Efectivo')
+        notas = datos.get('notas', '')
         
-        retiro_id = db.add_retiro(miembro_id, monto, fecha, razon, tipo_retiro)
+        if monto <= 0:
+            return jsonify({"status": "error", "message": "Monto debe ser mayor a 0"}), 400
         
+        print(f"[RETIROS] Guardando retiro: concepto={concepto}, monto={monto}, fecha={fecha}")
+        
+        # Usar miembro_id=None para retiros generales (no vinculados a miembro)
+        razon = f"{metodo}" + (f" | {notas}" if notas else "")
+        retiro_id = db.add_retiro(miembro_id=None, monto=monto, fecha=fecha, razon=razon, tipo_retiro=concepto)
+        
+        print(f"[RETIROS] Retiro guardado exitosamente con ID: {retiro_id}")
         return jsonify({"status": "success", "message": "Retiro registrado correctamente", "id": retiro_id})
     
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
     except DatabaseError as e:
-        print(f"Error al guardar retiro: {e}")
+        print(f"[ERROR] Error de BD: {e}")
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/retiros/todos', methods=['GET'])
+def get_todos_retiros():
+    """Obtener todos los retiros"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        retiros = db.get_retiros()
+        retiros_list = []
+        
+        for r in retiros:
+            retiro_dict = dict(r)
+            
+            # Mapeo de campos para el frontend
+            # La DB guarda: tipo_retiro=concepto, razon=metodo|notas
+            # El frontend espera: concepto, metodo, notas
+            retiro_mapped = {
+                'id': retiro_dict.get('id'),
+                'concepto': retiro_dict.get('tipo_retiro', ''),
+                'monto': int(retiro_dict.get('monto', 0)) if retiro_dict.get('monto') else 0,
+                'fecha': retiro_dict.get('fecha'),
+                'metodo': '',
+                'notas': '',
+                'miembro_id': retiro_dict.get('miembro_id')
+            }
+            
+            # Convertir fecha a string en formato YYYY-MM-DD
+            if retiro_mapped['fecha']:
+                fecha = retiro_mapped['fecha']
+                if hasattr(fecha, 'isoformat'):
+                    retiro_mapped['fecha'] = fecha.isoformat().split('T')[0]
+                else:
+                    retiro_mapped['fecha'] = str(fecha)
+            
+            # Extraer metodo y notas del campo razon (formato: "metodo | notas")
+            razon = retiro_dict.get('razon', '')
+            if razon and '|' in razon:
+                parts = razon.split('|', 1)
+                retiro_mapped['metodo'] = parts[0].strip()
+                retiro_mapped['notas'] = parts[1].strip() if len(parts) > 1 else ''
+            elif razon:
+                retiro_mapped['metodo'] = razon.strip()
+            
+            retiros_list.append(retiro_mapped)
+        
+        return jsonify({"status": "success", "retiros": retiros_list})
+    except Exception as e:
+        print(f"[ERROR] Error al obtener retiros: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/retiros/delete/<int:retiro_id>', methods=['DELETE'])
+def delete_retiro(retiro_id):
+    """Eliminar un retiro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        print(f"[RETIROS DELETE] Eliminando retiro {retiro_id}")
+        db.delete_retiro(retiro_id)
+        print(f"[RETIROS DELETE] Retiro {retiro_id} eliminado exitosamente")
+        return jsonify({"status": "success", "message": "Retiro eliminado correctamente"})
+    except DatabaseError as e:
+        print(f"[ERROR] Error de BD al eliminar retiro {retiro_id}: {e}")
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        print(f"[ERROR] Exception al eliminar retiro {retiro_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/retiros/update/<int:retiro_id>', methods=['POST'])
+def update_retiro(retiro_id):
+    """Actualizar un retiro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        print(f"[RETIROS UPDATE] Datos recibidos para retiro {retiro_id}: {datos}")
+        
+        concepto = datos.get('concepto', '')
+        monto = float(datos.get('monto'))
+        fecha = datos.get('fecha', str(date.today()))
+        metodo = datos.get('metodo', 'Efectivo')
+        notas = datos.get('notas', '')
+        
+        print(f"[RETIROS UPDATE] Actualizando retiro {retiro_id}: concepto={concepto}, monto={monto}, fecha={fecha}")
+        
+        db.update_retiro(retiro_id, concepto, monto, fecha, metodo, notas)
+        
+        print(f"[RETIROS UPDATE] Retiro {retiro_id} actualizado exitosamente")
+        return jsonify({"status": "success", "message": "Retiro actualizado correctamente"})
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
+    except DatabaseError as e:
+        print(f"[ERROR] Error de BD: {e}")
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/retiros/miembro/<int:miembro_id>', methods=['GET'])
@@ -448,8 +774,9 @@ def get_retiros_miembro(miembro_id):
 # ========== API ENDPOINTS - MIEMBROS ==========
 
 @app.route('/api/miembros/all', methods=['GET'])
+@cache_route(timeout=300, cache_key='get_all_miembros')  # Cache for 5 minutes
 def get_all_miembros():
-    """Obtener todos los miembros"""
+    """Obtener todos los miembros - cached for 5 min"""
     db_check, error, code = check_db()
     if error:
         return error, code
@@ -525,6 +852,269 @@ def get_resumen_pagos():
         resumen = db.get_resumen_pagos(fecha_inicio, fecha_fin)
         return jsonify({"status": "success", "resumen": [dict(r) for r in resumen]})
     except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ========== API ENDPOINTS - REPORTES CALENDARIO ==========
+
+@app.route('/api/reportes/pagos-calendario', methods=['GET'])
+def reportes_pagos_calendario():
+    """Reporte de pagos por mes (tabla pivot: alumnos × meses)"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener todos los miembros activos
+        miembros = db.get_miembros(estado='Activo')
+        
+        # Obtener todos los pagos
+        pagos = db.get_pagos()
+        
+        # Crear reporte pivot
+        reporte = []
+        
+        for miembro in miembros:
+            miembro_dict = dict(miembro)
+            row = {
+                'miembro_id': miembro_dict.get('id'),
+                'nombre': f"{miembro_dict.get('nombre', '')} {miembro_dict.get('apellido', '')}".strip(),
+                'estado': miembro_dict.get('estado', 'Activo'),
+                'meses': {}
+            }
+            
+            # Inicializar 12 meses con 0
+            for mes in range(1, 13):
+                row['meses'][f'{mes:02d}'] = 0
+            
+            # Llenar con pagos del miembro
+            for pago in pagos:
+                pago_dict = dict(pago)
+                if pago_dict.get('miembro_id') == miembro_dict.get('id'):
+                    # Extraer mes de fecha
+                    if pago_dict.get('fecha'):
+                        fecha = pago_dict['fecha']
+                        if hasattr(fecha, 'month'):
+                            mes_key = f"{fecha.month:02d}"
+                        else:
+                            # Parsear string
+                            from datetime import datetime as dt
+                            fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
+                            mes_key = f"{fecha_obj.month:02d}"
+                        
+                        # Sumar al mes correspondiente
+                        monto = float(pago_dict.get('monto', 0))
+                        row['meses'][mes_key] += int(monto)
+            
+            reporte.append(row)
+        
+        # Ordenar por nombre
+        reporte.sort(key=lambda x: x['nombre'])
+        
+        return jsonify({
+            "status": "success",
+            "reporte": reporte,
+            "meses": ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        })
+    except Exception as e:
+        print(f"[ERROR] Error en reportes_pagos_calendario: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
+def export_pagos_calendario_excel():
+    """Exportar reporte de pagos por calendario a Excel"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        reporte = datos.get('reporte', [])
+        meses = datos.get('meses', [])
+        
+        # Crear workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Pagos por Mes"
+        
+        # Estilos
+        header_fill = PatternFill(start_color="0071C5", end_color="0071C5", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        total_fill = PatternFill(start_color="FFEB3B", end_color="FFEB3B", fill_type="solid")
+        total_font = Font(bold=True, size=11)
+        
+        # Título
+        ws['A1'] = "REPORTE DE PAGOS POR MES"
+        ws['A1'].font = Font(bold=True, size=14)
+        ws.merge_cells('A1:N1')
+        
+        # Subtítulo con fecha
+        ws['A2'] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        ws['A2'].font = Font(italic=True, size=10)
+        
+        # Encabezado de tabla
+        ws['A4'] = "👤 Alumno"
+        for col, mes in enumerate(meses, 2):
+            ws.cell(row=4, column=col).value = f"{mes[:3]}"
+        ws.cell(row=4, column=14).value = "💰 TOTAL"
+        
+        # Aplicar estilos al encabezado
+        for col in range(1, 15):
+            cell = ws.cell(row=4, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Datos
+        row_num = 5
+        totales_mes = {f"{i:02d}": 0 for i in range(1, 13)}
+        
+        for alumno in reporte:
+            ws.cell(row=row_num, column=1).value = alumno['nombre']
+            total_alumno = 0
+            
+            for col, mes_key in enumerate([f"{i:02d}" for i in range(1, 13)], 2):
+                monto = alumno['meses'].get(mes_key, 0)
+                ws.cell(row=row_num, column=col).value = monto if monto > 0 else 0
+                total_alumno += monto
+                totales_mes[mes_key] += monto
+                
+                # Colorear según monto
+                cell = ws.cell(row=row_num, column=col)
+                if monto >= 1000:
+                    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+                elif monto > 0:
+                    cell.fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+                else:
+                    cell.fill = PatternFill(start_color="FFB6C6", end_color="FFB6C6", fill_type="solid")
+                cell.alignment = Alignment(horizontal="right")
+                cell.number_format = '#,##0'
+            
+            # Total por alumno
+            cell = ws.cell(row=row_num, column=14)
+            cell.value = total_alumno
+            cell.fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal="right")
+            cell.number_format = '#,##0'
+            
+            row_num += 1
+        
+        # Fila de totales
+        ws.cell(row=row_num, column=1).value = "📊 TOTALES"
+        ws.cell(row=row_num, column=1).font = total_font
+        
+        total_general = 0
+        for col, mes_key in enumerate([f"{i:02d}" for i in range(1, 13)], 2):
+            monto = totales_mes[mes_key]
+            total_general += monto
+            cell = ws.cell(row=row_num, column=col)
+            cell.value = monto
+            cell.fill = total_fill
+            cell.font = total_font
+            cell.alignment = Alignment(horizontal="right")
+            cell.number_format = '#,##0'
+        
+        # Total general
+        cell = ws.cell(row=row_num, column=14)
+        cell.value = total_general
+        cell.fill = PatternFill(start_color="4CAF50", end_color="4CAF50", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF", size=12)
+        cell.alignment = Alignment(horizontal="right")
+        cell.number_format = '#,##0'
+        
+        # Ancho de columnas
+        ws.column_dimensions['A'].width = 25
+        for col in range(2, 15):
+            ws.column_dimensions[chr(64 + col)].width = 12
+        
+        # Guardar en memoria
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Reporte_Pagos_{date.today().isoformat()}.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ========== API ENDPOINTS - LISTADOS PARA REPORTES ==========
+
+@app.route('/api/pagos/todos', methods=['GET'])
+def get_todos_pagos():
+    """Obtener todos los pagos para el reporte"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        pagos = db.get_pagos()
+        pagos_list = []
+        
+        for p in pagos:
+            pago_dict = dict(p)
+            # Formato de fecha
+            if pago_dict.get('fecha'):
+                fecha = pago_dict['fecha']
+                if hasattr(fecha, 'isoformat'):
+                    pago_dict['fecha'] = fecha.isoformat().split('T')[0]
+                else:
+                    pago_dict['fecha'] = str(fecha)
+            pagos_list.append(pago_dict)
+        
+        return jsonify({"status": "success", "pagos": pagos_list})
+    except Exception as e:
+        print(f"[ERROR] Error al obtener pagos: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/asistencia/todos', methods=['GET'])
+def get_todos_asistencia():
+    """Obtener todos los registros de asistencia"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        asistencias = db.get_asistencia()
+        asist_list = []
+        
+        for a in asistencias:
+            asist_dict = dict(a)
+            if asist_dict.get('fecha'):
+                fecha = asist_dict['fecha']
+                if hasattr(fecha, 'isoformat'):
+                    asist_dict['fecha'] = fecha.isoformat().split('T')[0]
+                else:
+                    asist_dict['fecha'] = str(fecha)
+            asist_list.append(asist_dict)
+        
+        return jsonify({"status": "success", "asistencias": asist_list})
+    except Exception as e:
+        print(f"[ERROR] Error al obtener asistencia: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/todos', methods=['GET'])
+def get_todos_miembros():
+    """Obtener todos los miembros"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        miembros = db.get_miembros()
+        miembros_list = [dict(m) for m in miembros]
+        return jsonify({"status": "success", "miembros": miembros_list})
+    except Exception as e:
+        print(f"[ERROR] Error al obtener miembros: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - EXPORTACIÓN ==========
@@ -652,15 +1242,16 @@ if __name__ == '__main__':
     print("  PostgreSQL (Neon)")
     print("=" * 70)
     
-    if not db:
-        print("\n❌ ERROR: No hay conexión a la base de datos")
-        print("   Verificar archivo .env con DATABASE_URL")
-        print("   O ejecutar: python deploy_schema.py")
-    else:
-        puerto = 5000
+    puerto = 5000
+    
+    if db:
         print(f"\n✅ Base de datos conectada")
-        print(f"✅ Servidor iniciado en: http://localhost:{puerto}")
-        print(f"\n📌 Para cerrar: Ctrl+C o cerrar esta ventana")
-        print("=" * 70 + "\n")
-        
-        app.run(host='0.0.0.0', port=puerto, debug=False)
+    else:
+        print(f"\n⚠️  Base de datos NO disponible - Modo testing (solo autenticación)")
+    
+    print(f"✅ Servidor iniciado en: http://localhost:{puerto}")
+    print(f"   Google OAuth: {'✓' if GOOGLE_CLIENT_ID else '❌'}")
+    print(f"\n📌 Para cerrar: Ctrl+C o cerrar esta ventana")
+    print("=" * 70 + "\n")
+    
+    app.run(host='0.0.0.0', port=puerto, debug=True)
