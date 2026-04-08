@@ -29,7 +29,7 @@
     <div class="card-dashboard card-pagos" onclick="navigateToTab(2)">
         <div class="card-icon">💰</div>
         <div class="card-title">PAGOS</div>
-        <div class="card-stats">{{ "${:,.0f}".format(stats.pagos) }}</div>
+        <div class="card-stats">${{ "%.0f"|format(stats.pagos or 0) }}</div>
         <div class="card-description">Registrar un pago</div>
     </div>
     
@@ -37,7 +37,7 @@
     <div class="card-dashboard card-miembros" onclick="navigateToTab(3)">
         <div class="card-icon">👥</div>
         <div class="card-title">MIEMBROS</div>
-        <div class="card-stats">{{ stats.miembros }}</div>
+        <div class="card-stats">{{ stats.miembros or 0 }}</div>
         <div class="card-description">Ver lista completa</div>
     </div>
     
@@ -45,7 +45,7 @@
     <div class="card-dashboard card-clases" onclick="navigateToTab(4)">
         <div class="card-icon">📚</div>
         <div class="card-title">CLASES</div>
-        <div class="card-stats">{{ stats.clases }}</div>
+        <div class="card-stats">{{ stats.clases or 0 }}</div>
         <div class="card-description">Ver calendario</div>
     </div>
     

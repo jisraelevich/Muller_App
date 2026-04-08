@@ -16,112 +16,417 @@
 <!-- Formulario de Retiro -->
 <div style="background: #f5f5f5; padding: 18px; border-radius: 7px; margin-bottom: 18px;">
     
-    <!-- Selector de Concepto -->
-    <div class="form-group">
-        <label class="form-label">📋 Concepto del Retiro:</label>
-        <select id="concepto-retiro" class="form-select" style="cursor: pointer;">
-            <option value="">-- Seleccionar concepto --</option>
-            <option value="Gastos">💼 Gastos</option>
-            <option value="Pago Instituto">🏫 Pago al Instituto</option>
-            <option value="Pago Extra">💳 Pago Extra</option>
-        </select>
+    <!-- FILA 1: Concepto, Fecha y Método en UNA LÍNEA -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div>
+            <label class="form-label">📋 Concepto:</label>
+            <select id="concepto-retiro" class="form-select" style="cursor: pointer; font-size: 11px;">
+                <option value="Gastos" selected>💼 Gastos</option>
+                <option value="Pago Instituto">🏫 Pago Instituto</option>
+                <option value="Pago Extra">💳 Pago Extra</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">📅 Fecha:</label>
+            <input type="date" id="fecha-retiro" class="form-input" style="font-size: 11px;">
+        </div>
+        <div>
+            <label class="form-label">💳 Método:</label>
+            <select id="metodo-retiro" class="form-select" style="cursor: pointer; font-size: 11px;">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Transferencia">🏦 Transferencia</option>
+            </select>
+        </div>
     </div>
     
-    <!-- Selector de Fecha -->
-    <div class="form-group">
-        <label class="form-label">📅 Fecha del Retiro:</label>
-        <input type="date" 
-               id="fecha-retiro" 
-               class="form-input">
+    <!-- FILA 2: Monto y Notas en UNA LÍNEA -->
+    <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-bottom: 12px;">
+        <div>
+            <label class="form-label">💰 Monto:</label>
+            <input type="number" 
+                   id="monto-retiro" 
+                   class="form-input" 
+                   placeholder="0"
+                   min="0"
+                   step="1"
+                   style="font-size: 14px; font-weight: bold; text-align: right; padding: 6px; width: 100%;">
+        </div>
+        <div>
+            <label class="form-label">📝 Notas:</label>
+            <input type="text" 
+                   id="notas-retiro" 
+                   class="form-input" 
+                   placeholder="Detalles adicionales..."
+                   style="font-size: 11px;">
+        </div>
     </div>
     
-    <!-- Selector de Método de Retiro -->
-    <div class="form-group">
-        <label class="form-label">💳 Método de Retiro:</label>
-        <select id="metodo-retiro" class="form-select" style="cursor: pointer;">
-            <option value="Efectivo">💵 Efectivo</option>
-            <option value="Transferencia">🏦 Transferencia</option>
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label class="form-label">💰 Monto:</label>
-        <input type="text" 
-               id="monto-retiro" 
-               class="form-input" 
-               placeholder="$ 0" 
-               style="text-align: center; font-size: 24px; font-weight: bold; color: #f59e0b;">
-    </div>
-    
-    <!-- Campo de Notas -->
-    <div class="form-group">
-        <label class="form-label">📝 Notas / Descripción:</label>
-        <textarea id="notas-retiro" 
-                  class="form-input" 
-                  placeholder="Detalles adicionales..." 
-                  style="min-height: 80px; resize: vertical;"></textarea>
-    </div>
-    
-    <!-- Teclado Numérico Mini -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px;">
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('7')" style="font-size: 14px; padding: 9px;">7</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('8')" style="font-size: 14px; padding: 9px;">8</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('9')" style="font-size: 14px; padding: 9px;">9</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('4')" style="font-size: 14px; padding: 9px;">4</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('5')" style="font-size: 14px; padding: 9px;">5</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('6')" style="font-size: 14px; padding: 9px;">6</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('1')" style="font-size: 14px; padding: 9px;">1</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('2')" style="font-size: 14px; padding: 9px;">2</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('3')" style="font-size: 14px; padding: 9px;">3</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('0')" style="font-size: 14px; padding: 9px;">0</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('00')" style="font-size: 14px; padding: 9px;">00</button>
-        <button class="numpad-btn" onclick="RetirosModule.agregarDigito('borrar')" style="font-size: 14px; padding: 9px;">⌫</button>
-    </div>
-    
-    <button id="btn-guardar-retiro" 
-            class="btn-touch btn-block"
-            onclick="RetirosModule.guardar()"
-            style="margin-top: 18px; background-color: #f59e0b; color: white; font-weight: bold; min-height: 48px;">
-        💸 GUARDAR RETIRO
+    <!-- BOTÓN GUARDAR -->
+    <button class="btn-touch btn-success" 
+            onclick="RetirosModule.guardar()" 
+            style="min-height: 48px; width: 100%; font-size: 14px; margin-top: 8px;">
+        💾 GUARDAR RETIRO
     </button>
 </div>
 
 <!-- Historial de Retiros -->
-<div style="background: white; border-radius: 7px; padding: 18px;">
+<div style="background: white; border-radius: 7px; padding: 18px; margin-top: 18px;">
     <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: bold;">
         📊 Últimos Retiros
     </h3>
     
-    {% if retiros %}
-    <div style="max-height: 300px; overflow-y: auto;">
-        {% for retiro in retiros|reverse %}
-        <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; font-size: 9px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-weight: bold;">{{ retiro.concepto }}</span>
-                <span style="color: #f59e0b; font-weight: bold;">${{ "{:,.0f}".format(retiro.monto) }}</span>
-            </div>
-            <div style="color: #6b7280;">
-                📅 {{ retiro.fecha }} | {{ retiro.metodo }}
-            </div>
-            {% if retiro.notas %}
-            <div style="color: #9ca3af; margin-top: 4px;">
-                📝 {{ retiro.notas }}
-            </div>
-            {% endif %}
+    <div id="lista-retiros" style="display: grid; gap: 8px;">
+        <div style="text-align: center; color: #9ca3af; padding: 18px;">
+            Cargando retiros...
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <div style="text-align: center; color: #9ca3af; padding: 18px;">
-        No hay retiros registrados
+</div>
+
+<!-- MODAL: Editar Retiro -->
+<div id="modal-editar-retiro" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
+        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
+            ✏️ EDITAR RETIRO
+        </h2>
+        
+        <div class="form-group">
+            <label class="form-label">📋 Concepto:</label>
+            <select id="edit-concepto-retiro" class="form-select" style="cursor: pointer;">
+                <option value="Gastos" selected>💼 Gastos</option>
+                <option value="Pago Instituto">🏫 Pago Instituto</option>
+                <option value="Pago Extra">💳 Pago Extra</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📅 Fecha:</label>
+            <input type="date" id="edit-fecha-retiro" class="form-input">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">💰 Monto:</label>
+            <input type="number" id="edit-monto-retiro" class="form-input" step="1" min="0">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">💳 Método:</label>
+            <select id="edit-metodo-retiro" class="form-select" style="cursor: pointer;">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Transferencia">🏦 Transferencia</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📝 Notas:</label>
+            <input type="text" id="edit-notas-retiro" class="form-input" placeholder="Detalles adicionales...">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
+            <button class="btn-touch btn-success" onclick="RetirosModule.guardarEdicion()" style="min-height: 48px;">
+                💾 GUARDAR
+            </button>
+            <button class="btn-touch btn-secondary" onclick="RetirosModule.cerrarModal()" style="min-height: 48px;">
+                ✕ CANCELAR
+            </button>
+        </div>
+        
+        <button class="btn-touch btn-danger" onclick="RetirosModule.borrarRetiro()" style="min-height: 48px; margin-top: 9px; width: 100%; background: #ef4444; color: white;">
+            🗑️ BORRAR RETIRO
+        </button>
     </div>
-    {% endif %}
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        RetirosModule.init();
-    });
+const RetirosModule = {
+    retiroEnEdicion: null,
+    
+    init() {
+        console.log('RetirosModule iniciado');
+        // Cargar retiros al iniciar
+        this.cargarRetiros();
+        
+        // Cargar fecha hoy
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha-retiro').value = hoy;
+    },
+    
+    async cargarRetiros() {
+        try {
+            const response = await fetch('/api/retiros/todos?t=' + new Date().getTime(), {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
+            const data = await response.json();
+            
+            const lista = document.getElementById('lista-retiros');
+            
+            if (data.status === 'success' && data.retiros && data.retiros.length > 0) {
+                lista.innerHTML = '';
+                const fragment = document.createDocumentFragment();
+                
+                data.retiros.forEach(retiro => {
+                    let fechaFormato = retiro.fecha;
+                    if (retiro.fecha && typeof retiro.fecha === 'string' && retiro.fecha.includes('-')) {
+                        const fechaParts = retiro.fecha.split('T')[0].split('-');
+                        fechaFormato = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.style.cssText = 'display: grid; grid-template-columns: 80px 80px 1fr 60px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
+                    div.onmouseover = function() { this.style.background='#fffbeb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
+                    div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
+                    div.onclick = () => RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
+                    
+                    div.innerHTML = `
+                        <span style="font-weight: 600; color: #374151;">${fechaFormato}</span>
+                        <span style="color: #f59e0b; font-weight: 700; text-align: right;">$${Math.floor(retiro.monto)}</span>
+                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${retiro.concepto}</div>
+                        <span style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 9px;">✏️ EDITAR</span>
+                    `;
+                    fragment.appendChild(div);
+                });
+                
+                lista.appendChild(fragment);
+            } else {
+                lista.innerHTML = '<div style="text-align: center; padding: 18px; color: #9ca3af;">No hay retiros registrados</div>';
+            }
+        } catch (error) {
+            console.error('[RETIROS] Error:', error);
+            document.getElementById('lista-retiros').innerHTML = '<div style="text-align: center; padding: 18px; color: #ef4444;">Error al cargar</div>';
+        }
+    },
+    
+    abrirEdicion(retiroId, concepto, fecha, monto, metodo, notas) {
+        this.retiroEnEdicion = { id: retiroId };
+        
+        let fechaProcesada = fecha;
+        if (fecha && typeof fecha === 'string' && fecha.includes('-')) {
+            fechaProcesada = fecha.split('T')[0];
+        }
+        
+        console.log('[RETIROS EDIT] Abriendo edición:', { retiroId, concepto, fecha, monto, metodo, notas });
+        
+        document.getElementById('edit-concepto-retiro').value = concepto;
+        document.getElementById('edit-fecha-retiro').value = fechaProcesada;
+        document.getElementById('edit-monto-retiro').value = monto;
+        document.getElementById('edit-metodo-retiro').value = metodo || 'Efectivo';
+        
+        // Extraer notas del campo metodo si contiene " | "
+        let notasValue = notas;
+        if (!notas && metodo && metodo.includes('|')) {
+            const parts = metodo.split('|');
+            document.getElementById('edit-metodo-retiro').value = parts[0].trim();
+            notasValue = parts[1].trim();
+        }
+        document.getElementById('edit-notas-retiro').value = notasValue || '';
+        
+        const modal = document.getElementById('modal-editar-retiro');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    },
+    
+    cerrarModal() {
+        const modal = document.getElementById('modal-editar-retiro');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        this.retiroEnEdicion = null;
+    },
+    
+    async guardarEdicion() {
+        if (!this.retiroEnEdicion) {
+            mostrarAlerta('Error: No se identificó el retiro', 'error');
+            return;
+        }
+        
+        const concepto = document.getElementById('edit-concepto-retiro').value;
+        const fecha = document.getElementById('edit-fecha-retiro').value;
+        const monto = document.getElementById('edit-monto-retiro').value;
+        const metodo = document.getElementById('edit-metodo-retiro').value;
+        const notas = document.getElementById('edit-notas-retiro').value;
+        
+        if (!concepto || !fecha || !monto || !metodo) {
+            mostrarAlerta('Completa todos los campos', 'error');
+            return;
+        }
+        
+        try {
+            const payload = {
+                concepto: concepto,
+                fecha: fecha,
+                monto: parseInt(monto),
+                metodo: metodo,
+                notas: notas
+            };
+            
+            const response = await fetch(`/api/retiros/update/${this.retiroEnEdicion.id}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                this.cerrarModal();
+                await this.cargarRetiros();
+            } else {
+                mostrarAlerta('Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[RETIROS] Error:', error);
+            mostrarAlerta('Error al actualizar: ' + error.message, 'error');
+        }
+    },
+    
+    async borrarRetiro() {
+        console.log('[RETIROS DELETE] retiroEnEdicion:', this.retiroEnEdicion);
+        
+        if (!this.retiroEnEdicion || !this.retiroEnEdicion.id) {
+            console.error('[RETIROS DELETE] Error: retiroEnEdicion.id es null o undefined', this.retiroEnEdicion);
+            mostrarAlerta('Error: No se identificó el retiro', 'error');
+            return;
+        }
+        
+        if (!confirm('¿Está seguro de que desea borrar este retiro?')) return;
+        
+        try {
+            const retiroId = this.retiroEnEdicion.id;
+            console.log('[RETIROS DELETE] Eliminando retiro ID:', retiroId);
+            
+            const response = await fetch(`/api/retiros/delete/${retiroId}`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            console.log('[RETIROS DELETE] Respuesta:', data);
+            
+            this.cerrarModal();
+            
+            if (data.status === 'success') {
+                await this.cargarRetiros();
+            } else {
+                mostrarAlerta('Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[RETIROS DELETE] Error:', error);
+            mostrarAlerta('Error: ' + error.message, 'error');
+        }
+    },
+    
+    async guardar() {
+        const concepto = document.getElementById('concepto-retiro').value;
+        const fecha = document.getElementById('fecha-retiro').value;
+        const monto = document.getElementById('monto-retiro').value;
+        const metodo = document.getElementById('metodo-retiro').value;
+        const notas = document.getElementById('notas-retiro').value;
+        
+        if (!concepto || !fecha || !monto || !metodo) {
+            mostrarAlerta('Completa todos los campos', 'error');
+            return;
+        }
+        
+        try {
+            const payload = {
+                concepto: concepto,
+                fecha: fecha,
+                monto: parseInt(monto),
+                metodo: metodo,
+                notas: notas
+            };
+            
+            const response = await fetch('/api/retiros/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Limpiar form
+                document.getElementById('concepto-retiro').value = '';
+                document.getElementById('monto-retiro').value = '';
+                document.getElementById('notas-retiro').value = '';
+                document.getElementById('monto-retiro').focus();
+                
+                // Recargar grilla
+                await this.cargarRetiros();
+            } else {
+                mostrarAlerta('Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[RETIROS] Error:', error);
+            mostrarAlerta('Error al guardar: ' + error.message, 'error');
+        }
+    }
+};
+
+function mostrarAlerta(mensaje, tipo) {
+    const alerta = document.createElement('div');
+    alerta.style.cssText = `
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        padding: 12px 16px;
+        border-radius: 4px;
+        font-weight: 600;
+        z-index: 3000;
+        animation: slideIn 0.3s ease-out;
+        ${tipo === 'success' ? 'background: #dcfce7; border: 1px solid #86efac; color: #166534;' : 'background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;'}
+    `;
+    alerta.textContent = mensaje;
+    document.body.appendChild(alerta);
+    
+    setTimeout(() => {
+        alerta.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => alerta.remove(), 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    RetirosModule.init();
+});
 </script>
+
+<style>
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* Remover flechas del input number */
+#monto-retiro::-webkit-outer-spin-button,
+#monto-retiro::-webkit-inner-spin-button,
+#edit-monto-retiro::-webkit-outer-spin-button,
+#edit-monto-retiro::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#monto-retiro[type=number],
+#edit-monto-retiro[type=number] {
+    -moz-appearance: textfield;
+}
+</style>
 
 {% endblock %}

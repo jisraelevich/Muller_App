@@ -44,19 +44,19 @@ class JSONToPostgresMigration:
                 data = json.load(f)
                 return data if isinstance(data, list) else []
         except FileNotFoundError:
-            print(f"⚠ File not found: {filename}")
+            print(f"[WARN] File not found: {filename}")
             return []
         except json.JSONDecodeError as e:
-            print(f"⚠ Invalid JSON in {filename}: {e}")
+            print(f"[WARN] Invalid JSON in {filename}: {e}")
             return []
     
     def migrate_miembros(self):
         """Migrate members from miembros.json"""
-        print("\n📌 Migrating MIEMBROS (Members)...")
+        print("\n[MIGRATE] MIEMBROS (Members)...")
         miembros_data = self.load_json_file('miembros.json')
         
         if not miembros_data:
-            print("   ℹ No members to migrate")
+            print("   [INFO] No members to migrate")
             return
         
         for m in miembros_data:
@@ -71,18 +71,18 @@ class JSONToPostgresMigration:
                 self.stats['miembros'] += 1
             except Exception as e:
                 error_msg = f"Error migrating member {m.get('id')}: {str(e)}"
-                print(f"   ❌ {error_msg}")
+                print(f"   [ERROR] {error_msg}")
                 self.stats['errors'].append(error_msg)
         
-        print(f"   ✓ Migrated {self.stats['miembros']} members")
+        print(f"   [OK] Migrated {self.stats['miembros']} members")
     
     def migrate_clases(self):
         """Migrate classes from clases.json"""
-        print("\n📌 Migrating CLASES (Classes)...")
+        print("\n[MIGRATE] CLASES (Classes)...")
         clases_data = self.load_json_file('clases.json')
         
         if not clases_data:
-            print("   ℹ No classes to migrate")
+            print("   [INFO] No classes to migrate")
             return
         
         for c in clases_data:
@@ -103,18 +103,18 @@ class JSONToPostgresMigration:
                 self.stats['clases'] += 1
             except Exception as e:
                 error_msg = f"Error migrating class {c.get('id')}: {str(e)}"
-                print(f"   ❌ {error_msg}")
+                print(f"   [ERROR] {error_msg}")
                 self.stats['errors'].append(error_msg)
         
-        print(f"   ✓ Migrated {self.stats['clases']} classes")
+        print(f"   [OK] Migrated {self.stats['clases']} classes")
     
     def migrate_asistencia(self):
         """Migrate attendance records from asistencia.json"""
-        print("\n📌 Migrating ASISTENCIA (Attendance)...")
+        print("\n[MIGRATE] ASISTENCIA (Attendance)...")
         asistencia_data = self.load_json_file('asistencia.json')
         
         if not asistencia_data:
-            print("   ℹ No attendance records to migrate")
+            print("   [INFO] No attendance records to migrate")
             return
         
         for a in asistencia_data:
@@ -140,15 +140,15 @@ class JSONToPostgresMigration:
                 # Don't print every error, just count them
                 self.stats['errors'].append(error_msg)
         
-        print(f"   ✓ Migrated {self.stats['asistencia']} attendance records")
+        print(f"   [OK] Migrated {self.stats['asistencia']} attendance records")
     
     def migrate_pagos(self):
         """Migrate payments from pagos.json"""
-        print("\n📌 Migrating PAGOS (Payments)...")
+        print("\n[MIGRATE] PAGOS (Payments)...")
         pagos_data = self.load_json_file('pagos.json')
         
         if not pagos_data:
-            print("   ℹ No payments to migrate")
+            print("   [INFO] No payments to migrate")
             return
         
         for p in pagos_data:
@@ -173,15 +173,15 @@ class JSONToPostgresMigration:
                 error_msg = f"Error migrating payment: {str(e)}"
                 self.stats['errors'].append(error_msg)
         
-        print(f"   ✓ Migrated {self.stats['pagos']} payments")
+        print(f"   [OK] Migrated {self.stats['pagos']} payments")
     
     def migrate_retiros(self):
         """Migrate withdrawals from retiros.json"""
-        print("\n📌 Migrating RETIROS (Withdrawals)...")
+        print("\n[MIGRATE] RETIROS (Withdrawals)...")
         retiros_data = self.load_json_file('retiros.json')
         
         if not retiros_data:
-            print("   ℹ No withdrawals to migrate")
+            print("   [INFO] No withdrawals to migrate")
             return
         
         for r in retiros_data:
@@ -204,31 +204,31 @@ class JSONToPostgresMigration:
                 error_msg = f"Error migrating withdrawal: {str(e)}"
                 self.stats['errors'].append(error_msg)
         
-        print(f"   ✓ Migrated {self.stats['retiros']} withdrawals")
+        print(f"   [OK] Migrated {self.stats['retiros']} withdrawals")
     
     def migrate_oradores(self):
         """Migrate speakers from oradores.json"""
-        print("\n📌 Migrating ORADORES (Speakers)...")
+        print("\n[MIGRATE] ORADORES (Speakers)...")
         oradores_data = self.load_json_file('oradores.json')
         
         if not oradores_data:
-            print("   ℹ No speakers to migrate")
+            print("   [INFO] No speakers to migrate")
             return
         
-        print(f"   ℹ Speaker migration would need: {len(oradores_data)} records")
+        print(f"   [INFO] Speaker migration would need: {len(oradores_data)} records")
         print("   (Implement if needed)")
         self.stats['oradores'] = len(oradores_data)
     
     def migrate_examenes(self):
         """Migrate exams from examenes.json"""
-        print("\n📌 Migrating EXAMENES (Exams)...")
+        print("\n[MIGRATE] EXAMENES (Exams)...")
         examenes_data = self.load_json_file('examenes.json')
         
         if not examenes_data:
-            print("   ℹ No exams to migrate")
+            print("   [INFO] No exams to migrate")
             return
         
-        print(f"   ℹ Exam migration would need: {len(examenes_data)} records")
+        print(f"   [INFO] Exam migration would need: {len(examenes_data)} records")
         print("   (Implement if needed)")
         self.stats['examenes'] = len(examenes_data)
     
@@ -240,7 +240,7 @@ class JSONToPostgresMigration:
         
         # Check if data folder exists
         if not os.path.exists(DATA_DIR):
-            print(f"❌ Data folder not found: {DATA_DIR}")
+            print(f"[ERROR] Data folder not found: {DATA_DIR}")
             print("   Make sure /data/ folder exists with JSON files")
             return False
         
@@ -258,30 +258,30 @@ class JSONToPostgresMigration:
             print("\n" + "=" * 70)
             print("MIGRATION SUMMARY")
             print("=" * 70)
-            print(f"\n✓ Successfully migrated:")
-            print(f"  • {self.stats['miembros']} members")
-            print(f"  • {self.stats['clases']} classes")
-            print(f"  • {self.stats['asistencia']} attendance records")
-            print(f"  • {self.stats['pagos']} payments")
-            print(f"  • {self.stats['retiros']} withdrawals")
-            print(f"  • {self.stats['oradores']} speakers (in JSON)")
-            print(f"  • {self.stats['examenes']} exams (in JSON)")
+            print(f"\n[OK] Successfully migrated:")
+            print(f"  * {self.stats['miembros']} members")
+            print(f"  * {self.stats['clases']} classes")
+            print(f"  * {self.stats['asistencia']} attendance records")
+            print(f"  * {self.stats['pagos']} payments")
+            print(f"  * {self.stats['retiros']} withdrawals")
+            print(f"  * {self.stats['oradores']} speakers (in JSON)")
+            print(f"  * {self.stats['examenes']} exams (in JSON)")
             
             total_migrated = (self.stats['miembros'] + self.stats['clases'] + 
                             self.stats['asistencia'] + self.stats['pagos'] + 
                             self.stats['retiros'])
             
-            print(f"\n✓ Total database records: {total_migrated}")
+            print(f"\n[OK] Total database records: {total_migrated}")
             
             if self.stats['errors']:
-                print(f"\n⚠ Errors: {len(self.stats['errors'])}")
+                print(f"\n[WARN] Errors: {len(self.stats['errors'])}")
                 for error in self.stats['errors'][:5]:  # Show first 5 errors
                     print(f"   - {error}")
                 if len(self.stats['errors']) > 5:
                     print(f"   ... and {len(self.stats['errors']) - 5} more")
             
             print("\n" + "=" * 70)
-            print("✓ Migration complete!")
+            print("[SUCCESS] Migration complete!")
             print("=" * 70)
             print("\nNext steps:")
             print("1. Verify data in PostgreSQL:")
@@ -294,7 +294,7 @@ class JSONToPostgresMigration:
             return True
         
         except Exception as e:
-            print(f"\n❌ Migration failed: {e}")
+            print(f"\n[ERROR] Migration failed: {e}")
             return False
 
 

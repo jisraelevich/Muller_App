@@ -13,44 +13,34 @@
     📚 CALENDARIO DE CLASES 2026
 </h2>
 
-<!-- Opciones de Navegación -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 8px;">
-    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(1)" style="min-height: 48px;">
-        ✅ IR A ASISTENCIAS
-    </button>
-    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(2)" style="min-height: 48px;">
-        💰 IR A PAGOS
-    </button>
-    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(3)" style="min-height: 48px;">
-        📝 IR A EXAMINADORES
-    </button>
-    <button class="btn-touch btn-primary" onclick="ClasesModule.navegarA(3)" style="min-height: 48px;">
-        👥 IR A MIEMBROS
-    </button>
-</div>
-
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
     {% for clase in clases %}
-    <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 16px; text-align: center; min-height: 200px;" onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.tema }}', '{{ clase.orador }}', '{{ clase.modalidad }}', '{{ clase.estado }}')">
+    <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 16px; text-align: center; min-height: 200px;" onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.nombre }}', '{{ clase.descripcion or '' }}', '{{ clase.modalidad }}', '{{ clase.estado }}')">
         <div style="font-size: 32px; margin-bottom: 12px;">
             {% if clase.estado == 'Realizada' %}
                 ✓
+            {% elif clase.estado == 'Cancelada' %}
+                ✕
             {% else %}
                 📅
             {% endif %}
         </div>
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; line-height: 1.3;">{{ clase.tema }}</div>
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; line-height: 1.3;">{{ clase.nombre }}</div>
         <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
             {{ clase.fecha }}
         </div>
         <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
-            👨‍🏫 {{ clase.orador }}
+            {% if clase.descripcion %}
+                {{ clase.descripcion }}
+            {% else %}
+                Sin descripción
+            {% endif %}
         </div>
         <div style="font-size: 13px; color: #6b7280;">
             {% if clase.modalidad == 'Presencial' %}
                 🏫 Presencial
             {% else %}
-                💻 Meet
+                💻 {{ clase.modalidad }}
             {% endif %}
         </div>
     </div>
@@ -65,12 +55,12 @@
         </h2>
         
         <div class="form-group">
-            <label class="form-label">Tema:</label>
+            <label class="form-label">Nombre:</label>
             <input type="text" id="edit-tema" class="form-input" readonly>
         </div>
         
         <div class="form-group">
-            <label class="form-label">Orador:</label>
+            <label class="form-label">Descripción:</label>
             <input type="text" id="edit-orador" class="form-input" readonly>
         </div>
         
@@ -90,8 +80,9 @@
         <div class="form-group">
             <label class="form-label">📊 Estado:</label>
             <select id="edit-estado" class="form-select" style="cursor: pointer;">
-                <option value="Programada">⏱ Programada</option>
-                <option value="Realizada">✓ Realizada</option>
+                <option value="Programada">Programada (⏱)</option>
+                <option value="Realizada">Realizada (✓)</option>
+                <option value="Cancelada">Cancelada (✕)</option>
             </select>
         </div>
         
@@ -114,10 +105,6 @@
 const ClasesModule = {
     claseActual: null,
     
-    navegarA(tabId) {
-        window.location.href = `/tab/${tabId}`;
-    },
-    
     editarClase(id, fecha, tema, orador, modalidad, estado) {
         this.claseActual = { id, fecha, tema, orador, modalidad, estado };
         
@@ -136,10 +123,18 @@ const ClasesModule = {
     },
     
     async guardarCambios() {
-        if (!this.claseActual) return;
+        if (!this.claseActual) {
+            console.error('No hay clase actual');
+            mostrarAlerta('Error: No hay clase seleccionada', 'error');
+            return;
+        }
         
         const modalidad = document.getElementById('edit-modalidad').value;
         const estado = document.getElementById('edit-estado').value;
+        
+        console.log('Guardando cambios para clase:', this.claseActual.id);
+        console.log('Nuevo estado:', estado);
+        console.log('Nueva modalidad:', modalidad);
         
         try {
             const response = await fetch('/api/clases/update', {
@@ -153,13 +148,79 @@ const ClasesModule = {
             });
             
             const data = await response.json();
+            console.log('Response from server:', data);
+            
             if (data.status === 'success') {
+                console.log('Update was successful');
+                
+                // Guardar el estado actualizado ANTES de limpiar
+                const claseID = this.claseActual.id;
+                this.claseActual.estado = estado;
+                this.claseActual.modalidad = modalidad;
+                
+                // Cerrar modal (esto hace this.claseActual = null)
+                this.cerrarModal();
+                
+                // Mostrar alerta de éxito
                 mostrarAlerta('✅ Clase actualizada correctamente', 'success');
-                setTimeout(() => location.reload(), 1500);
+                
+                // Actualizar la clase visualmente con el ID guardado
+                this.actualizarClaseEnDOM(claseID, estado);
+            } else {
+                console.log('Update failed with message:', data.message);
+                mostrarAlerta('Error al guardar: ' + data.message, 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
-            mostrarAlerta('Error al guardar', 'error');
+            console.error('Exception during save:', error);
+            mostrarAlerta('Error al guardar: ' + error.message, 'error');
+        }
+    },
+    
+    actualizarClaseEnDOM(claseID, nuevoEstado) {
+        console.log('Actualizando clase en DOM para ID:', claseID);
+        
+        // Encontrar todas las tarjetas y buscar la que coincida con el ID
+        const tarjetas = document.querySelectorAll('.item-card');
+        console.log('Tarjetas encontradas:', tarjetas.length);
+        
+        let encontrada = false;
+        tarjetas.forEach((tarjeta, index) => {
+            const onclick = tarjeta.getAttribute('onclick');
+            const searchStr = `ClasesModule.editarClase(${claseID}`;
+            
+            if (onclick && onclick.includes(searchStr)) {
+                console.log(`Tarjeta encontrada en índice ${index}`);
+                encontrada = true;
+                
+                // Actualizar ícono
+                const iconDiv = tarjeta.querySelector('div:first-child');
+                if (iconDiv) {
+                    console.log('Actualizando ícono...');
+                    if (nuevoEstado === 'Realizada') {
+                        iconDiv.innerHTML = '✓';
+                        iconDiv.style.color = '#10b981';
+                        iconDiv.style.fontWeight = 'bold';
+                        console.log('Ícono actualizado a: ✓ (Realizada)');
+                    } else if (nuevoEstado === 'Cancelada') {
+                        iconDiv.innerHTML = '✕';
+                        iconDiv.style.color = '#ef4444';
+                        iconDiv.style.fontWeight = 'bold';
+                        console.log('Ícono actualizado a: ✕ (Cancelada)');
+                    } else {
+                        iconDiv.innerHTML = '📅';
+                        iconDiv.style.color = 'inherit';
+                        console.log('Ícono actualizado a: 📅 (Programada)');
+                    }
+                } else {
+                    console.warn('No se encontró div de ícono');
+                }
+            }
+        });
+        
+        if (!encontrada) {
+            console.warn('No se encontró la tarjeta para clase ID:', claseID);
+        } else {
+            console.log('Clase actualizada exitosamente en DOM');
         }
     }
 };

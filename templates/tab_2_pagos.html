@@ -40,84 +40,587 @@
     </div>
 </div>
 
-<!-- PASO 2: Ingresar Monto -->
+<!-- PASO 2: Ingresar Pago (Compacto) -->
 <div id="paso-2" class="hidden">
-    <div style="text-align: center; margin-bottom: 24px;">
-        <h2 style="font-size: 17px; color: #6b7280; margin-bottom: 6px;">
-            Registrar pago de:
-        </h2>
-        <div style="font-size: 21px; font-weight: bold; color: #3b82f6;" id="miembro-seleccionado">
+    <!-- ENCABEZADO: Nombre del alumno + Botón Cambiar -->
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 16px;">
+        <div>
+            <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">Pago de:</div>
+            <div style="font-size: 16px; font-weight: bold; color: #3b82f6;" id="miembro-seleccionado"></div>
+        </div>
+        <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-secondary" style="min-width: 90px; min-height: 48px; font-size: 11px; padding: 4px;">
+            ◀ Cambiar
+        </button>
+    </div>
+    
+    <!-- FILA 1: Fecha, Tipo y Método en UNA LÍNEA -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+        <div>
+            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📅 Fecha</label>
+            <input type="date" id="fecha-pago" class="form-input" style="font-size: 11px; padding: 6px;">
+        </div>
+        <div>
+            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📋 Tipo</label>
+            <select id="tipo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
+                <option value="Cuota">Cuota</option>
+                <option value="Matrícula">Matrícula</option>
+                <option value="Libro">Libro</option>
+                <option value="Donación">Donación</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💳 Pago</label>
+            <select id="metodo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transfer.</option>
+            </select>
         </div>
     </div>
     
-    <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-secondary" style="margin-bottom: 18px;">
-        ◀ Cambiar Persona
-    </button>
-    
-    <h2 style="font-size: 19px; margin-bottom: 18px; text-align: center;">
-        2️⃣ ¿CUÁNTO PAGÓ?
-    </h2>
-    
-    <!-- Selector de Fecha -->
-    <div class="form-group">
-        <label class="form-label">📅 Fecha del Pago:</label>
-        <input type="date" 
-               id="fecha-pago" 
-               class="form-input">
+    <!-- FILA 2: Monto + Botón Guardar -->
+    <div style="display: grid; grid-template-columns: 120px auto 1fr; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
+        <div>
+            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💵 Monto</label>
+            <input type="number" 
+                   id="monto-pago" 
+                   class="form-input" 
+                   placeholder="0"
+                   min="0"
+                   step="1"
+                   style="font-size: 14px; font-weight: bold; text-align: right; padding: 6px; width: 100%;">
+        </div>
+        <button id="btn-guardar-pago" 
+                class="btn-touch btn-success"
+                onclick="PagosModule.guardar()"
+                style="min-width: 75px; min-height: 48px; font-size: 12px; padding: 4px; white-space: nowrap;">
+            💰 GUARDAR
+        </button>
+        <div id="msg-exito" style="padding: 8px 12px; background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: 600; font-size: 11px; text-align: center; display: none; animation: slideIn 0.3s ease-out;">
+            ✅ ¡GUARDADO!
+        </div>
     </div>
     
-    <!-- Selector de Tipo de Pago -->
-    <div class="form-group">
-        <label class="form-label">📋 Tipo de Pago:</label>
-        <select id="tipo-pago" class="form-select" style="cursor: pointer;">
-            <option value="Cuota">Cuota Mensual</option>
-            <option value="Matrícula">Matrícula</option>
-            <option value="Libro">Libro</option>
-            <option value="Pago Parcial">Pago Parcial</option>
-            <option value="Donación">Donación</option>
-        </select>
+    <!-- PAGOS PREVIOS DEL MIEMBRO - GRILLA -->
+    <div id="pagos-previos-container" style="display: none; background: #f3f4f6; border-radius: 6px; padding: 10px; margin-top: 12px; border: 1px solid #d1d5db;">
+        <h4 style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #374151; margin-top: 0;">📝 ÚLTIMOS PAGOS</h4>
+        <div id="lista-pagos-previos" style="display: grid; gap: 6px; font-size: 10px;">
+            <!-- Se llena dinámicamente con grid items -->
+        </div>
     </div>
-    
-    <!-- Selector de Método de Pago -->
-    <div class="form-group">
-        <label class="form-label">💳 Método de Pago:</label>
-        <select id="metodo-pago" class="form-select" style="cursor: pointer;">
-            <option value="Efectivo">💵 Efectivo</option>
-            <option value="Transferencia">🏦 Transferencia</option>
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <input type="text" 
-               id="monto-pago" 
-               class="form-input" 
-               placeholder="$ 0" 
-               readonly
-               style="text-align: center; font-size: 29px; font-weight: bold; color: #10b981;">
-    </div>
-    
-    <!-- Teclado Numérico -->
-    <div class="numpad">
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('7')">7</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('8')">8</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('9')">9</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('4')">4</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('5')">5</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('6')">6</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('1')">1</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('2')">2</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('3')">3</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('0')">0</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('00')">00</button>
-        <button class="numpad-btn" onclick="PagosModule.agregarDigito('borrar')">⌫</button>
-    </div>
-    
-    <button id="btn-guardar-pago" 
-            class="btn-touch btn-success btn-block"
-            onclick="PagosModule.guardar()"
-            style="margin-top: 24px;">
-        💰 GUARDAR PAGO
-    </button>
 </div>
+
+<!-- MODAL: Editar Pago -->
+<div id="modal-editar-pago" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
+        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
+            ✏️ EDITAR PAGO
+        </h2>
+        
+        <div class="form-group">
+            <label class="form-label">📅 Fecha:</label>
+            <input type="date" id="edit-fecha-pago" class="form-input">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">💵 Monto:</label>
+            <input type="number" id="edit-monto-pago" class="form-input" step="1" min="0">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📋 Tipo:</label>
+            <select id="edit-tipo-pago" class="form-select" style="cursor: pointer;">
+                <option value="Cuota">Cuota</option>
+                <option value="Matrícula">Matrícula</option>
+                <option value="Libro">Libro</option>
+                <option value="Donación">Donación</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">💳 Método:</label>
+            <select id="edit-metodo-pago" class="form-select" style="cursor: pointer;">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+            </select>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
+            <button class="btn-touch btn-success" onclick="PagosModule.guardarEdicion()" style="min-height: 48px;">
+                💾 GUARDAR
+            </button>
+            <button class="btn-touch btn-secondary" onclick="PagosModule.cerrarModal()" style="min-height: 48px;">
+                ✕ CANCELAR
+            </button>
+        </div>
+        
+        <button class="btn-touch btn-danger" onclick="PagosModule.borrarPago()" style="min-height: 48px; margin-top: 9px; width: 100%; background: #ef4444; color: white;">
+            🗑️ BORRAR PAGO
+        </button>
+    </div>
+</div>
+
+<script>
+const PagosModule = {
+    miembroSeleccionado: null,
+    pagoEnEdicion: null,
+    
+    init() {
+        console.log('PagosModule iniciado');
+        document.getElementById('paso-1').style.display = 'block';
+        document.getElementById('paso-2').classList.add('hidden');
+    },
+    
+    filtrar(termino) {
+        const items = document.querySelectorAll('.item-card');
+        const terminoLower = termino.toLowerCase();
+        items.forEach(item => {
+            const nombre = item.getAttribute('data-nombre').toLowerCase();
+            item.style.display = nombre.includes(terminoLower) ? 'flex' : 'none';
+        });
+    },
+    
+    async seleccionarMiembro(id, nombre) {
+        this.miembroSeleccionado = { id, nombre };
+        document.getElementById('miembro-seleccionado').textContent = nombre;
+        document.getElementById('paso-1').style.display = 'none';
+        document.getElementById('paso-2').classList.remove('hidden');
+        
+        // Mostrar loading inmediatamente
+        const container = document.getElementById('pagos-previos-container');
+        const lista = document.getElementById('lista-pagos-previos');
+        lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">⏳ Cargando historial...</div>';
+        container.style.display = 'block';
+        
+        // Resetear formulario
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha-pago').value = hoy;
+        document.getElementById('monto-pago').value = '';
+        document.getElementById('tipo-pago').value = 'Cuota';
+        document.getElementById('metodo-pago').value = 'Efectivo';
+        
+        // Focus en monto
+        document.getElementById('monto-pago').focus();
+        
+        // Cargar pagos previos y esperar
+        console.log('[PAGOS] Cargando historial para miembro:', id);
+        await this.cargarPagosPrevios(id);
+    },
+    
+    async cargarPagosPrevios(miembroId) {
+        try {
+            const t0 = performance.now();
+            
+            // Obtener referencias a elementos
+            const container = document.getElementById('pagos-previos-container');
+            const lista = document.getElementById('lista-pagos-previos');
+            
+            // LIMPIAR COMPLETAMENTE ANTES DE EMPEZAR
+            if (lista) {
+                lista.innerHTML = '';
+                lista.childNodes.forEach(node => node.remove());
+            }
+            
+            // Mostrar loading
+            if (lista) {
+                lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">⏳ Cargando...</div>';
+            }
+            if (container) {
+                container.style.display = 'block';
+            }
+            
+            console.log(`[PAGOS] Fetching pagos de miembro ${miembroId}`);
+            const t1 = performance.now();
+            
+            // Agregar timestamp para evitar cache del navegador
+            const timestamp = new Date().getTime();
+            const response = await fetch(`/api/pagos/miembro/${miembroId}?t=${timestamp}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+            const data = await response.json();
+            
+            const t2 = performance.now();
+            console.log(`[PAGOS] Fetch en ${(t2-t1).toFixed(0)}ms, pagos: ${data.pagos?.length || 0}`);
+            console.log('[PAGOS] Primeros pagos de datos:', data.pagos?.slice(0, 2));
+            
+            if (data.status === 'success' && data.pagos && data.pagos.length > 0) {
+                // LIMPIEZA FORZADA - asegurar que lista está vacía
+                if (lista) {
+                    while (lista.firstChild) {
+                        lista.removeChild(lista.firstChild);
+                    }
+                }
+                
+                // Renderizar usando fragment
+                const fragment = document.createDocumentFragment();
+                
+                data.pagos.slice(0, 12).forEach(pago => {
+                    let fechaFormato = pago.fecha;
+                    if (pago.fecha && typeof pago.fecha === 'string' && pago.fecha.includes('-')) {
+                        const fechaParts = pago.fecha.split('T')[0].split('-');
+                        fechaFormato = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.style.cssText = 'display: grid; grid-template-columns: 70px 60px 1fr 60px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
+                    div.onmouseover = function() { this.style.background='#eff6ff'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
+                    div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
+                    div.onclick = () => PagosModule.abrirEdicion(pago.id, pago.fecha, pago.monto, pago.tipo_pago, pago.metodo_pago);
+                    
+                    div.innerHTML = `
+                        <span style="font-weight: 600; color: #374151;">${fechaFormato}</span>
+                        <span style="color: #059669; font-weight: 700; text-align: right;">$${Math.floor(pago.monto)}</span>
+                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${pago.tipo_pago}</div>
+                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 9px;">✏️️ EDITAR</span>
+                    `;
+                    fragment.appendChild(div);
+                });
+                
+                // Agregar fragment todo de una sola vez
+                if (lista) {
+                    lista.appendChild(fragment);
+                    console.log('[PAGOS] Grid actualizado con', fragment.childNodes.length, 'elementos');
+                }
+                
+                const t3 = performance.now();
+                console.log(`[PAGOS] ✅ Renderizado en ${(t3-t2).toFixed(0)}ms (total ${(t3-t0).toFixed(0)}ms)`);
+            } else {
+                if (lista) {
+                    lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin histórico de pagos</div>';
+                }
+                console.log('[PAGOS] No hay pagos para mostrar');
+            }
+        } catch (error) {
+            console.error('[PAGOS] Error:', error);
+            const lista = document.getElementById('lista-pagos-previos');
+            if (lista) {
+                lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 12px;">Error al cargar</div>';
+            }
+        }
+    },
+    
+    abrirEdicion(pagoId, fecha, monto, tipo, metodo) {
+        console.log('[PAGO EDIT] Abriendo edición de pago:', { pagoId, fecha, monto, tipo, metodo });
+        console.log('[PAGO EDIT] miembroSeleccionado:', this.miembroSeleccionado);
+        
+        if (!this.miembroSeleccionado || !this.miembroSeleccionado.id) {
+            console.error('[ERROR] No hay miembro seleccionado');
+            mostrarAlerta('Error: No se pudo identificar el miembro', 'error');
+            return;
+        }
+        
+        this.pagoEnEdicion = { 
+            id: pagoId, 
+            miembro_id: this.miembroSeleccionado.id 
+        };
+        
+        // Procesar fecha para asegurar que esté en formato YYYY-MM-DD
+        let fechaProcesada = fecha;
+        if (fecha) {
+            if (typeof fecha === 'string' && fecha.includes('-')) {
+                // Si ya es "2026-04-07", extractar solo la parte de la fecha
+                fechaProcesada = fecha.split('T')[0];
+            } else if (typeof fecha === 'string') {
+                // Intentar parsear otros formatos
+                const d = new Date(fecha);
+                if (!isNaN(d.getTime())) {
+                    fechaProcesada = d.toISOString().split('T')[0];
+                }
+            }
+        }
+        
+        console.log('[PAGO EDIT] Fecha procesada:', fechaProcesada);
+        
+        // Cargar valores en el modal
+        const inputFecha = document.getElementById('edit-fecha-pago');
+        const inputMonto = document.getElementById('edit-monto-pago');
+        const selectTipo = document.getElementById('edit-tipo-pago');
+        const selectMetodo = document.getElementById('edit-metodo-pago');
+        
+        console.log('[PAGO EDIT] Elementos del modal:', { inputFecha, inputMonto, selectTipo, selectMetodo });
+        
+        inputFecha.value = fechaProcesada;
+        inputMonto.value = monto;
+        selectTipo.value = tipo;
+        selectMetodo.value = metodo;
+        
+        console.log('[PAGO EDIT] Valores cargados:', {
+            fecha: inputFecha.value,
+            monto: inputMonto.value,
+            tipo: selectTipo.value,
+            metodo: selectMetodo.value
+        });
+        
+        // Abrir modal
+        const modal = document.getElementById('modal-editar-pago');
+        modal.style.display = 'block';
+        console.log('[PAGO EDIT] Modal abierto');
+    },
+    
+    limpiarGrilla() {
+        const lista = document.getElementById('lista-pagos-previos');
+        if (lista) {
+            lista.innerHTML = '';
+            console.log('[PAGOS] Grilla limpiada completamente');
+        }
+        const container = document.getElementById('pagos-previos-container');
+        if (container) {
+            container.style.display = 'none';
+        }
+    },
+    
+    cerrarModal() {
+        const modal = document.getElementById('modal-editar-pago');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        this.pagoEnEdicion = null;
+    },
+    
+    async guardarEdicion() {
+        console.log('[PAGO EDIT] guardarEdicion() - pagoEnEdicion:', this.pagoEnEdicion);
+        
+        if (!this.pagoEnEdicion) {
+            console.error('[ERROR] No hay pago en edición');
+            mostrarAlerta('Error: No se identificó el pago', 'error');
+            return;
+        }
+        
+        const fecha = document.getElementById('edit-fecha-pago').value;
+        const monto = document.getElementById('edit-monto-pago').value;
+        const tipo = document.getElementById('edit-tipo-pago').value;
+        const metodo = document.getElementById('edit-metodo-pago').value;
+        
+        console.log('[PAGO EDIT] Valores del formulario:', { fecha, monto, tipo, metodo });
+        
+        if (!fecha) {
+            mostrarAlerta('Seleccione una fecha', 'error');
+            return;
+        }
+        
+        if (!monto || parseInt(monto) <= 0) {
+            mostrarAlerta('Ingrese un monto válido', 'error');
+            return;
+        }
+        
+        if (!tipo) {
+            mostrarAlerta('Seleccione un tipo de pago', 'error');
+            return;
+        }
+        
+        try {
+            const payload = {
+                monto: parseInt(monto),
+                fecha: fecha,
+                mes: new Date(fecha).getMonth() + 1,
+                tipo_pago: tipo,
+                metodo_pago: metodo
+            };
+            
+            console.log(`[PAGO EDIT] Actualizando pago ${this.pagoEnEdicion.id}:`, payload);
+            console.log(`[PAGO EDIT] URL: /api/pagos/update/${this.pagoEnEdicion.id}`);
+            
+            const response = await fetch(`/api/pagos/update/${this.pagoEnEdicion.id}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            console.log('[PAGO EDIT] Response status:', response.status);
+            
+            const data = await response.json();
+            console.log(`[PAGO EDIT] Respuesta del servidor:`, data);
+            
+            if (data.status === 'success') {
+                // Cerrar modal INMEDIATAMENTE
+                this.cerrarModal();
+                
+                // Recargar grilla y esperar a que termine
+                await this.cargarPagosPrevios(this.pagoEnEdicion.miembro_id);
+            } else {
+                mostrarAlerta('Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[PAGO EDIT] Error:', error);
+            console.error('[PAGO EDIT] Stack:', error.stack);
+            mostrarAlerta('Error al actualizar pago: ' + error.message, 'error');
+        }
+    },
+    
+    async borrarPago() {
+        if (!this.pagoEnEdicion) {
+            mostrarAlerta('Error: No se identificó el pago', 'error');
+            return;
+        }
+        
+        if (!confirm('¿Está seguro de que desea borrar este pago?')) return;
+        
+        const pagoId = this.pagoEnEdicion.id;
+        const miembroId = this.pagoEnEdicion.miembro_id;
+        
+        try {
+            // Cerrar modal INMEDIATAMENTE
+            this.cerrarModal();
+            
+            // Enviar DELETE
+            await fetch(`/api/pagos/delete/${pagoId}`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            // Recargar grilla (cargarPagosPrevios ya limpia y muestra el contenedor)
+            await this.cargarPagosPrevios(miembroId);
+        } catch (error) {
+            console.error('[PAGO DELETE] Error:', error);
+            mostrarAlerta('Error: ' + error.message, 'error');
+        }
+    },
+    
+    volverPaso1() {
+        document.getElementById('paso-1').style.display = 'block';
+        document.getElementById('paso-2').classList.add('hidden');
+        this.miembroSeleccionado = null;
+    },
+    
+    async guardar() {
+        if (!this.miembroSeleccionado) {
+            mostrarAlerta('Error: No hay miembro seleccionado', 'error');
+            return;
+        }
+        
+        const monto = document.getElementById('monto-pago').value;
+        const fecha = document.getElementById('fecha-pago').value;
+        const tipo = document.getElementById('tipo-pago').value;
+        const metodo = document.getElementById('metodo-pago').value;
+        
+        // Validar que no haya decimales
+        if (monto.includes('.')) {
+            mostrarAlerta('No se permiten decimales', 'error');
+            return;
+        }
+        
+        if (!monto || parseFloat(monto) <= 0) {
+            mostrarAlerta('Ingrese un monto válido', 'error');
+            return;
+        }
+        
+        if (!fecha) {
+            mostrarAlerta('Seleccione una fecha', 'error');
+            return;
+        }
+        
+        if (!tipo) {
+            mostrarAlerta('Seleccione un tipo de pago', 'error');
+            return;
+        }
+        
+        try {
+            const payload = {
+                miembro_id: this.miembroSeleccionado.id,
+                monto: parseInt(monto),
+                fecha: fecha,
+                mes: new Date(fecha).getMonth() + 1,
+                tipo_pago: tipo,
+                metodo_pago: metodo
+            };
+            
+            const response = await fetch('/api/pagos/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Mostrar éxito brevemente
+                const msgExito = document.getElementById('msg-exito');
+                msgExito.style.display = 'block';
+                setTimeout(() => { msgExito.style.display = 'none'; }, 1200);
+                
+                // Limpiar formulario
+                document.getElementById('monto-pago').value = '';
+                document.getElementById('monto-pago').focus();
+                
+                // Recargar grilla y esperar a que termine
+                await this.cargarPagosPrevios(this.miembroSeleccionado.id);
+            } else {
+                mostrarAlerta('Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[PAGO] Error:', error);
+            mostrarAlerta('Error al guardar pago: ' + error.message, 'error');
+        }
+    },
+};
+
+function mostrarAlerta(mensaje, tipo) {
+    // Crear elemento de alerta temporal
+    const alerta = document.createElement('div');
+    alerta.style.cssText = `
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        padding: 12px 16px;
+        border-radius: 4px;
+        font-weight: 600;
+        z-index: 3000;
+        animation: slideIn 0.3s ease-out;
+        ${tipo === 'success' ? 'background: #dcfce7; border: 1px solid #86efac; color: #166534;' : 'background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;'}
+    `;
+    alerta.textContent = mensaje;
+    document.body.appendChild(alerta);
+    
+    setTimeout(() => {
+        alerta.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => alerta.remove(), 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    PagosModule.init();
+});
+</script>
+
+<style>
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* Remover flechas del input number */
+#monto-pago::-webkit-outer-spin-button,
+#monto-pago::-webkit-inner-spin-button,
+#edit-monto-pago::-webkit-outer-spin-button,
+#edit-monto-pago::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#monto-pago[type=number],
+#edit-monto-pago[type=number] {
+    -moz-appearance: textfield;
+}
+</style>
 
 {% endblock %}

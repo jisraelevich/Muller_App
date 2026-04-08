@@ -396,13 +396,13 @@ const AsistenciaModule = {
      * Filtrar lista por búsqueda
      */
     filtrar(termino) {
-        const items = document.querySelectorAll('.item-card');
+        const items = document.querySelectorAll('.item-card-asistencia');
         const terminoLower = termino.toLowerCase();
         
         items.forEach(item => {
             const nombre = item.getAttribute('data-nombre').toLowerCase();
             if (nombre.includes(terminoLower)) {
-                item.style.display = 'flex';
+                item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
@@ -554,114 +554,8 @@ const PagosModule = {
 
 // ========== MÓDULO: RETIROS ==========
 
-const RetirosModule = {
-    
-    /**
-     * Inicializar módulo de retiros
-     */
-    init() {
-        console.log('RetirosModule iniciado');
-        // Establecer fecha actual por defecto
-        const hoy = new Date().toISOString().split('T')[0];
-        const fechaInput = document.getElementById('fecha-retiro');
-        if (fechaInput) {
-            fechaInput.value = hoy;
-        }
-        
-        // Establecer método por defecto
-        const metodoInput = document.getElementById('metodo-retiro');
-        if (metodoInput) {
-            metodoInput.value = 'Efectivo';
-        }
-    },
-    
-    /**
-     * Agregar dígito al monto
-     */
-    agregarDigito(digito) {
-        const input = document.getElementById('monto-retiro');
-        let valorActual = input.value.replace(/[^0-9]/g, '');
-        
-        if (digito === 'borrar') {
-            valorActual = valorActual.slice(0, -1);
-        } else {
-            valorActual += digito;
-        }
-        
-        input.value = valorActual ? `$ ${valorActual}` : '';
-    },
-    
-    /**
-     * Guardar retiro
-     */
-    async guardar() {
-        const concepto = document.getElementById('concepto-retiro').value;
-        if (!concepto) {
-            mostrarAlerta('Debe seleccionar un concepto', 'warning');
-            return;
-        }
-        
-        const montoStr = document.getElementById('monto-retiro').value.replace(/[^0-9]/g, '');
-        const monto = parseInt(montoStr);
-        
-        if (!monto || monto <= 0) {
-            mostrarAlerta('Debe ingresar un monto válido', 'warning');
-            return;
-        }
-        
-        const fecha = document.getElementById('fecha-retiro').value;
-        if (!fecha) {
-            mostrarAlerta('Debe seleccionar una fecha', 'warning');
-            return;
-        }
-        
-        const metodo = document.getElementById('metodo-retiro').value;
-        const notas = document.getElementById('notas-retiro').value;
-        
-        const btnGuardar = document.getElementById('btn-guardar-retiro');
-        if (btnGuardar) {
-            btnGuardar.disabled = true;
-            btnGuardar.textContent = 'Guardando...';
-        }
-        
-        try {
-            const datos = {
-                concepto: concepto,
-                monto: monto,
-                metodo: metodo,
-                fecha: fecha,
-                notas: notas
-            };
-            
-            const response = await fetchAPI(`${APP_CONFIG.apiBase}/retiros/save`, {
-                method: 'POST',
-                body: JSON.stringify(datos)
-            });
-            
-            if (response.status === 'success') {
-                mostrarAlerta(`✅ Retiro de ${formatearMoneda(monto)} (${concepto} - ${metodo}) registrado`, 'success');
-                // Limpiar formulario
-                document.getElementById('concepto-retiro').value = '';
-                document.getElementById('monto-retiro').value = '';
-                document.getElementById('notas-retiro').value = '';
-                document.getElementById('metodo-retiro').value = 'Efectivo';
-                const hoy = new Date().toISOString().split('T')[0];
-                document.getElementById('fecha-retiro').value = hoy;
-                
-                // Recargar página después de 1.5s
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            }
-        } catch (error) {
-            console.error('Error guardando retiro:', error);
-            if (btnGuardar) {
-                btnGuardar.disabled = false;
-                btnGuardar.textContent = '💸 GUARDAR RETIRO';
-            }
-        }
-    }
-};
+// ========== MÓDULO: RETIROS - Definido en tab_6_retiros.html ==========
+// El RetirosModule se define directamente en tab_6_retiros.html para evitar conflictos
 
 // ========== MÓDULO: EXÁMENES (ELIMINADO) ==========
 
@@ -704,7 +598,6 @@ document.addEventListener('DOMContentLoaded', function() {
         AsistenciaModule.init();
     } else if (pageId === 'pagos') {
         PagosModule.init();
-    } else if (pageId === 'retiros') {
-        RetirosModule.init();
     }
+    // RetirosModule se inicializa en tab_6_retiros.html directamente
 });
