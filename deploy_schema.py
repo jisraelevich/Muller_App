@@ -9,8 +9,20 @@ Usage:
 
 import os
 import sys
-import psycopg2
 from dotenv import load_dotenv
+
+# Try to import psycopg (v3) first, fall back to psycopg2
+try:
+    import psycopg
+    USE_PSYCOPG3 = True
+except ImportError:
+    try:
+        import psycopg2
+        USE_PSYCOPG3 = False
+    except ImportError:
+        print("❌ ERROR: Neither psycopg nor psycopg2 installed")
+        print("Install with: pip install 'psycopg[binary]'")
+        sys.exit(1)
 
 # Load .env file
 load_dotenv()
@@ -21,7 +33,7 @@ def deploy_schema():
     # Get connection string
     connection_string = os.getenv('DATABASE_URL')
     if not connection_string:
-        print("❌ ERROR: DATABASE_URL not found in .env file")
+        print("[ERROR] DATABASE_URL not found in .env file")
         print("\nPlease add your Neon connection string to .env:")
         print("  DATABASE_URL=postgresql://user:password@host/database")
         return False
@@ -32,9 +44,12 @@ def deploy_schema():
     print(f"\nConnecting to database...")
     
     try:
-        conn = psycopg2.connect(connection_string)
+        if USE_PSYCOPG3:
+            conn = psycopg.connect(connection_string)
+        else:
+            conn = psycopg2.connect(connection_string)
         cursor = conn.cursor()
-        print("✓ Connected to Neon database")
+        print("[OK] Connected to Neon database")
         
         # Files to deploy in order
         sql_files = [
@@ -45,13 +60,13 @@ def deploy_schema():
         
         for sql_file, description in sql_files:
             if not os.path.exists(sql_file):
-                print(f"\n⚠ Warning: {sql_file} not found, skipping...")
+                print(f"\n[WARN] {sql_file} not found, skipping...")
                 continue
             
-            print(f"\n{'─' * 70}")
+            print(f"\n{'-' * 70}")
             print(f"Deploying: {description}")
             print(f"File: {sql_file}")
-            print(f"{'─' * 70}")
+            print(f"{'-' * 70}")
             
             try:
                 with open(sql_file, 'r', encoding='utf-8') as f:
@@ -60,18 +75,18 @@ def deploy_schema():
                 # Execute SQL file
                 cursor.execute(sql_content)
                 conn.commit()
-                print(f"✓ Deployed successfully")
+                print(f"[OK] Deployed successfully")
                 
-            except psycopg2.Error as e:
-                print(f"❌ Error in {sql_file}:")
+            except Exception as e:
+                print(f"[ERROR] Error in {sql_file}:")
                 print(f"   {str(e)[:100]}")
                 conn.rollback()
                 return False
         
         # Verify tables exist
-        print(f"\n{'─' * 70}")
+        print(f"\n{'-' * 70}")
         print("Verifying Database Schema")
-        print(f"{'─' * 70}")
+        print(f"{'-' * 70}")
         
         cursor.execute("""
             SELECT table_name FROM information_schema.tables 
@@ -82,11 +97,11 @@ def deploy_schema():
         tables = cursor.fetchall()
         
         if tables:
-            print(f"\n✓ Tables created ({len(tables)}):")
+            print(f"\n[OK] Tables created ({len(tables)}):")
             for i, table in enumerate(tables, 1):
                 print(f"  {i}. {table[0]}")
         else:
-            print("⚠ No tables found - deployment may have failed")
+            print("[WARN] No tables found - deployment may have failed")
             return False
         
         # Check stored procedures
@@ -98,7 +113,7 @@ def deploy_schema():
         
         functions = cursor.fetchall()
         if functions:
-            print(f"\n✓ Functions created ({len(functions)}):")
+            print(f"\n[OK] Functions created ({len(functions)}):")
             for i, func in enumerate(functions, 1):
                 # Skip system generated functions
                 if not func[0].startswith('_'):
@@ -108,24 +123,19 @@ def deploy_schema():
         conn.close()
         
         print(f"\n{'=' * 70}")
-        print("✓✓✓ SCHEMA DEPLOYMENT COMPLETE ✓✓✓")
+        print("[SUCCESS] SCHEMA DEPLOYMENT COMPLETE")
         print(f"{'=' * 70}\n")
         return True
         
-    except psycopg2.OperationalError as e:
-        print(f"\n❌ Connection Error: {str(e)[:100]}")
-        print("\nPossible causes:")
-        print("  1. Wrong connection string in .env")
-        print("  2. Neon database not created yet")
-        print("  3. Network/firewall issues")
-        return False
-    
-    except psycopg2.Error as e:
-        print(f"\n❌ Database Error: {str(e)[:100]}")
-        return False
-    
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        error_str = str(e)
+        print(f"\n[ERROR] Error: {error_str[:100]}")
+        
+        if 'connection' in error_str.lower() or 'operational' in error_str.lower():
+            print("\nPossible causes:")
+            print("  1. Wrong connection string in .env")
+            print("  2. Neon database not created yet")
+            print("  3. Network/firewall issues")
         return False
 
 
