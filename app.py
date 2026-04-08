@@ -491,6 +491,7 @@ def save_pago():
         mes = datos.get('mes', '')
         tipo_pago = datos.get('tipo_pago', 'Cuota')  # Campo adicional
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
+        descripcion = datos.get('descripcion')  # Notas del pago
         
         if not miembro_id:
             return jsonify({"status": "error", "message": "ID de miembro es requerido"}), 400
@@ -498,10 +499,10 @@ def save_pago():
         if monto <= 0:
             return jsonify({"status": "error", "message": "Monto debe ser mayor a 0"}), 400
         
-        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}")
+        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}, notas={descripcion}")
         
         # Pasar tipo_pago como descripcion (para compatibilidad con schema actual)
-        pago_id = db.add_pago(miembro_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        pago_id = db.add_pago(miembro_id, monto, fecha, mes, descripcion, metodo_pago)
         
         print(f"[PAGOS] Pago guardado exitosamente con ID: {pago_id}")
         return jsonify({"status": "success", "message": "Pago registrado correctamente", "id": pago_id})
@@ -587,10 +588,11 @@ def update_pago(pago_id):
         mes = datos.get('mes', '')
         tipo_pago = datos.get('tipo_pago', datos.get('descripcion', ''))  # Aceptar ambos nombres
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
+        descripcion = datos.get('descripcion')  # Notas del pago
         
-        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}")
+        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}, notas={descripcion}")
         
-        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        db.update_pago(pago_id, monto, fecha, mes, descripcion, metodo_pago)
         
         print(f"[PAGOS UPDATE] Pago {pago_id} actualizado exitosamente")
         return jsonify({"status": "success", "message": "Pago actualizado correctamente"})
@@ -802,6 +804,95 @@ def update_miembro():
         db.update_miembro_tipo(miembro_id, nuevo_tipo)
         
         return jsonify({"status": "success", "message": "Miembro actualizado correctamente"})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/update-datos', methods=['POST'])
+def update_miembro_datos():
+    """Actualizar datos personales de un miembro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        nombre = datos.get('nombre')
+        apellido = datos.get('apellido')
+        email = datos.get('email')
+        
+        if not miembro_id or not nombre or not apellido:
+            return jsonify({"status": "error", "message": "Faltan datos requeridos"}), 400
+        
+        db.update_miembro_datos(miembro_id, nombre, apellido, email)
+        
+        return jsonify({"status": "success", "message": "Datos actualizados correctamente"})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/delete', methods=['POST'])
+def delete_miembro():
+    """Eliminar o deshabilitar un miembro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        
+        if not miembro_id:
+            return jsonify({"status": "error", "message": "ID de miembro requerido"}), 400
+        
+        result = db.delete_miembro(miembro_id)
+        
+        return jsonify({
+            "status": "success", 
+            "message": result.get("message"),
+            "deleted": result.get("deleted")
+        })
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/inactivos', methods=['GET'])
+def get_miembros_inactivos():
+    """Obtener todos los miembros inactivos"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        miembros = db.get_miembros_inactivos()
+        return jsonify({"status": "success", "data": miembros})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/reactivar', methods=['POST'])
+def reactivar_miembro():
+    """Reactivar un miembro inactivo"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        
+        if not miembro_id:
+            return jsonify({"status": "error", "message": "ID de miembro requerido"}), 400
+        
+        db.reactivar_miembro(miembro_id)
+        db.clear_cache()
+        
+        return jsonify({"status": "success", "message": "Miembro reactivado correctamente"})
     except DatabaseError as e:
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:

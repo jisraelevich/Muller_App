@@ -134,6 +134,23 @@ class Database:
                 )
             return cursor.fetchall()
     
+    def get_miembros_inactivos(self):
+        """Get all inactive members"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                "WHERE estado='Inactivo' ORDER BY nombre LIMIT 200"
+            )
+            return cursor.fetchall()
+    
+    def reactivar_miembro(self, miembro_id):
+        """Reactivate an inactive member"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE miembros SET estado='Activo', updated_at=NOW() WHERE id=%s AND estado='Inactivo'",
+                (miembro_id,)
+            )
+    
     def get_miembro(self, miembro_id):
         """Get single member by ID"""
         with self.get_cursor() as cursor:
@@ -161,6 +178,40 @@ class Database:
                 "UPDATE miembros SET tipo_asistencia=%s, updated_at=NOW() WHERE id=%s",
                 (nuevo_tipo, miembro_id)
             )
+    
+    def update_miembro_datos(self, miembro_id, nombre, apellido, email):
+        """Update member personal data (name, apellido, email)"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE miembros SET nombre=%s, apellido=%s, email=%s, updated_at=NOW() WHERE id=%s",
+                (nombre, apellido, email, miembro_id)
+            )
+    
+    def delete_miembro(self, miembro_id):
+        """Disable a member (mark as Inactivo instead of deleting if has history)"""
+        with self.get_cursor() as cursor:
+            # Check if member has asistencia records
+            cursor.execute("SELECT COUNT(*) as cnt FROM asistencia WHERE miembro_id=%s", (miembro_id,))
+            result = cursor.fetchone()
+            asistencia_count = result.get('cnt') if hasattr(result, 'get') else result[0]
+            
+            # Check if member has pagos records
+            cursor.execute("SELECT COUNT(*) as cnt FROM pagos WHERE miembro_id=%s", (miembro_id,))
+            result = cursor.fetchone()
+            pagos_count = result.get('cnt') if hasattr(result, 'get') else result[0]
+            
+            # If no history, delete completely. Otherwise, mark as inactive
+            if asistencia_count == 0 and pagos_count == 0:
+                # Safe to delete - no history
+                cursor.execute("DELETE FROM miembros WHERE id=%s", (miembro_id,))
+                return {"deleted": True, "message": "Miembro eliminado completamente"}
+            else:
+                # Has history - mark as inactive (AQUÍ se setea a Inactivo)
+                cursor.execute(
+                    "UPDATE miembros SET estado='Inactivo', updated_at=NOW() WHERE id=%s",
+                    (miembro_id,)
+                )
+                return {"deleted": False, "message": "Miembro deshabilitado (tiene historial de asistencia/pagos)"}
     
     # ========================================================================
     # CLASES (Classes) Operations

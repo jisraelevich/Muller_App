@@ -100,6 +100,19 @@
         </div>
     </div>
     
+    <!-- FILA 3: Notas (opcional) -->
+    <div style="display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 12px;">
+        <div>
+            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📌 Notas (opcional)</label>
+            <input type="text" 
+                   id="notas-pago" 
+                   class="form-input" 
+                   placeholder="Ej: Pago adelantado, Donación especial..."
+                   maxlength="100"
+                   style="font-size: 11px; padding: 6px; width: 100%;">
+        </div>
+    </div>
+    
     <!-- PAGOS PREVIOS DEL MIEMBRO - GRILLA -->
     <div id="pagos-previos-container" style="display: none; background: #f3f4f6; border-radius: 6px; padding: 10px; margin-top: 12px; border: 1px solid #d1d5db;">
         <h4 style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #374151; margin-top: 0;">📝 ÚLTIMOS PAGOS</h4>
@@ -142,6 +155,11 @@
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
             </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">📌 Notas:</label>
+            <input type="text" id="edit-notas-pago" class="form-input" placeholder="Notas del pago..." maxlength="100">
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
@@ -268,7 +286,7 @@ const PagosModule = {
                     div.style.cssText = 'display: grid; grid-template-columns: 70px 60px 1fr 60px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
                     div.onmouseover = function() { this.style.background='#eff6ff'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
                     div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
-                    div.onclick = () => PagosModule.abrirEdicion(pago.id, pago.fecha, pago.monto, pago.tipo_pago, pago.metodo_pago);
+                    div.onclick = () => PagosModule.abrirEdicion(pago.id, pago.fecha, pago.monto, pago.tipo_pago, pago.metodo_pago, pago.descripcion);
                     
                     div.innerHTML = `
                         <span style="font-weight: 600; color: #374151;">${fechaFormato}</span>
@@ -302,8 +320,8 @@ const PagosModule = {
         }
     },
     
-    abrirEdicion(pagoId, fecha, monto, tipo, metodo) {
-        console.log('[PAGO EDIT] Abriendo edición de pago:', { pagoId, fecha, monto, tipo, metodo });
+    abrirEdicion(pagoId, fecha, monto, tipo, metodo, notas = '') {
+        console.log('[PAGO EDIT] Abriendo edición de pago:', { pagoId, fecha, monto, tipo, metodo, notas });
         console.log('[PAGO EDIT] miembroSeleccionado:', this.miembroSeleccionado);
         
         if (!this.miembroSeleccionado || !this.miembroSeleccionado.id) {
@@ -339,12 +357,15 @@ const PagosModule = {
         const inputMonto = document.getElementById('edit-monto-pago');
         const selectTipo = document.getElementById('edit-tipo-pago');
         const selectMetodo = document.getElementById('edit-metodo-pago');
+        const inputNotas = document.getElementById('edit-notas-pago');
         
-        console.log('[PAGO EDIT] Elementos del modal:', { inputFecha, inputMonto, selectTipo, selectMetodo });
+        console.log('[PAGO EDIT] Elementos del modal:', { inputFecha, inputMonto, selectTipo, selectMetodo, inputNotas });
         
         inputFecha.value = fechaProcesada;
         inputMonto.value = monto;
         selectTipo.value = tipo;
+        selectMetodo.value = metodo;
+        inputNotas.value = notas || '';
         selectMetodo.value = metodo;
         
         console.log('[PAGO EDIT] Valores cargados:', {
@@ -393,8 +414,9 @@ const PagosModule = {
         const monto = document.getElementById('edit-monto-pago').value;
         const tipo = document.getElementById('edit-tipo-pago').value;
         const metodo = document.getElementById('edit-metodo-pago').value;
+        const notas = document.getElementById('edit-notas-pago').value;
         
-        console.log('[PAGO EDIT] Valores del formulario:', { fecha, monto, tipo, metodo });
+        console.log('[PAGO EDIT] Valores del formulario:', { fecha, monto, tipo, metodo, notas });
         
         if (!fecha) {
             mostrarAlerta('Seleccione una fecha', 'error');
@@ -417,7 +439,8 @@ const PagosModule = {
                 fecha: fecha,
                 mes: new Date(fecha).getMonth() + 1,
                 tipo_pago: tipo,
-                metodo_pago: metodo
+                metodo_pago: metodo,
+                descripcion: notas || null
             };
             
             console.log(`[PAGO EDIT] Actualizando pago ${this.pagoEnEdicion.id}:`, payload);
@@ -495,6 +518,7 @@ const PagosModule = {
         const fecha = document.getElementById('fecha-pago').value;
         const tipo = document.getElementById('tipo-pago').value;
         const metodo = document.getElementById('metodo-pago').value;
+        const notas = document.getElementById('notas-pago').value;
         
         // Validar que no haya decimales
         if (monto.includes('.')) {
@@ -524,7 +548,8 @@ const PagosModule = {
                 fecha: fecha,
                 mes: new Date(fecha).getMonth() + 1,
                 tipo_pago: tipo,
-                metodo_pago: metodo
+                metodo_pago: metodo,
+                descripcion: notas || null
             };
             
             const response = await fetch('/api/pagos/save', {
@@ -543,6 +568,7 @@ const PagosModule = {
                 
                 // Limpiar formulario
                 document.getElementById('monto-pago').value = '';
+                document.getElementById('notas-pago').value = '';
                 document.getElementById('monto-pago').focus();
                 
                 // Recargar grilla y esperar a que termine

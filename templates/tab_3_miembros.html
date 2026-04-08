@@ -16,54 +16,137 @@
     👥 LISTA DE MIEMBROS
 </h2>
 
-<div class="search-box">
-    <span class="search-icon">🔍</span>
-    <input type="text" 
-           class="search-input" 
-           placeholder="Buscar miembro..." 
-           onkeyup="filtrarTabla(this.value)">
+<div style="text-align: center; margin-bottom: 15px;">
+    <button onclick="mostrarSeccion('activos')" id="btn-activos" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 8px;">
+        ✓ Activos
+    </button>
+    <button onclick="mostrarSeccion('inactivos')" id="btn-inactivos" style="padding: 8px 16px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+        ⊘ Inactivos
+    </button>
 </div>
 
-<div class="table-container">
-    <table class="table-touch">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Apellido</th>
-                <th>Nombre</th>
-                <th>Congregación</th>
-                <th>Localidad</th>
-                <th>Tipo</th>
-            </tr>
-        </thead>
-        <tbody id="tabla-miembros">
-            {% for miembro in miembros %}
-            <tr data-nombre="{{ miembro.apellido }} {{ miembro.nombre }}">
-                <td>{{ miembro.id }}</td>
-                <td><strong>{{ miembro.apellido }}</strong></td>
-                <td>{{ miembro.nombre }}</td>
-                <td>{{ miembro.congregacion or '-' }}</td>
-                <td>{{ miembro.localidad or '-' }}</td>
-                <td style="cursor: pointer;" onclick="abrirModalTipo({{ miembro.id }}, '{{ miembro.tipo_asistencia }}')">
-                    <span style="background: {% if miembro.tipo_asistencia == 'Regular' %}#10b981{% else %}#f59e0b{% endif %}; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold;">
-                        {{ miembro.tipo_asistencia }}
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- SECCIÓN DE ACTIVOS -->
+<div id="seccion-activos" style="display: block;">
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Buscar miembro..." 
+               onkeyup="filtrarTabla(this.value)">
+    </div>
+
+    <div class="table-container">
+        <table class="table-touch">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Apellido</th>
+                    <th>Nombre</th>
+                    <th>Congregación</th>
+                    <th>Localidad</th>
+                    <th>Tipo</th>
+                    <th style="width: 120px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-miembros">
+                {% for miembro in miembros %}
+                <tr data-nombre="{{ miembro.apellido }} {{ miembro.nombre }}">
+                    <td>{{ miembro.id }}</td>
+                    <td><strong>{{ miembro.apellido }}</strong></td>
+                    <td>{{ miembro.nombre }}</td>
+                    <td>{{ miembro.congregacion or '-' }}</td>
+                    <td>{{ miembro.localidad or '-' }}</td>
+                    <td>
+                        <span style="background: {% if miembro.tipo_asistencia == 'Regular' %}#10b981{% else %}#f59e0b{% endif %}; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold;">
+                            {{ miembro.tipo_asistencia }}
+                        </span>
+                    </td>
+                    <td style="text-align: center; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="abrirModalDatos({{ miembro.id }}, '{{ miembro.nombre }}', '{{ miembro.apellido }}', '{{ miembro.email or '' }}')" style="padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                            ✏️ Datos
+                        </button>
+                        <button onclick="abrirModalTipo({{ miembro.id }}, '{{ miembro.tipo_asistencia }}')" style="padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                            🎯 Tipo
+                        </button>
+                        <button onclick="eliminarMiembro({{ miembro.id }}, '{{ miembro.nombre }} {{ miembro.apellido }}')" style="padding: 6px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                            🗑️ Elim.
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280;">
+        Total: {{ miembros|length }} miembros
+    </div>
 </div>
 
-<div style="text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280;">
-    Total: {{ miembros|length }} miembros
+<!-- SECCIÓN DE INACTIVOS -->
+<div id="seccion-inactivos" style="display: none;">
+    <div id="div-inactivos-loading" style="text-align: center; padding: 20px; color: #6b7280;">
+        Cargando miembros inactivos...
+    </div>
+    
+    <div id="div-inactivos-content" style="display: none;">
+        <div class="table-container">
+            <table class="table-touch">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Apellido</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th style="width: 100px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-inactivos">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280;">
+            Total: <span id="total-inactivos">0</span> miembros inactivos
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar datos del miembro -->
+<div id="modal-editar-datos" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 8px; padding: 20px; max-width: 350px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+        <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: bold;">
+            ✏️ Editar Datos
+        </h3>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Nombre:</label>
+            <input type="text" id="edit-nombre" class="form-input" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Apellido:</label>
+            <input type="text" id="edit-apellido" class="form-input" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Email:</label>
+            <input type="email" id="edit-email" class="form-input" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px;">
+            <button onclick="guardarDatos()" style="padding: 10px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                ✓ Guardar
+            </button>
+            <button onclick="cerrarModalDatos()" style="padding: 10px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                ✕ Cancelar
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Modal para cambiar tipo de asistencia -->
-<div id="modal-tipo-asistencia" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+<div id="modal-tipo-asistencia" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
     <div style="background: white; border-radius: 8px; padding: 20px; max-width: 300px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
         <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: bold;">
-            Cambiar tipo de asistencia
+            🎯 Cambiar Tipo
         </h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
             <button onclick="cambiarTipo('Regular')" style="padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
@@ -73,7 +156,7 @@
                 ⊙ Oyente
             </button>
         </div>
-        <button onclick="cerrarModal()" style="padding: 10px 20px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+        <button onclick="cerrarModalTipo()" style="padding: 10px 20px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
             Cancelar
         </button>
     </div>
@@ -85,32 +168,81 @@
 <script>
 let miembroActual = null;
 
-function filtrarTabla(termino) {
-    const filas = document.querySelectorAll('#tabla-miembros tr');
-    const terminoLower = termino.toLowerCase();
+function abrirModalDatos(idMiembro, nombre, apellido, email) {
+    miembroActual = idMiembro;
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-apellido').value = apellido;
+    document.getElementById('edit-email').value = email;
+    document.getElementById('modal-editar-datos').style.display = 'flex';
+}
+
+function cerrarModalDatos() {
+    const modal = document.getElementById('modal-editar-datos');
+    modal.style.display = 'none';
+    miembroActual = null;
+}
+
+function guardarDatos() {
+    if (!miembroActual) {
+        alert('Error: No se identificó el miembro');
+        return;
+    }
     
-    filas.forEach(fila => {
-        const nombre = fila.getAttribute('data-nombre').toLowerCase();
-        if (nombre.includes(terminoLower)) {
-            fila.style.display = '';
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const apellido = document.getElementById('edit-apellido').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+    
+    if (!nombre || !apellido) {
+        alert('Nombre y apellido son requeridos');
+        return;
+    }
+    
+    fetch('/api/miembros/update-datos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id_miembro: miembroActual,
+            nombre: nombre,
+            apellido: apellido,
+            email: email
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Datos actualizados');
+            location.reload();
         } else {
-            fila.style.display = 'none';
+            alert('❌ Error: ' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al guardar datos');
     });
 }
 
 function abrirModalTipo(idMiembro, tipoActual) {
     miembroActual = idMiembro;
-    document.getElementById('modal-tipo-asistencia').style.display = 'flex';
+    const modal = document.getElementById('modal-tipo-asistencia');
+    modal.style.display = 'flex';
 }
 
-function cerrarModal() {
-    document.getElementById('modal-tipo-asistencia').style.display = 'none';
+function cerrarModalTipo() {
+    const modal = document.getElementById('modal-tipo-asistencia');
+    modal.style.display = 'none';
     miembroActual = null;
 }
 
 function cambiarTipo(nuevoTipo) {
-    if (!miembroActual) return;
+    if (!miembroActual) {
+        alert('Error: No se identificó el miembro');
+        return;
+    }
+    
+    console.log('Cambiando tipo para miembro:', miembroActual, 'nuevo tipo:', nuevoTipo);
     
     fetch('/api/miembros/update', {
         method: 'POST',
@@ -124,25 +256,181 @@ function cambiarTipo(nuevoTipo) {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Respuesta servidor:', data);
         if (data.status === 'success') {
-            // Recargar la página
+            alert('✅ Tipo actualizado a ' + nuevoTipo);
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            alert('❌ Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error al actualizar miembro');
+        alert('❌ Error al actualizar tipo');
     });
 }
 
-// Cerrar modal al hacer click fuera
+function eliminarMiembro(idMiembro, nombreMiembro) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar a ${nombreMiembro}?`)) {
+        return;
+    }
+    
+    fetch('/api/miembros/delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id_miembro: idMiembro
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            if (data.deleted) {
+                alert('✅ Miembro eliminado completamente');
+            } else {
+                alert('✅ ' + data.message);
+            }
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al eliminar miembro');
+    });
+}
+
+// Cerrar modales al hacer click fuera
 document.addEventListener('click', function(event) {
-    const modal = document.getElementById('modal-tipo-asistencia');
-    if (event.target === modal) {
-        cerrarModal();
+    const modalDatos = document.getElementById('modal-editar-datos');
+    const modalTipo = document.getElementById('modal-tipo-asistencia');
+    if (event.target === modalDatos) {
+        cerrarModalDatos();
+    }
+    if (event.target === modalTipo) {
+        cerrarModalTipo();
     }
 });
+
+function mostrarSeccion(seccion) {
+    const btnActivos = document.getElementById('btn-activos');
+    const btnInactivos = document.getElementById('btn-inactivos');
+    const seccionActivos = document.getElementById('seccion-activos');
+    const seccionInactivos = document.getElementById('seccion-inactivos');
+    
+    if (seccion === 'activos') {
+        btnActivos.style.background = '#10b981';
+        btnActivos.style.color = 'white';
+        btnInactivos.style.background = '#e5e7eb';
+        btnInactivos.style.color = '#1f2937';
+        seccionActivos.style.display = 'block';
+        seccionInactivos.style.display = 'none';
+    } else {
+        btnActivos.style.background = '#e5e7eb';
+        btnActivos.style.color = '#1f2937';
+        btnInactivos.style.background = '#fbbf24';
+        btnInactivos.style.color = '#000';
+        seccionActivos.style.display = 'none';
+        seccionInactivos.style.display = 'block';
+        cargarMiembrosInactivos();
+    }
+}
+
+function cargarMiembrosInactivos() {
+    const loading = document.getElementById('div-inactivos-loading');
+    const content = document.getElementById('div-inactivos-content');
+    const tabla = document.getElementById('tabla-inactivos');
+    
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    
+    fetch('/api/miembros/inactivos')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const miembros = data.data;
+                tabla.innerHTML = '';
+                
+                if (miembros.length === 0) {
+                    tabla.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280;">No hay miembros inactivos</td></tr>';
+                } else {
+                    miembros.forEach((miembro, index) => {
+                        const fila = document.createElement('tr');
+                        fila.innerHTML = `
+                            <td>${miembro.id}</td>
+                            <td><strong>${miembro.apellido || '-'}</strong></td>
+                            <td>${miembro.nombre || '-'}</td>
+                            <td>${miembro.email || '-'}</td>
+                            <td>
+                                <span style="background: ${miembro.tipo_asistencia === 'Regular' ? '#10b981' : '#f59e0b'}; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold;">
+                                    ${miembro.tipo_asistencia}
+                                </span>
+                            </td>
+                            <td style="text-align: center;">
+                                <button onclick="reactivarMiembro(${miembro.id}, '${miembro.nombre} ${miembro.apellido}')" style="padding: 6px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    ✓ Activar
+                                </button>
+                            </td>
+                        `;
+                        tabla.appendChild(fila);
+                    });
+                }
+                
+                document.getElementById('total-inactivos').textContent = miembros.length;
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loading.innerHTML = '<p style="color: #ef4444;">Error al cargar miembros inactivos</p>';
+        });
+}
+
+function reactivarMiembro(idMiembro, nombreMiembro) {
+    if (!confirm(`¿Reactivar a ${nombreMiembro}?`)) {
+        return;
+    }
+    
+    fetch('/api/miembros/reactivar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id_miembro: idMiembro
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Miembro reactivado correctamente');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al reactivar miembro');
+    });
+}
+
+function filtrarTabla(termino) {
+    const filas = document.querySelectorAll('#tabla-miembros tr');
+    const terminoLower = termino.toLowerCase();
+    
+    filas.forEach(fila => {
+        const nombre = fila.getAttribute('data-nombre');
+        if (nombre && nombre.toLowerCase().includes(terminoLower)) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+}
 </script>
 {% endblock %}
