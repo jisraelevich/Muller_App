@@ -149,14 +149,14 @@
             🎯 Cambiar Tipo
         </h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-            <button onclick="cambiarTipo('Regular')" style="padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+            <button type="button" onclick="cambiarTipo('Regular')" style="padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
                 ✓ Regular
             </button>
-            <button onclick="cambiarTipo('Oyente')" style="padding: 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+            <button type="button" onclick="cambiarTipo('Oyente')" style="padding: 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
                 ⊙ Oyente
             </button>
         </div>
-        <button onclick="cerrarModalTipo()" style="padding: 10px 20px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+        <button type="button" onclick="cerrarModalTipo()" style="padding: 10px 20px; background: #e5e7eb; color: #1f2937; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
             Cancelar
         </button>
     </div>
@@ -166,6 +166,14 @@
 
 {% block extra_scripts %}
 <script>
+// Asegurar que los modales están cerrados al cargar
+window.addEventListener('load', function() {
+    const modalDatos = document.getElementById('modal-editar-datos');
+    const modalTipo = document.getElementById('modal-tipo-asistencia');
+    if (modalDatos) modalDatos.style.display = 'none';
+    if (modalTipo) modalTipo.style.display = 'none';
+});
+
 let miembroActual = null;
 
 function abrirModalDatos(idMiembro, nombre, apellido, email) {
@@ -254,19 +262,24 @@ function cambiarTipo(nuevoTipo) {
             tipo_asistencia: nuevoTipo
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(data => {
         console.log('Respuesta servidor:', data);
         if (data.status === 'success') {
+            cerrarModalTipo();
             alert('✅ Tipo actualizado a ' + nuevoTipo);
             location.reload();
         } else {
-            alert('❌ Error: ' + data.message);
+            alert('❌ Error: ' + (data.message || 'Error desconocido'));
+            console.error('Error response:', data);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('❌ Error al actualizar tipo');
+        console.error('Error en fetch:', error);
+        alert('❌ Error al actualizar tipo: ' + error.message);
     });
 }
 
