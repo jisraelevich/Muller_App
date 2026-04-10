@@ -122,13 +122,13 @@ class Database:
         with self.get_cursor() as cursor:
             if tipo_asistencia:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
                     "WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre LIMIT 200",
                     (tipo_asistencia, estado)
                 )
             else:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
                     "WHERE estado=%s ORDER BY nombre LIMIT 200",
                     (estado,)
                 )
@@ -138,7 +138,7 @@ class Database:
         """Get all inactive members"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
                 "WHERE estado='Inactivo' ORDER BY nombre LIMIT 200"
             )
             return cursor.fetchall()
@@ -287,9 +287,12 @@ class Database:
         """Get recent attendance records - limited to 500 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, m.nombre, m.apellido "
+                "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, "
+                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre, "
+                "c.nombre as clase_nombre "
                 "FROM asistencia a "
                 "JOIN miembros m ON a.miembro_id = m.id "
+                "LEFT JOIN clases c ON a.clase_id = c.id "
                 "ORDER BY a.fecha DESC, m.nombre LIMIT 500"
             )
             return cursor.fetchall()
@@ -322,8 +325,11 @@ class Database:
         """Get recent payments - limited to 300 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, miembro_id, monto, fecha, mes, descripcion, metodo_pago FROM pagos "
-                "ORDER BY fecha DESC LIMIT 300"
+                "SELECT p.id, p.miembro_id, p.monto, p.fecha, p.mes, p.descripcion, p.metodo_pago, "
+                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre "
+                "FROM pagos p "
+                "LEFT JOIN miembros m ON p.miembro_id = m.id "
+                "ORDER BY p.fecha DESC LIMIT 300"
             )
             return cursor.fetchall()
     

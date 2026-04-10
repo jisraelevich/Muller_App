@@ -4,6 +4,11 @@
 {% block page_id %}asistencia{% endblock %}
 
 {% block header_actions %}
+<button id="btn-guardar-asistencia" 
+        class="btn-touch btn-success"
+        onclick="AsistenciaModule.guardarConFecha()">
+    ✅ GUARDAR ASISTENCIA
+</button>
 <a href="/" class="btn-volver">◀ VOLVER</a>
 {% endblock %}
 
@@ -39,16 +44,8 @@
                onkeyup="AsistenciaModule.filtrar(this.value)">
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;" id="contenedor-alumnos">
+    <div class="grid-container" id="contenedor-alumnos" style="margin-bottom: 10px;">
         <!-- Se llenarán dinámicamente con JavaScript -->
-    </div>
-
-    <div style="margin-top: 10px; text-align: center;">
-        <button id="btn-guardar-asistencia" 
-                class="btn-touch btn-success btn-block"
-                onclick="AsistenciaModule.guardarConFecha()">
-            ✅ GUARDAR
-        </button>
     </div>
 </div>
 
@@ -68,8 +65,18 @@
     // Pasar datos de miembros al módulo JavaScript
     window.MIEMBROS_DATA = {{ miembros | tojson }};
     
+    // Controlador de visibilidad del botón guardar
+    window.toggleBtnGuardar = function(show) {
+        const btn = document.getElementById('btn-guardar-asistencia');
+        if (btn) {
+            btn.style.display = show ? 'inline-flex' : 'none';
+        }
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
         AsistenciaModule.init();
+        // Inicialmente oculto
+        window.toggleBtnGuardar(false);
     });
 </script>
 

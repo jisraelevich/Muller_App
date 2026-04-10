@@ -218,6 +218,7 @@ const AsistenciaModule = {
         if (!claseId) {
             document.getElementById('clase-info-container').style.display = 'none';
             document.getElementById('sin-clase-container').style.display = 'block';
+            if (window.toggleBtnGuardar) window.toggleBtnGuardar(false);
             return;
         }
         
@@ -236,6 +237,7 @@ const AsistenciaModule = {
             // Mostrar contenedor
             document.getElementById('clase-info-container').style.display = 'block';
             document.getElementById('sin-clase-container').style.display = 'none';
+            if (window.toggleBtnGuardar) window.toggleBtnGuardar(true);
         }
     },
     
@@ -255,10 +257,10 @@ const AsistenciaModule = {
             
             const html = `
                 <div style="text-align: center;">
-                    <div style="font-size: 12px; font-weight: bold; color: #1f2937; margin-bottom: 4px;">
+                    <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 8px; line-height: 1.3;">
                         ${miembro.apellido}<br>${miembro.nombre}
                     </div>
-                    <div style="font-size: 10px; color: #6b7280; margin-bottom: 6px;">
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 10px;">
                         ${miembro.tipo_asistencia}
                     </div>
                 </div>

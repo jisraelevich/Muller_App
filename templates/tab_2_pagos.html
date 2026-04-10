@@ -23,17 +23,27 @@
                onkeyup="PagosModule.filtrar(this.value)">
     </div>
     
-    <div class="item-list">
+    <div class="grid-container">
         {% for miembro in miembros %}
         {% if miembro.tipo_asistencia == 'Regular' %}
         <div class="item-card" 
              data-nombre="{{ miembro.apellido }}, {{ miembro.nombre }}"
-             onclick="PagosModule.seleccionarMiembro({{ miembro.id }}, '{{ miembro.apellido }}, {{ miembro.nombre }}')">
-            <div class="item-info">
-                <div class="item-name">{{ miembro.apellido }}, {{ miembro.nombre }}</div>
-                <div class="item-details">{{ miembro.congregacion or 'Sin congregación' }}</div>
+             style="flex-direction: column; padding: 16px; min-height: 200px; cursor: pointer;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); line-height: 1.3;">
+                {{ miembro.apellido }}<br>{{ miembro.nombre }}
             </div>
-            <div style="font-size: 32px; color: #10b981;">▶</div>
+            
+            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 10px;">
+                🏛️ {{ miembro.congregacion or '-' }}
+            </div>
+            
+            <div style="flex-grow: 1;"></div>
+            
+            <button class="btn-touch btn-success btn-block"
+                    onclick="PagosModule.seleccionarMiembro({{ miembro.id }}, '{{ miembro.apellido }}, {{ miembro.nombre }}')"
+                    style="min-height: 40px;">
+                💰 Seleccionar
+            </button>
         </div>
         {% endif %}
         {% endfor %}
@@ -43,81 +53,87 @@
 <!-- PASO 2: Ingresar Pago (Compacto) -->
 <div id="paso-2" class="hidden">
     <!-- ENCABEZADO: Nombre del alumno + Botón Cambiar -->
-    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 16px;">
+    <div style="background: var(--color-secondary); padding: var(--spacing-large); border-radius: var(--border-radius); margin-bottom: var(--spacing-large); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;">
         <div>
-            <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">Pago de:</div>
-            <div style="font-size: 16px; font-weight: bold; color: #3b82f6;" id="miembro-seleccionado"></div>
+            <div style="font-size: 12px; color: var(--color-text-light); margin-bottom: 4px;">💳 Pago de:</div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--color-primary);" id="miembro-seleccionado"></div>
         </div>
-        <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-secondary" style="min-width: 90px; min-height: 48px; font-size: 11px; padding: 4px;">
+        <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-cancel">
             ◀ Cambiar
         </button>
     </div>
     
-    <!-- FILA 1: Fecha, Tipo y Método en UNA LÍNEA -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📅 Fecha</label>
-            <input type="date" id="fecha-pago" class="form-input" style="font-size: 11px; padding: 6px;">
-        </div>
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📋 Tipo</label>
-            <select id="tipo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
-                <option value="Cuota">Cuota</option>
-                <option value="Matrícula">Matrícula</option>
-                <option value="Libro">Libro</option>
-                <option value="Donación">Donación</option>
-            </select>
-        </div>
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💳 Pago</label>
-            <select id="metodo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transfer.</option>
-            </select>
+    <!-- FORMULARIO: Dos Columnas -->
+    <div class="form-section">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-large);">
+            
+            <!-- COLUMNA IZQUIERDA: Fecha, Tipo y Método -->
+            <div>
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
+                    <label class="form-label" style="margin-bottom: 0;">📅 Fecha:</label>
+                    <input type="date" id="fecha-pago" class="form-input" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
+                    <label class="form-label" style="margin-bottom: 0;">📋 Tipo:</label>
+                    <select id="tipo-pago" class="form-select" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+                        <option value="Cuota">Cuota</option>
+                        <option value="Matrícula">Matrícula</option>
+                        <option value="Libro">Libro</option>
+                        <option value="Donación">Donación</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center;">
+                    <label class="form-label" style="margin-bottom: 0;">💳 Método:</label>
+                    <select id="metodo-pago" class="form-select" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+                        <option value="Efectivo">💵 Efectivo</option>
+                        <option value="Transferencia">🏦 Transferencia</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- COLUMNA DERECHA: Monto, Notas y Botón -->
+            <div style="display: flex; flex-direction: column;">
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
+                    <label class="form-label" style="margin-bottom: 0;">💵 Monto:</label>
+                    <input type="number" 
+                           id="monto-pago" 
+                           class="form-input form-input-amount"
+                           placeholder="0"
+                           min="0"
+                           step="1"
+                           style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
+                    <label class="form-label" style="margin-bottom: 0;">📌 Notas:</label>
+                    <input type="text" 
+                           id="notas-pago" 
+                           class="form-input" 
+                           placeholder="Detalles adicionales..."
+                           style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+                </div>
+                
+                <button id="btn-guardar-pago" 
+                        class="btn-touch btn-success btn-block"
+                        onclick="PagosModule.guardar()"
+                        style="margin-top: auto;">
+                    💰 GUARDAR PAGO
+                </button>
+            </div>
         </div>
     </div>
     
-    <!-- FILA 2: Monto + Botón Guardar -->
-    <div style="display: grid; grid-template-columns: 120px auto 1fr; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💵 Monto</label>
-            <input type="number" 
-                   id="monto-pago" 
-                   class="form-input" 
-                   placeholder="0"
-                   min="0"
-                   step="1"
-                   style="font-size: 14px; font-weight: bold; text-align: right; padding: 6px; width: 100%;">
-        </div>
-        <button id="btn-guardar-pago" 
-                class="btn-touch btn-success"
-                onclick="PagosModule.guardar()"
-                style="min-width: 75px; min-height: 48px; font-size: 12px; padding: 4px; white-space: nowrap;">
-            💰 GUARDAR
-        </button>
-        <div id="msg-exito" style="padding: 8px 12px; background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: 600; font-size: 11px; text-align: center; display: none; animation: slideIn 0.3s ease-out;">
-            ✅ ¡GUARDADO!
-        </div>
-    </div>
-    
-    <!-- FILA 3: Notas (opcional) -->
-    <div style="display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 12px;">
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📌 Notas (opcional)</label>
-            <input type="text" 
-                   id="notas-pago" 
-                   class="form-input" 
-                   placeholder="Ej: Pago adelantado, Donación especial..."
-                   maxlength="100"
-                   style="font-size: 11px; padding: 6px; width: 100%;">
-        </div>
-    </div>
-    
-    <!-- PAGOS PREVIOS DEL MIEMBRO - GRILLA -->
-    <div id="pagos-previos-container" style="display: none; background: #f3f4f6; border-radius: 6px; padding: 10px; margin-top: 12px; border: 1px solid #d1d5db;">
-        <h4 style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #374151; margin-top: 0;">📝 ÚLTIMOS PAGOS</h4>
-        <div id="lista-pagos-previos" style="display: grid; gap: 6px; font-size: 10px;">
-            <!-- Se llena dinámicamente con grid items -->
+    <!-- Historial de Pagos -->
+    <div class="form-section-compact" style="background: white; margin-top: var(--spacing-large);">
+        <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: bold;">
+            📊 Últimos Pagos
+        </h3>
+        <div id="lista-pagos-previos" style="display: grid; gap: 8px;">
+            <div style="text-align: center; color: #9ca3af; padding: 18px;">
+                Cargando pagos...
+            </div>
         </div>
     </div>
 </div>
@@ -163,15 +179,15 @@
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
-            <button class="btn-touch btn-success" onclick="PagosModule.guardarEdicion()" style="min-height: 48px;">
+            <button class="btn-touch btn-success"  onclick="PagosModule.guardarEdicion()" style="height: auto; padding: 12px;">
                 💾 GUARDAR
             </button>
-            <button class="btn-touch btn-secondary" onclick="PagosModule.cerrarModal()" style="min-height: 48px;">
+            <button class="btn-touch btn-cancel" onclick="PagosModule.cerrarModal()" style="height: auto; padding: 12px;">
                 ✕ CANCELAR
             </button>
         </div>
         
-        <button class="btn-touch btn-danger" onclick="PagosModule.borrarPago()" style="min-height: 48px; margin-top: 9px; width: 100%; background: #ef4444; color: white;">
+        <button class="btn-touch btn-danger-soft btn-block" onclick="PagosModule.borrarPago()" style="margin-top: 9px;">
             🗑️ BORRAR PAGO
         </button>
     </div>
@@ -189,11 +205,11 @@ const PagosModule = {
     },
     
     filtrar(termino) {
-        const items = document.querySelectorAll('.item-card');
+        const items = document.querySelectorAll('#paso-1 .item-card');
         const terminoLower = termino.toLowerCase();
         items.forEach(item => {
             const nombre = item.getAttribute('data-nombre').toLowerCase();
-            item.style.display = nombre.includes(terminoLower) ? 'flex' : 'none';
+            item.style.display = nombre.includes(terminoLower) ? '' : 'none';
         });
     },
     
@@ -608,6 +624,10 @@ function mostrarAlerta(mensaje, tipo) {
 
 document.addEventListener('DOMContentLoaded', function() {
     PagosModule.init();
+    
+    // Cargar fecha actual
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha-pago').value = hoy;
 });
 </script>
 

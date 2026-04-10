@@ -13,7 +13,7 @@
     📚 CALENDARIO DE CLASES 2026
 </h2>
 
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+<div class="grid-container">
     {% for clase in clases %}
     <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 16px; text-align: center; min-height: 200px;" onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.nombre }}', '{{ clase.descripcion or '' }}', '{{ clase.modalidad }}', '{{ clase.estado }}')">
         <div style="font-size: 32px; margin-bottom: 12px;">
@@ -71,7 +71,7 @@
         
         <div class="form-group">
             <label class="form-label">📋 Modalidad:</label>
-            <select id="edit-modalidad" class="form-select" style="cursor: pointer;">
+            <select id="edit-modalidad" class="form-select">
                 <option value="Presencial">🏫 Presencial</option>
                 <option value="Meet">💻 Meet</option>
             </select>
@@ -79,7 +79,7 @@
         
         <div class="form-group">
             <label class="form-label">📊 Estado:</label>
-            <select id="edit-estado" class="form-select" style="cursor: pointer;">
+            <select id="edit-estado" class="form-select">
                 <option value="Programada">Programada (⏱)</option>
                 <option value="Realizada">Realizada (✓)</option>
                 <option value="Cancelada">Cancelada (✕)</option>
@@ -87,10 +87,10 @@
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
-            <button class="btn-touch btn-success" onclick="ClasesModule.guardarCambios()" style="min-height: 48px;">
+            <button class="btn-touch btn-success" onclick="ClasesModule.guardarCambios()" style="height: auto; padding: 12px;">
                 💾 GUARDAR
             </button>
-            <button class="btn-touch btn-secondary" onclick="ClasesModule.cerrarModal()" style="min-height: 48px;">
+            <button class="btn-touch btn-cancel" onclick="ClasesModule.cerrarModal()" style="height: auto; padding: 12px;">
                 ✕ CANCELAR
             </button>
         </div>

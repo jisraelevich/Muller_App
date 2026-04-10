@@ -201,14 +201,21 @@ def index():
                 else:
                     end_date = date(date.today().year, date.today().month + 1, 1)
                 
-                pagos_mes = db.get_resumen_pagos(start_date, end_date)
-                total_pagos = sum(float(p.get('total_pagos') or 0) for p in pagos_mes)
+                # Pagos este mes
+                pagos_mes = db.get_pagos()
+                total_pagos = sum(float(p['monto']) for p in pagos_mes if p.get('monto'))
+                
+                # Total esperado (miembros regulares * cuota mensual)
+                total_esperado = len(miembros_regulares) * 100  # Asumiendo cuota de $100 por miembro
                 
                 stats = {
                     'miembros': len(miembros),
                     'miembros_regulares': len(miembros_regulares),
+                    'miembros_oyentes': len(miembros) - len(miembros_regulares),
                     'clases': len(clases),
-                    'pagos': total_pagos
+                    'pagos': total_pagos,
+                    'pagos_esperado': total_esperado,
+                    'pagos_porcentaje': int((total_pagos / total_esperado * 100) if total_esperado > 0 else 0)
                 }
             except Exception as e:
                 print(f"Error obteniendo datos: {e}")
@@ -218,8 +225,11 @@ def index():
             stats = {
                 'miembros': 0,
                 'miembros_regulares': 0,
+                'miembros_oyentes': 0,
                 'clases': 0,
                 'pagos': 0,
+                'pagos_esperado': 0,
+                'pagos_porcentaje': 0,
                 'info': '⚠️ Base de datos no disponible - Modo testing'
             }
         
@@ -1186,6 +1196,8 @@ def get_todos_asistencia():
                     asist_dict['fecha'] = fecha.isoformat().split('T')[0]
                 else:
                     asist_dict['fecha'] = str(fecha)
+            # Convertir asistio a estado
+            asist_dict['estado'] = 'Presente' if asist_dict.get('asistio') else 'Ausente'
             asist_list.append(asist_dict)
         
         return jsonify({"status": "success", "asistencias": asist_list})

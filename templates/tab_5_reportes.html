@@ -9,26 +9,27 @@
 
 {% block content %}
 
-<h2 style="font-size: 19px; margin-bottom: 24px; text-align: center;">
-    REPORTES Y EXPORTACIONES
+<h2 style="font-size: 16px; margin-bottom: 16px; text-align: center;">
+    📊 REPORTES Y EXPORTACIONES
 </h2>
 
 <!-- TABS PARA SELECCIONAR REPORTE -->
-<div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-    <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: #3b82f6; color: white; min-height: 40px; padding: 0 16px; font-size: 12px;">Pagos</button>
-    <button onclick="mostrarReporte('asistencia')" class="btn-touch" id="tab-asistencia" style="background: #e0e0e0; color: #333; min-height: 40px; padding: 0 16px; font-size: 12px;">Asistencia</button>
-    <button onclick="mostrarReporte('miembros')" class="btn-touch" id="tab-miembros" style="background: #e0e0e0; color: #333; min-height: 40px; padding: 0 16px; font-size: 12px;">Miembros</button>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+    <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: var(--color-primary); color: white; min-height: 40px; font-size: 13px;">💰 Pagos</button>
+    <button onclick="mostrarReporte('asistencia')" class="btn-touch" id="tab-asistencia" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">✓ Asistencia</button>
+    <button onclick="mostrarReporte('miembros')" class="btn-touch" id="tab-miembros" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">👥 Miembros</button>
+    <button onclick="mostrarReporte('pagos-mes')" class="btn-touch" id="tab-pagos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">📅 Pagos/Mes</button>
 </div>
 
 <!-- CONTENEDOR DE REPORTES -->
-<div id="contenedor-reportes" style="background: white; border-radius: 12px; padding: 20px; overflow-x: auto;">
+<div id="contenedor-reportes" style="background: white; border-radius: 12px; padding: 16px; border: 1px solid var(--color-border); height: 500px; overflow-y: auto;">
     
     <!-- REPORTE PAGOS -->
     <div id="reporte-pagos" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Pagos</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('pagos')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+                <button onclick="exportarExcelReporte('pagos')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -54,7 +55,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Asistencia</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('asistencia')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+                <button onclick="exportarExcelReporte('asistencia')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -79,7 +80,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Miembros</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('miembros')" class="btn-touch btn-success" style="min-height: 35px; padding: 0 12px; font-size: 11px;">Exportar Excel</button>
+                <button onclick="exportarExcelReporte('miembros')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -100,65 +101,58 @@
         </div>
     </div>
     
-</div>
-    </div>
-</div>
-
-<!-- REPORTE PAGOS POR MES -->
-<div style="background: white; border-radius: 12px; padding: 40px; margin-top: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <h3 style="font-size: 28px; margin-bottom: 30px; text-align: center;">
-        Calendar de Pagos por Mes
-    </h3>
-    
-    <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;">
-        <button onclick="exportarExcelReporteCalendario()" class="btn-touch btn-success" style="min-height: 40px; padding: 0 16px; font-size: 12px; cursor: pointer;">
-            Exportar a Excel
-        </button>
-    </div>
-    
-    <div style="overflow-x: auto;">
-        <table id="tabla-pagos-mes" style="width: 100%; border-collapse: collapse; font-size: 11px;">
-            <thead>
-                <tr style="background: #f0f0f0;">
-                    <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 150px;">Alumno</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">01</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">02</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">12</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px; font-weight: bold;">TOTAL</th>
-                </tr>
-            </thead>
-            <tbody id="tbody-pagos-calendario">
-                <tr>
-                    <td colspan="14" style="text-align: center; padding: 20px; color: #999;">
-                        Cargando datos...
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- REPORTE PAGOS POR MES -->
+    <div id="reporte-pagos-mes" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Calendar de Pagos por Mes</h3>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportarExcelReporteCalendario()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tabla-pagos-mes" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 150px;">Alumno</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">01</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">02</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">12</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px; font-weight: bold;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-pagos-calendario">
+                    <tr>
+                        <td colspan="14" style="text-align: center; padding: 20px; color: #999;">
+                            Cargando datos...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="text-align: center; margin-top: 12px; color: #666; font-size: 10px;">
+            Verde (>= $1000) = Pago completo | Amarillo ($1-999) = Pago parcial | Rojo ($0) = Sin pagar
+        </div>
     </div>
     
-    <div style="text-align: center; margin-top: 18px; color: #666; font-size: 11px;">
-        Verde (>= $1000) = Pago completo | Amarillo ($1-999) = Pago parcial | Rojo ($0) = Sin pagar
-    </div>
 </div>
 
 <script>
 async function mostrarReporte(tipo) {
     // Cambiar tabs activos
     document.querySelectorAll('[id^="tab-"]').forEach(btn => {
-        btn.style.background = '#e0e0e0';
-        btn.style.color = '#333';
+        btn.style.background = 'var(--color-secondary)';
+        btn.style.color = 'var(--color-text)';
     });
-    document.getElementById('tab-' + tipo).style.background = '#3b82f6';
+    document.getElementById('tab-' + tipo).style.background = 'var(--color-primary)';
     document.getElementById('tab-' + tipo).style.color = 'white';
     
     // Mostrar/ocultar reportes
@@ -174,6 +168,8 @@ async function mostrarReporte(tipo) {
         await cargarReporteAsistencia();
     } else if (tipo === 'miembros') {
         await cargarReporteMiembros();
+    } else if (tipo === 'pagos-mes') {
+        await cargarReporteCalendario();
     } else if (tipo === 'examenes') {
         await cargarReporteExamenes();
     }
@@ -271,6 +267,75 @@ async function cargarReporteMiembros() {
     }
 }
 
+async function cargarReporteCalendario() {
+    try {
+        const response = await fetch('/api/reportes/pagos-calendario?t=' + new Date().getTime());
+        const data = await response.json();
+        const tbody = document.getElementById('tbody-pagos-calendario');
+        tbody.innerHTML = '';
+        
+        if (data.reporte && data.reporte.length > 0) {
+            const fragment = document.createDocumentFragment();
+            let totalGeneral = {};
+            
+            for (let mes = 1; mes <= 12; mes++) {
+                totalGeneral[`${mes.toString().padStart(2, '0')}`] = 0;
+            }
+            
+            data.reporte.forEach(alumno => {
+                const row = document.createElement('tr');
+                let celdas = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${alumno.nombre}</td>`;
+                let subtotal = 0;
+                
+                for (let mes = 1; mes <= 12; mes++) {
+                    const mesClave = `${mes.toString().padStart(2, '0')}`;
+                    const monto = alumno.meses[mesClave] || 0;
+                    subtotal += monto;
+                    totalGeneral[mesClave] += monto;
+                    
+                    let bgcolor = '#f0f0f0';
+                    if (monto >= 1000) {
+                        bgcolor = '#90EE90';
+                    } else if (monto > 0 && monto < 1000) {
+                        bgcolor = '#FFFF99';
+                    } else if (monto === 0) {
+                        bgcolor = '#FFB6C6';
+                    }
+                    
+                    celdas += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background-color: ${bgcolor};">$${monto.toLocaleString()}</td>`;
+                }
+                
+                celdas += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #E0E0E0;">$${subtotal.toLocaleString()}</td>`;
+                
+                row.innerHTML = celdas;
+                fragment.appendChild(row);
+            });
+            
+            const rowTotal = document.createElement('tr');
+            let celdatotal = '<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; background-color: #FFA500; color: white;">TOTAL</td>';
+            let totalFinal = 0;
+            
+            for (let mes = 1; mes <= 12; mes++) {
+                const mesClave = `${mes.toString().padStart(2, '0')}`;
+                const total = totalGeneral[mesClave];
+                totalFinal += total;
+                celdatotal += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #FFE4B5;">$${total.toLocaleString()}</td>`;
+            }
+            
+            celdatotal += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #FF8C00; color: white;">$${totalFinal.toLocaleString()}</td>`;
+            rowTotal.innerHTML = celdatotal;
+            fragment.appendChild(rowTotal);
+            
+            tbody.appendChild(fragment);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 20px;">No hay datos de pagos por mes</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('tbody-pagos-calendario').innerHTML = '<tr><td colspan="14" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+    }
+}
+
 async function exportarExcelReporte(tipo) {
     const btn = event.target;
     const textoOriginal = btn.textContent;
@@ -285,6 +350,44 @@ async function exportarExcelReporte(tipo) {
         }, 2000);
     } catch (error) {
         console.error('Error:', error);
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
+}
+
+async function exportarExcelReporteCalendario() {
+    const btn = event.target;
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Generando...';
+    
+    try {
+        const response = await fetch('/api/reportes/pagos-calendario?t=' + new Date().getTime());
+        const data = await response.json();
+        
+        const exportResponse = await fetch('/api/reportes/pagos-calendario/excel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (exportResponse.ok) {
+            const blob = await exportResponse.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Pagos_por_Mes_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al exportar a Excel');
+    } finally {
         btn.disabled = false;
         btn.textContent = textoOriginal;
     }
