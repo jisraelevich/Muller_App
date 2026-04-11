@@ -21,42 +21,48 @@
 
 <!-- SECCIÓN DE ACTIVOS -->
 <div id="seccion-activos" style="display: block;">
-    <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" 
-               class="search-input" 
-               placeholder="Buscar miembro..." 
-               onkeyup="filtrarTabla(this.value)">
+    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center;">
+        <button onclick="abrirModalNuevoMiembro()" class="btn-touch btn-success" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; height: 40px; white-space: nowrap; flex-shrink: 0;">
+            ➕ Nuevo Miembro
+        </button>
+        <div class="search-box" style="flex: 1; margin-bottom: 0; position: relative;">
+            <span class="search-icon">🔍</span>
+            <input type="text" 
+                   class="search-input" 
+                   placeholder="Buscar miembro..." 
+                   onkeyup="filtrarTabla(this.value)"
+                   style="height: 40px; padding: 8px 16px 8px 45px; margin: 0;">
+        </div>
     </div>
 
     <div class="grid-container" id="grid-miembros">
         {% for miembro in miembros %}
-        <div class="item-card" data-nombre="{{ miembro.apellido }} {{ miembro.nombre }}" style="flex-direction: column; padding: 16px; min-height: 220px;">
+        <div class="item-card" data-nombre="{{ miembro.apellido }} {{ miembro.nombre }}" style="flex-direction: column; padding: 16px; min-height: 200px;">
             <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); line-height: 1.3;">
                 {{ miembro.apellido }}<br>{{ miembro.nombre }}
             </div>
             
             <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 2px;">
-                🏛️ {{ miembro.congregacion or '-' }}
+                ⛪ {{ miembro.congregacion or 'ICE Fco Arias' }}
             </div>
             <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 2px;">
-                📍 {{ miembro.localidad or '-' }}
+                📍 {{ miembro.localidad or 'Salta Capital' }}
             </div>
-            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 10px;">
-                <span style="background: {% if miembro.tipo_asistencia == 'Regular' %}var(--color-success){% else %}var(--color-warning){% endif %}; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; display: inline-block;">
+            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <span style="background: {% if miembro.tipo_asistencia == 'Regular' %}var(--color-success){% else %}var(--color-warning){% endif %}; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 11px; display: inline-block;">
                     {{ miembro.tipo_asistencia }}
+                </span>
+                <span class="pagos-badge" data-miembro-id="{{ miembro.id }}" style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 11px; display: none;">
+                    💰 Pagos
                 </span>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: auto;">
-                <button onclick="abrirModalDatos({{ miembro.id }}, '{{ miembro.nombre }}', '{{ miembro.apellido }}', '{{ miembro.email or '' }}')" class="btn-action-small btn-action-edit">
-                    ✏️ Datos
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto;">
+                <button onclick="abrirModalEditar({{ miembro.id }}, '{{ miembro.nombre }}', '{{ miembro.apellido }}', '{{ miembro.email or '' }}', '{{ miembro.tipo_asistencia }}')" style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #3498db; border: 2px solid #3498db; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    ✏️ Editar
                 </button>
-                <button onclick="abrirModalTipo({{ miembro.id }}, '{{ miembro.tipo_asistencia }}')" class="btn-action-small btn-action-type">
-                    🎯 Tipo
-                </button>
-                <button onclick="eliminarMiembro({{ miembro.id }}, '{{ miembro.nombre }} {{ miembro.apellido }}')" class="btn-action-small btn-danger-soft">
-                    🗑️ Elim.
+                <button onclick="inactivarMiembro({{ miembro.id }}, '{{ miembro.nombre }} {{ miembro.apellido }}')" style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #f97316; border: 2px solid #fed7aa; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    ⊘ Inactivar
                 </button>
             </div>
         </div>
@@ -76,7 +82,7 @@
     
     <div id="div-inactivos-content" style="display: none;">
         <div class="grid-container" id="grid-inactivos">
-            <!-- Se cargará dinámicamente -->
+            <!-- Se cargará dinámicamente con botones Reactivar -->
         </div>
         
         <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280;">
@@ -85,29 +91,152 @@
     </div>
 </div>
 
+<!-- Modal para crear nuevo miembro -->
+<div id="modal-nuevo-miembro" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 0; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
+        <!-- ENCABEZADO CON GRADIENTE -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px 24px; border-radius: 12px 12px 0 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+            <h3 style="font-size: 18px; margin: 0; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px;">
+                ➕ Nuevo Miembro
+            </h3>
+        </div>
+        
+        <!-- CONTENIDO DEL FORMULARIO -->
+        <div style="padding: 24px; flex: 1; overflow-y: auto;">
+            <!-- FILA 1: Nombre y Apellido (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Nombre
+                    </label>
+                    <input type="text" id="new-nombre" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Apellido
+                    </label>
+                    <input type="text" id="new-apellido" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 2: Email -->
+            <div style="margin-bottom: 16px;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    ✉️ Email
+                </label>
+                <input type="email" id="new-email" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            
+            <!-- FILA 3: Congregación y Localidad (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        ⛪ Congregación
+                    </label>
+                    <input type="text" id="new-congregacion" class="form-input" placeholder="ICE Fco Arias" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        📍 Localidad
+                    </label>
+                    <input type="text" id="new-localidad" class="form-input" placeholder="Salta Capital" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 4: Tipo de Asistencia (full width) -->
+            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    🎯 Tipo de Asistencia
+                </label>
+                <select id="new-tipo-asistencia" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; box-sizing: border-box; font-weight: 600;">
+                    <option value="Regular">✓ Regular</option>
+                    <option value="Oyente">⊙ Oyente</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- BOTONES (footer) -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafafa; border-radius: 0 0 12px 12px;">
+            <button onclick="guardarNuevoMiembro()" class="btn-touch btn-success" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✓ Crear
+            </button>
+            <button onclick="cerrarModalNuevoMiembro()" class="btn-touch btn-secondary" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✕ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal para editar datos del miembro -->
-<div id="modal-editar-datos" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 8px; padding: 20px; max-width: 350px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
-        <h3 style="font-size: 16px; margin-bottom: 16px; font-weight: bold;">
-            ✏️ Editar Datos
-        </h3>
-        <div class="form-group form-compact">
-            <label class="form-label form-label-compact">Nombre:</label>
-            <input type="text" id="edit-nombre" class="form-input form-input-compact">
+<div id="modal-editar-datos" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 0; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
+        <!-- ENCABEZADO CON GRADIENTE (como en pagos) -->
+        <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding: 20px 24px; border-radius: 12px 12px 0 0; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);">
+            <h3 style="font-size: 18px; margin: 0; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px;">
+                ✏️ Editar Miembro
+            </h3>
         </div>
-        <div class="form-group form-compact">
-            <label class="form-label form-label-compact">Apellido:</label>
-            <input type="text" id="edit-apellido" class="form-input form-input-compact">
+        
+        <!-- CONTENIDO DEL FORMULARIO -->
+        <div style="padding: 24px; flex: 1; overflow-y: auto;">
+            <!-- FILA 1: Nombre y Apellido (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Nombre
+                    </label>
+                    <input type="text" id="edit-nombre" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Apellido
+                    </label>
+                    <input type="text" id="edit-apellido" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 2: Email -->
+            <div style="margin-bottom: 16px;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    ✉️ Email
+                </label>
+                <input type="email" id="edit-email" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+            </div>
+            
+            <!-- FILA 3: Congregación y Localidad (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        ⛪ Congregación
+                    </label>
+                    <input type="text" id="edit-congregacion" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        📍 Localidad
+                    </label>
+                    <input type="text" id="edit-localidad" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 4: Tipo de Asistencia (full width) -->
+            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    🎯 Tipo de Asistencia
+                </label>
+                <select id="edit-tipo-asistencia" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; box-sizing: border-box; font-weight: 600;">
+                    <option value="Regular">✓ Regular</option>
+                    <option value="Oyente">⊙ Oyente</option>
+                </select>
+            </div>
         </div>
-        <div class="form-group form-compact">
-            <label class="form-label form-label-compact">Email:</label>
-            <input type="email" id="edit-email" class="form-input form-input-compact">
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px;">
-            <button onclick="guardarDatos()" class="btn-touch btn-success">
+        
+        <!-- BOTONES (footer) -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafafa; border-radius: 0 0 12px 12px;">
+            <button onclick="guardarDatos()" class="btn-touch btn-success" style="padding: 12px; font-weight: 700; border-radius: 8px;">
                 ✓ Guardar
             </button>
-            <button onclick="cerrarModalDatos()" class="btn-touch btn-secondary">
+            <button onclick="cerrarModalDatos()" class="btn-touch btn-secondary" style="padding: 12px; font-weight: 700; border-radius: 8px;">
                 ✕ Cancelar
             </button>
         </div>
@@ -148,12 +277,91 @@ window.addEventListener('load', function() {
 
 let miembroActual = null;
 
-function abrirModalDatos(idMiembro, nombre, apellido, email) {
+function abrirModalNuevoMiembro() {
+    // Limpiar formulario
+    document.getElementById('new-nombre').value = '';
+    document.getElementById('new-apellido').value = '';
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-congregacion').value = '';
+    document.getElementById('new-localidad').value = '';
+    document.getElementById('new-tipo-asistencia').value = 'Regular';
+    
+    document.getElementById('modal-nuevo-miembro').style.display = 'flex';
+}
+
+function cerrarModalNuevoMiembro() {
+    const modal = document.getElementById('modal-nuevo-miembro');
+    modal.style.display = 'none';
+}
+
+function guardarNuevoMiembro() {
+    const nombre = document.getElementById('new-nombre').value.trim();
+    const apellido = document.getElementById('new-apellido').value.trim();
+    const email = document.getElementById('new-email').value.trim();
+    const congregacion = document.getElementById('new-congregacion').value.trim() || 'ICE Fco Arias';
+    const localidad = document.getElementById('new-localidad').value.trim() || 'Salta Capital';
+    const tipoAsistencia = document.getElementById('new-tipo-asistencia').value;
+    
+    if (!nombre || !apellido) {
+        alert('Nombre y apellido son requeridos');
+        return;
+    }
+    
+    fetch('/api/miembros/crear', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            nombre: nombre,
+            apellido: apellido,
+            email: email,
+            congregacion: congregacion,
+            localidad: localidad,
+            tipo_asistencia: tipoAsistencia
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Miembro agregado correctamente');
+            cerrarModalNuevoMiembro();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al agregar miembro');
+    });
+}
+
+function abrirModalEditar(idMiembro, nombre, apellido, email, tipoAsistencia) {
     miembroActual = idMiembro;
     document.getElementById('edit-nombre').value = nombre;
     document.getElementById('edit-apellido').value = apellido;
-    document.getElementById('edit-email').value = email;
+    document.getElementById('edit-email').value = email || '';
+    document.getElementById('edit-tipo-asistencia').value = tipoAsistencia || 'Regular';
+    
+    // Cargar congregación y localidad del servidor
+    fetch(`/api/miembros/${idMiembro}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.miembro) {
+                document.getElementById('edit-congregacion').value = data.miembro.congregacion || 'ICE Fco Arias';
+                document.getElementById('edit-localidad').value = data.miembro.localidad || 'Salta Capital';
+                document.getElementById('edit-tipo-asistencia').value = data.miembro.tipo_asistencia || tipoAsistencia || 'Regular';
+            }
+        })
+        .catch(error => console.error('Error cargando datos:', error));
+    
     document.getElementById('modal-editar-datos').style.display = 'flex';
+}
+
+// Mantener compatibilidad con nombre anterior si es necesario
+function abrirModalDatos(idMiembro, nombre, apellido, email) {
+    abrirModalEditar(idMiembro, nombre, apellido, email, 'Regular');
 }
 
 function cerrarModalDatos() {
@@ -171,6 +379,9 @@ function guardarDatos() {
     const nombre = document.getElementById('edit-nombre').value.trim();
     const apellido = document.getElementById('edit-apellido').value.trim();
     const email = document.getElementById('edit-email').value.trim();
+    const congregacion = document.getElementById('edit-congregacion').value.trim();
+    const localidad = document.getElementById('edit-localidad').value.trim();
+    const tipoAsistencia = document.getElementById('edit-tipo-asistencia').value;
     
     if (!nombre || !apellido) {
         alert('Nombre y apellido son requeridos');
@@ -186,7 +397,10 @@ function guardarDatos() {
             id_miembro: miembroActual,
             nombre: nombre,
             apellido: apellido,
-            email: email
+            email: email,
+            congregacion: congregacion || 'ICE Fco Arias',
+            localidad: localidad || 'Salta Capital',
+            tipo_asistencia: tipoAsistencia
         })
     })
     .then(response => response.json())
@@ -255,8 +469,8 @@ function cambiarTipo(nuevoTipo) {
     });
 }
 
-function eliminarMiembro(idMiembro, nombreMiembro) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar a ${nombreMiembro}?`)) {
+function inactivarMiembro(idMiembro, nombreMiembro) {
+    if (!confirm(`¿Inactivar a ${nombreMiembro}?\n\nPodrá reactivarlo después desde la sección Inactivos.`)) {
         return;
     }
     
@@ -272,11 +486,7 @@ function eliminarMiembro(idMiembro, nombreMiembro) {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            if (data.deleted) {
-                alert('✅ Miembro eliminado completamente');
-            } else {
-                alert('✅ ' + data.message);
-            }
+            alert('✅ Miembro inactivado correctamente');
             location.reload();
         } else {
             alert('❌ Error: ' + data.message);
@@ -284,7 +494,36 @@ function eliminarMiembro(idMiembro, nombreMiembro) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error al eliminar miembro');
+        alert('❌ Error al inactivar miembro');
+    });
+}
+
+function reactivarMiembro(idMiembro, nombreMiembro) {
+    if (!confirm(`¿Reactivar a ${nombreMiembro}?\n\nVolverá a aparecer en la sección de Activos.`)) {
+        return;
+    }
+    
+    fetch('/api/miembros/reactivar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id_miembro: idMiembro
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al reactivar miembro');
     });
 }
 
@@ -292,11 +531,15 @@ function eliminarMiembro(idMiembro, nombreMiembro) {
 document.addEventListener('click', function(event) {
     const modalDatos = document.getElementById('modal-editar-datos');
     const modalTipo = document.getElementById('modal-tipo-asistencia');
+    const modalNuevo = document.getElementById('modal-nuevo-miembro');
     if (event.target === modalDatos) {
         cerrarModalDatos();
     }
     if (event.target === modalTipo) {
         cerrarModalTipo();
+    }
+    if (event.target === modalNuevo) {
+        cerrarModalNuevoMiembro();
     }
 });
 
@@ -364,7 +607,7 @@ function cargarMiembrosInactivos() {
                             <div style="flex-grow: 1;"></div>
                             
                             <button onclick="reactivarMiembro(${miembro.id}, '${miembro.nombre} ${miembro.apellido}')" class="btn-action-small btn-block" style="background: var(--color-success); color: white; margin: 0;">
-                                ✓ Activar
+                                ↺ Reactivar
                             </button>
                         `;
                         
@@ -412,19 +655,56 @@ function reactivarMiembro(idMiembro, nombreMiembro) {
     });
 }
 
+// Función para normalizar texto sin acentos
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
 function filtrarTabla(termino) {
     const cards = document.querySelectorAll('#grid-miembros .item-card');
-    const terminoLower = termino.toLowerCase();
+    const terminoNormalizado = normalizarTexto(termino);
     
     cards.forEach(card => {
         const nombre = card.getAttribute('data-nombre');
-        if (nombre && nombre.toLowerCase().includes(terminoLower)) {
+        if (nombre && normalizarTexto(nombre).includes(terminoNormalizado)) {
             card.style.display = '';
         } else {
             card.style.display = 'none';
         }
     });
 }
+
+// Cargar indicador de pagos para cada miembro
+async function cargarPagosIndicador() {
+    const badges = document.querySelectorAll('.pagos-badge');
+    
+    for (const badge of badges) {
+        const miembroId = badge.getAttribute('data-miembro-id');
+        try {
+            const response = await fetch(`/api/pagos/miembro/${miembroId}`);
+            const data = await response.json();
+            
+            if (data.status === 'success' && data.pagos && data.pagos.length > 0) {
+                const totalPagos = data.pagos.reduce((sum, pago) => sum + (parseFloat(pago.monto) || 0), 0);
+                if (totalPagos > 0) {
+                    badge.style.display = 'inline-block';
+                }
+            }
+        } catch (error) {
+            console.error(`Error cargando pagos de miembro ${miembroId}:`, error);
+        }
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    cargarPagosIndicador();
+});
 </script>
 
 {% endblock %}

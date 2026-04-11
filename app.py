@@ -282,6 +282,7 @@ def render_tab(tab_id):
                     data['miembros'] = db.get_miembros()
                 
                 elif tab_id == 4:  # Clases
+                    # Nota: Migración SQL de oradores ejecutada manualmente via /api/admin/migrate-oradores
                     data['clases'] = db.get_clases()
                     data['oradores'] = db.get_oradores()
                 
@@ -313,6 +314,35 @@ def render_tab(tab_id):
     
     except Exception as e:
         print(f"Error al cargar tab {tab_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/tab/3-5')
+@login_required
+def render_oradores():
+    """Renderizar tab de Oradores"""
+    try:
+        current_user = GoogleOAuth.get_session_user()
+        
+        data = {}
+        if db:
+            try:
+                data['oradores'] = db.get_oradores()
+            except Exception as e:
+                print(f"Error obteniendo oradores: {e}")
+                data['oradores'] = []
+                data['error'] = f"Error obteniendo oradores: {str(e)}"
+        else:
+            data['oradores'] = []
+            data['error'] = "⚠️ Base de datos no disponible"
+        
+        return render_template('tab_3-5_oradores.html',
+                             tabs=TABS,
+                             active_tab='3-5',
+                             current_user=current_user,
+                             **data)
+    
+    except Exception as e:
+        print(f"Error al cargar tab oradores: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -484,15 +514,20 @@ def get_clases_hoy_api():
 
 @app.route('/api/clases/update', methods=['POST'])
 def update_clase():
-    """Actualizar estado de una clase"""
+    """Actualizar clase (nombre, descripcion, fecha, estado, modalidad, hora, orador)"""
     try:
         if not db:
             return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
         
         datos = request.json
         clase_id = int(datos.get('id'))  # Asegurar que es int
+        nombre = datos.get('nombre', '').strip()
+        descripcion = datos.get('descripcion', '').strip()
+        fecha = datos.get('fecha', '').strip()
         nuevo_estado = datos.get('estado', '').strip()
         modalidad = datos.get('modalidad', '').strip()
+        hora_inicio = datos.get('hora_inicio', '21:00').strip() or '21:00'  # Default 21:00 = 9:00 PM
+        orador_id = datos.get('orador_id')
         
         # Validar datos
         if not clase_id or not nuevo_estado:
@@ -501,17 +536,357 @@ def update_clase():
         if nuevo_estado not in ['Programada', 'Realizada', 'Cancelada']:
             return jsonify({"status": "error", "message": "Estado inválido"}), 400
         
-        print(f"[UPDATE] Clase ID: {clase_id}, Nuevo Estado: {nuevo_estado}, Modalidad: {modalidad}")
+        print(f"[UPDATE] Clase ID: {clase_id}, Nombre: {nombre}, Desc: {descripcion}, Fecha: {fecha}, Estado: {nuevo_estado}, Modalidad: {modalidad}, Hora: {hora_inicio}, Orador ID: {orador_id}")
         
-        db.update_clase_estado(clase_id, nuevo_estado, modalidad if modalidad else None)
+        # Actualizar con los nuevos campos
+        with db.get_cursor() as cursor:
+            query = "UPDATE clases SET estado=%s, updated_at=NOW()"
+            params = [nuevo_estado]
+            
+            if nombre:
+                query += ", nombre=%s"
+                params.append(nombre)
+            
+            if descripcion:
+                query += ", descripcion=%s"
+                params.append(descripcion)
+            
+            if fecha:
+                query += ", fecha=%s"
+                params.append(fecha)
+            
+            if modalidad:
+                query += ", modalidad=%s"
+                params.append(modalidad)
+            
+            # Siempre guardar hora_inicio
+            query += ", hora_inicio=%s"
+            params.append(hora_inicio)
+            
+            if orador_id:
+                query += ", orador_id=%s"
+                params.append(orador_id)
+            
+            query += " WHERE id=%s"
+            params.append(clase_id)
+            
+            cursor.execute(query, params)
         
         # Clear caches so next request gets fresh data
         clear_cache('get_clases')  # Database cache
         clear_api_cache('get_todas_clases')  # API response cache
         clear_api_cache('get_clases_hoy')  # API response cache
         
-        print(f"[SUCCESS] Clase {clase_id} actualizada a {nuevo_estado}")
-        return jsonify({"status": "success", "message": "Clase actualizada correctamente"})
+        # Fetch updated class data to return to frontend
+        with db.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT c.id, c.nombre, c.descripcion, c.fecha, c.hora_inicio, c.modalidad, c.estado, c.link_meet, "
+                "c.orador_id, "
+                "COALESCE(o.nombre, '') as orador_nombre, COALESCE(o.apellido, '') as orador_apellido "
+                "FROM clases c "
+                "LEFT JOIN oradores o ON c.orador_id = o.id "
+                "WHERE c.id = %s",
+                (clase_id,)
+            )
+            clase_actualizada = cursor.fetchone()
+        
+        clase_dict = dict(clase_actualizada) if hasattr(clase_actualizada, 'items') else clase_actualizada
+        
+        print(f"[SUCCESS] Clase {clase_id} actualizada")
+        return jsonify({
+            "status": "success", 
+            "message": "Clase actualizada correctamente",
+            "clase": {
+                'id': clase_dict.get('id'),
+                'nombre': clase_dict.get('nombre'),
+                'descripcion': clase_dict.get('descripcion'),
+                'fecha': str(clase_dict.get('fecha')),
+                'hora_inicio': str(clase_dict.get('hora_inicio')) if clase_dict.get('hora_inicio') else '',
+                'modalidad': clase_dict.get('modalidad'),
+                'estado': clase_dict.get('estado'),
+                'orador_id': clase_dict.get('orador_id'),
+                'orador_nombre': clase_dict.get('orador_nombre', ''),
+                'orador_apellido': clase_dict.get('orador_apellido', '')
+            }
+        })
+    except ValueError as e:
+        print(f"[ERROR] Valor inválido: {e}")
+        return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/oradores/all', methods=['GET'])
+def get_all_oradores():
+    """Obtener lista de todos los oradores"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        with db.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, apellido FROM oradores ORDER BY nombre ASC"
+            )
+            oradores = cursor.fetchall()
+        
+        return jsonify({"status": "success", "data": oradores})
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/oradores/todos', methods=['GET'])
+def get_oradores_todos():
+    """Obtener lista de todos los oradores"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        oradores = db.get_oradores()
+        return jsonify({"status": "success", "data": oradores})
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/oradores/add', methods=['POST'])
+def add_orador_endpoint():
+    """Agregar nuevo orador"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        datos = request.json
+        nombre = datos.get('nombre', '').strip()
+        apellido = datos.get('apellido', '').strip()
+        email = datos.get('email', '').strip()
+        telefono = datos.get('telefono', '').strip()
+        especialidad = datos.get('especialidad', '').strip()
+        
+        if not nombre or not apellido:
+            return jsonify({"status": "error", "message": "Nombre y apellido son requeridos"}), 400
+        
+        orador_id = db.add_orador(nombre, apellido, email, telefono, especialidad)
+        
+        if orador_id:
+            return jsonify({"status": "success", "message": "Orador agregado correctamente", "id": orador_id})
+        else:
+            return jsonify({"status": "error", "message": "Error al agregar orador"}), 500
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/oradores/update/<int:id_orador>', methods=['POST'])
+def update_orador_endpoint(id_orador):
+    """Actualizar datos de un orador"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        datos = request.json
+        nombre = datos.get('nombre', '').strip()
+        apellido = datos.get('apellido', '').strip()
+        email = datos.get('email', '').strip()
+        telefono = datos.get('telefono', '').strip()
+        especialidad = datos.get('especialidad', '').strip()
+        
+        if not nombre or not apellido:
+            return jsonify({"status": "error", "message": "Nombre y apellido son requeridos"}), 400
+        
+        success = db.update_orador(id_orador, nombre, apellido, email, telefono, especialidad)
+        
+        if success:
+            return jsonify({"status": "success", "message": "Orador actualizado correctamente"})
+        else:
+            return jsonify({"status": "error", "message": "Orador no encontrado"}), 404
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/oradores/delete/<int:id_orador>', methods=['DELETE'])
+def delete_orador_endpoint(id_orador):
+    """Eliminar un orador"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        success = db.delete_orador(id_orador)
+        
+        if success:
+            return jsonify({"status": "success", "message": "Orador eliminado correctamente"})
+        else:
+            return jsonify({"status": "error", "message": "Orador no encontrado"}), 404
+    except Exception as e:
+        print(f"[ERROR] Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/admin/migrate-012', methods=['POST'])
+def migrate_012():
+    """Ejecutar migración 012 (agregar orador_id a clases)"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        print("[MIGRACIÓN 012] Iniciando...")
+        
+        with db.get_cursor() as cursor:
+            # Agregar columna orador_id
+            cursor.execute(
+                "ALTER TABLE clases ADD COLUMN IF NOT EXISTS orador_id INTEGER REFERENCES oradores(id) ON DELETE SET NULL"
+            )
+            print("[MIGRACIÓN 012] Columna orador_id agregada")
+            
+            # Crear índice
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_clases_orador_id ON clases(orador_id)"
+            )
+            print("[MIGRACIÓN 012] Índice creado")
+        
+        # Limpiar caché
+        clear_cache('get_clases')
+        
+        print("[MIGRACIÓN 012] ✓ Completada")
+        return jsonify({"status": "success", "message": "Migración 012 ejecutada correctamente"})
+    except Exception as e:
+        print(f"[ERROR MIGRACIÓN 012] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/admin/migrate-oradores', methods=['POST'])
+def migrate_oradores():
+    """Migrar datos: buscar y asignar oradores a todas las clases sin orador
+    Este proceso busca el orador en la BD basándose en la descripción de la clase"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        # Verificar que sea admin (opcional - descomenta si quieres verificar)
+        # current_user = GoogleOAuth.get_session_user()
+        # if current_user['email'] not in ADMIN_EMAILS:
+        #     return jsonify({"status": "error", "message": "No tienes permisos para realizar esta acción"}), 403
+        
+        print("\n" + "="*60)
+        print("🚀 INICIANDO MIGRACIÓN: ASIGNACIÓN DE ORADORES")
+        print("="*60)
+        
+        # Ejecutar la migración
+        resultado = db.asignar_oradores_automatico()
+        
+        print("\n" + "="*60)
+        print("RESUMEN DE LA MIGRACIÓN:")
+        print("="*60)
+        print(f"Total de clases sin orador: {resultado['total_clases']}")
+        print(f"Oradores asignados: {resultado['asignados']}")
+        print(f"No encontrados: {resultado['no_encontrados']}")
+        print("="*60 + "\n")
+        
+        # Limpiar caché para refrescar datos
+        clear_cache('get_clases')
+        clear_api_cache('get_todas_clases')
+        clear_api_cache('get_clases_hoy')
+        
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"[ERROR MIGRACIÓN ORADORES] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "status": "error", 
+            "message": str(e),
+            "total_clases": 0,
+            "asignados": 0,
+            "no_encontrados": 0
+        }), 500
+
+@app.route('/api/clases/crear', methods=['POST'])
+def crear_clase():
+    """Crear nueva clase en la base de datos"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        datos = request.json
+        nombre = datos.get('nombre', '').strip()
+        descripcion = datos.get('descripcion', '').strip()
+        fecha = datos.get('fecha', '').strip()
+        hora_inicio = datos.get('hora_inicio', '21:00').strip() or '21:00'  # Default 21:00 = 9:00 PM
+        modalidad = datos.get('modalidad', 'Presencial').strip()
+        orador_id = datos.get('orador_id')
+        
+        # Validar datos requeridos
+        if not nombre or not fecha:
+            return jsonify({"status": "error", "message": "Nombre y fecha son requeridos"}), 400
+        
+        # Validar modalidad
+        if modalidad not in ['Presencial', 'Meet']:
+            return jsonify({"status": "error", "message": "Modalidad inválida"}), 400
+        
+        print(f"[CREAR CLASE] Nombre: {nombre}, Fecha: {fecha}, Hora: {hora_inicio}, Modalidad: {modalidad}, Orador ID: {orador_id}")
+        
+        # Crear clase en la base de datos
+        clase_id = db.add_clase(nombre, fecha, hora_inicio, modalidad, link_meet=None, orador_id=orador_id)
+        
+        # Si la clase tiene descripción, actualizar la columna descripcion (si existe)
+        if descripcion:
+            try:
+                with db.get_cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE clases SET descripcion=%s WHERE id=%s",
+                        (descripcion, clase_id)
+                    )
+            except Exception as e:
+                print(f"[ADVERTENCIA] No se pudo guardar descripción: {e}")
+        
+        # Clear caches
+        clear_cache('get_clases')
+        clear_api_cache('get_todas_clases')
+        clear_api_cache('get_clases_hoy')
+        
+        print(f"[SUCCESS] Nueva clase creada con ID: {clase_id}")
+        return jsonify({"status": "success", "message": "Clase creada correctamente", "id": clase_id})
+    except Exception as e:
+        print(f"[ERROR] Exception al crear clase: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/clases/delete', methods=['DELETE', 'POST'])
+def delete_clase():
+    """Eliminar una clase de la base de datos"""
+    try:
+        if not db:
+            return jsonify({"status": "error", "message": "Base de datos no disponible"}), 503
+        
+        datos = request.json
+        clase_id = int(datos.get('id'))  # Asegurar que es int
+        
+        if not clase_id:
+            return jsonify({"status": "error", "message": "ID de clase requerido"}), 400
+        
+        print(f"[DELETE CLASE] Eliminando clase ID: {clase_id}")
+        
+        # Eliminar la clase
+        with db.get_cursor() as cursor:
+            cursor.execute("DELETE FROM clases WHERE id=%s", (clase_id,))
+        
+        # Clear caches so next request gets fresh data
+        clear_cache('get_clases')
+        clear_api_cache('get_todas_clases')
+        clear_api_cache('get_clases_hoy')
+        
+        print(f"[SUCCESS] Clase {clase_id} eliminada")
+        return jsonify({"status": "success", "message": "Clase eliminada correctamente"})
     except ValueError as e:
         print(f"[ERROR] Valor inválido: {e}")
         return jsonify({"status": "error", "message": f"Valor inválido: {str(e)}"}), 400
@@ -839,6 +1214,42 @@ def get_all_miembros():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/miembros/crear', methods=['POST'])
+def crear_miembro():
+    """Crear nuevo miembro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        nombre = datos.get('nombre', '').strip()
+        apellido = datos.get('apellido', '').strip()
+        email = datos.get('email', '').strip()
+        congregacion = datos.get('congregacion') or 'ICE Fco Arias'
+        localidad = datos.get('localidad') or 'Salta Capital'
+        tipo_asistencia = datos.get('tipo_asistencia', 'Regular')
+        
+        if not nombre or not apellido:
+            return jsonify({"status": "error", "message": "Nombre y apellido son requeridos"}), 400
+        
+        miembro_id = db.add_miembro(nombre, apellido, email, tipo_asistencia, 
+                                    congregacion=congregacion, localidad=localidad)
+        
+        # Clear cache so next GET reflects the changes
+        clear_cache()
+        clear_api_cache()
+        
+        return jsonify({
+            "status": "success", 
+            "message": "Miembro creado correctamente",
+            "id": miembro_id
+        })
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/miembros/update', methods=['POST'])
 def update_miembro():
     """Actualizar tipo de asistencia de un miembro"""
@@ -853,9 +1264,29 @@ def update_miembro():
         
         db.update_miembro_tipo(miembro_id, nuevo_tipo)
         
+        # Clear cache so next GET reflects the changes
+        clear_cache()
+        clear_api_cache()
+        
         return jsonify({"status": "success", "message": "Miembro actualizado correctamente"})
     except DatabaseError as e:
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/<int:miembro_id>', methods=['GET'])
+def get_miembro_endpoint(miembro_id):
+    """Obtener datos completos de un miembro específico"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        miembro = db.get_miembro(miembro_id)
+        if miembro:
+            return jsonify({"status": "success", "miembro": dict(miembro)})
+        else:
+            return jsonify({"status": "error", "message": "Miembro no encontrado"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -872,11 +1303,18 @@ def update_miembro_datos():
         nombre = datos.get('nombre')
         apellido = datos.get('apellido')
         email = datos.get('email')
+        congregacion = datos.get('congregacion')
+        localidad = datos.get('localidad')
+        tipo_asistencia = datos.get('tipo_asistencia')
         
         if not miembro_id or not nombre or not apellido:
             return jsonify({"status": "error", "message": "Faltan datos requeridos"}), 400
         
-        db.update_miembro_datos(miembro_id, nombre, apellido, email)
+        db.update_miembro_datos(miembro_id, nombre, apellido, email, congregacion, localidad, tipo_asistencia)
+        
+        # Clear cache so next GET reflects the changes
+        clear_cache()
+        clear_api_cache()
         
         return jsonify({"status": "success", "message": "Datos actualizados correctamente"})
     except DatabaseError as e:
@@ -900,6 +1338,10 @@ def delete_miembro():
         
         result = db.delete_miembro(miembro_id)
         
+        # Clear cache so next GET reflects the changes
+        clear_cache()
+        clear_api_cache()
+        
         return jsonify({
             "status": "success", 
             "message": result.get("message"),
@@ -919,7 +1361,7 @@ def get_miembros_inactivos():
     
     try:
         miembros = db.get_miembros_inactivos()
-        return jsonify({"status": "success", "data": miembros})
+        return jsonify({"status": "success", "data": [dict(m) for m in miembros]})
     except DatabaseError as e:
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
@@ -940,7 +1382,10 @@ def reactivar_miembro():
             return jsonify({"status": "error", "message": "ID de miembro requerido"}), 400
         
         db.reactivar_miembro(miembro_id)
-        db.clear_cache()
+        
+        # Clear cache so next GET reflects the changes
+        clear_cache()
+        clear_api_cache()
         
         return jsonify({"status": "success", "message": "Miembro reactivado correctamente"})
     except DatabaseError as e:

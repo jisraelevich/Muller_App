@@ -3,6 +3,21 @@
    Archivo JS centralizado - Toda la lógica aquí
    ======================================== */
 
+// ========== FUNCIÓN GLOBAL: NORMALIZAR TEXTO SIN ACENTOS ==========
+/**
+ * Normaliza texto removiendo acentos para búsquedas insensibles a acentos
+ * @param {string} texto - Texto a normalizar
+ * @returns {string} Texto normalizado sin acentos
+ */
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
 // ========== CONFIGURACIÓN GLOBAL ==========
 const APP_CONFIG = {
     apiBase: '/api',
@@ -497,11 +512,11 @@ const AsistenciaModule = {
      */
     filtrar(termino) {
         const items = document.querySelectorAll('.item-card-asistencia');
-        const terminoLower = termino.toLowerCase();
+        const terminoNormalizado = normalizarTexto(termino);
         
         items.forEach(item => {
-            const nombre = item.getAttribute('data-nombre').toLowerCase();
-            if (nombre.includes(terminoLower)) {
+            const nombre = normalizarTexto(item.getAttribute('data-nombre'));
+            if (nombre.includes(terminoNormalizado)) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
@@ -682,11 +697,11 @@ const PagosModule = {
      */
     filtrar(termino) {
         const items = document.querySelectorAll('.item-card');
-        const terminoLower = termino.toLowerCase();
+        const terminoNormalizado = normalizarTexto(termino);
         
         items.forEach(item => {
-            const nombre = item.getAttribute('data-nombre').toLowerCase();
-            if (nombre.includes(terminoLower)) {
+            const nombre = normalizarTexto(item.getAttribute('data-nombre'));
+            if (nombre.includes(terminoNormalizado)) {
                 item.style.display = 'flex';
             } else {
                 item.style.display = 'none';

@@ -101,7 +101,7 @@
     <!-- REPORTE PAGOS POR MES -->
     <div id="reporte-pagos-mes" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0;">Calendar de Pagos por Mes</h3>
+            <h3 style="margin: 0;">📅 Calendar de Pagos por Mes (Marzo - Noviembre)</h3>
             <div style="display: flex; gap: 8px;">
                 <button onclick="exportarExcelReporteCalendario()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
@@ -111,24 +111,21 @@
                 <thead>
                     <tr style="background: #f0f0f0;">
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 150px;">Alumno</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">01</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">02</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">12</th>
-                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px; font-weight: bold;">TOTAL</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; font-weight: bold; background: #e3f2fd;">03 Marzo</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #e3f2fd;">04 Abril</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #e3f2fd;">05 Mayo</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">06 Junio</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">07 Julio</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">08 Agosto</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">09 Septiembre</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">10 Octubre</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">11 Noviembre</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 70px; font-weight: bold; background: #e0e0e0;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-pagos-calendario">
                     <tr>
-                        <td colspan="14" style="text-align: center; padding: 20px; color: #999;">
+                        <td colspan="11" style="text-align: center; padding: 20px; color: #999;">
                             Cargando datos...
                         </td>
                     </tr>
@@ -136,7 +133,7 @@
             </table>
         </div>
         <div style="text-align: center; margin-top: 12px; color: #666; font-size: 10px;">
-            Verde (>= $1000) = Pago completo | Amarillo ($1-999) = Pago parcial | Rojo ($0) = Sin pagar
+            🟢 Verde (>= $1000) = Pago completo | 🟡 Amarillo ($1-999) = Pago parcial | 🔴 Rojo ($0) = Sin pagar
         </div>
     </div>
     
@@ -167,8 +164,6 @@ async function mostrarReporte(tipo) {
         await cargarReporteMiembros();
     } else if (tipo === 'pagos-mes') {
         await cargarReporteCalendario();
-    } else if (tipo === 'examenes') {
-        await cargarReporteExamenes();
     }
 }
 
@@ -275,7 +270,8 @@ async function cargarReporteCalendario() {
             const fragment = document.createDocumentFragment();
             let totalGeneral = {};
             
-            for (let mes = 1; mes <= 12; mes++) {
+            // Solo contar meses de marzo (03) a noviembre (11)
+            for (let mes = 3; mes <= 11; mes++) {
                 totalGeneral[`${mes.toString().padStart(2, '0')}`] = 0;
             }
             
@@ -284,7 +280,8 @@ async function cargarReporteCalendario() {
                 let celdas = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${alumno.nombre}</td>`;
                 let subtotal = 0;
                 
-                for (let mes = 1; mes <= 12; mes++) {
+                // Iterar solo meses de marzo (3) a noviembre (11)
+                for (let mes = 3; mes <= 11; mes++) {
                     const mesClave = `${mes.toString().padStart(2, '0')}`;
                     const monto = alumno.meses[mesClave] || 0;
                     subtotal += monto;
@@ -296,7 +293,7 @@ async function cargarReporteCalendario() {
                     } else if (monto > 0 && monto < 1000) {
                         bgcolor = '#FFFF99';
                     } else if (monto === 0) {
-                        bgcolor = '#FFB6C6';
+                        bgcolor = '#FFB3B3';
                     }
                     
                     celdas += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background-color: ${bgcolor};">$${monto.toLocaleString()}</td>`;
@@ -312,7 +309,8 @@ async function cargarReporteCalendario() {
             let celdatotal = '<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; background-color: #FFA500; color: white;">TOTAL</td>';
             let totalFinal = 0;
             
-            for (let mes = 1; mes <= 12; mes++) {
+            // Totales solo para meses de marzo (3) a noviembre (11)
+            for (let mes = 3; mes <= 11; mes++) {
                 const mesClave = `${mes.toString().padStart(2, '0')}`;
                 const total = totalGeneral[mesClave];
                 totalFinal += total;
@@ -325,11 +323,11 @@ async function cargarReporteCalendario() {
             
             tbody.appendChild(fragment);
         } else {
-            tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; padding: 20px;">No hay datos de pagos por mes</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">No hay datos de pagos por mes</td></tr>';
         }
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('tbody-pagos-calendario').innerHTML = '<tr><td colspan="14" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+        document.getElementById('tbody-pagos-calendario').innerHTML = '<tr><td colspan="11" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
     }
 }
 
@@ -391,7 +389,7 @@ async function exportarExcelReporteCalendario() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    mostrarReporte('pagos');
+    mostrarReporte('pagos-mes');
 });
 </script>
 

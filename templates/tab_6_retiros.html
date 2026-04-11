@@ -6,149 +6,317 @@
 
 {% block content %}
 
-<h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
-    💸 REGISTRAR RETIRO
-</h2>
-
-<!-- Formulario de Retiro -->
-<div class="form-section">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-large);">
-        
-        <!-- COLUMNA IZQUIERDA: 3 Dropdowns -->
-        <div>
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
-                <label class="form-label" style="margin-bottom: 0;">📋 Concepto:</label>
-                <select id="concepto-retiro" class="form-select" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
-                    <option value="Gastos" selected>💼 Gastos</option>
-                    <option value="Pago Instituto">🏫 Pago Instituto</option>
-                    <option value="Pago Extra">💳 Pago Extra</option>
-                </select>
+<!-- PASO 1: Seleccionar Concepto -->
+<div id="paso-1">
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Buscar concepto..." 
+               onkeyup="RetirosModule.filtrar(this.value)">
+    </div>
+    
+    <div class="grid-container" style="margin-bottom: 24px;">
+        <div class="item-card" 
+             data-concepto="Gastos"
+             style="flex-direction: column; padding: 16px; min-height: 180px; cursor: pointer;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); text-align: center;">
+                💼 Gastos
             </div>
-            
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
-                <label class="form-label" style="margin-bottom: 0;">📅 Fecha:</label>
-                <input type="date" id="fecha-retiro" class="form-input" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+            <div style="font-size: 11px; color: #6b7280; text-align: center; flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                Gastos generales
             </div>
-            
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center;">
-                <label class="form-label" style="margin-bottom: 0;">💳 Método:</label>
-                <select id="metodo-retiro" class="form-select" style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
-                    <option value="Efectivo">💵 Efectivo</option>
-                    <option value="Transferencia">🏦 Transferencia</option>
-                </select>
+            <div style="font-size: 13px; font-weight: 700; color: #f59e0b; text-align: center; margin-bottom: 8px;">
+                $<span class="total-concepto" data-concepto="Gastos">0</span>
             </div>
+            <button class="btn-touch btn-success btn-block"
+                    onclick="RetirosModule.seleccionarConcepto('Gastos')"
+                    style="min-height: 40px;">
+                Seleccionar
+            </button>
         </div>
         
-        <!-- COLUMNA DERECHA: Monto, Notas y Botón -->
-        <div style="display: flex; flex-direction: column;">
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
-                <label class="form-label" style="margin-bottom: 0;">💰 Monto:</label>
-                <input type="number" 
-                       id="monto-retiro" 
-                       class="form-input form-input-amount"
-                       placeholder="0"
-                       min="0"
-                       step="1"
-                       style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+        <div class="item-card" 
+             data-concepto="Pago Instituto"
+             style="flex-direction: column; padding: 16px; min-height: 180px; cursor: pointer;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); text-align: center;">
+                🏫 Pago Instituto
             </div>
-            
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: var(--spacing-medium); align-items: center; margin-bottom: var(--spacing-large);">
-                <label class="form-label" style="margin-bottom: 0;">📝 Notas:</label>
-                <input type="text" 
-                       id="notas-retiro" 
-                       class="form-input" 
-                       placeholder="Detalles adicionales..."
-                       style="padding: var(--spacing-medium); font-size: var(--font-size-base);">
+            <div style="font-size: 11px; color: #6b7280; text-align: center; flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                Pagos institución
             </div>
-            
+            <div style="font-size: 13px; font-weight: 700; color: #f59e0b; text-align: center; margin-bottom: 8px;">
+                $<span class="total-concepto" data-concepto="Pago Instituto">0</span>
+            </div>
             <button class="btn-touch btn-success btn-block"
-                    onclick="RetirosModule.guardar()" 
-                    style="margin-top: auto;">
-                💾 GUARDAR RETIRO
+                    onclick="RetirosModule.seleccionarConcepto('Pago Instituto')"
+                    style="min-height: 40px;">
+                Seleccionar
+            </button>
+        </div>
+        
+        <div class="item-card" 
+             data-concepto="Pago Extra"
+             style="flex-direction: column; padding: 16px; min-height: 180px; cursor: pointer;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); text-align: center;">
+                💳 Pago Extra
+            </div>
+            <div style="font-size: 11px; color: #6b7280; text-align: center; flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                Pagos adicionales
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: #f59e0b; text-align: center; margin-bottom: 8px;">
+                $<span class="total-concepto" data-concepto="Pago Extra">0</span>
+            </div>
+            <button class="btn-touch btn-success btn-block"
+                    onclick="RetirosModule.seleccionarConcepto('Pago Extra')"
+                    style="min-height: 40px;">
+                Seleccionar
             </button>
         </div>
     </div>
 </div>
 
+<!-- PASO 2: Ingresar Retiro -->
+<div id="paso-2" class="hidden">
+    <!-- ENCABEZADO CON CONCEPTO SELECCIONADO -->
+    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="font-size: 18px; font-weight: bold; color: white;" id="concepto-seleccionado"></div>
+        </div>
+        <button onclick="RetirosModule.volverPaso1()" class="btn-touch btn-outline" style="background: white; color: #f59e0b; border: none;">
+            ◀ Cambiar
+        </button>
+    </div>
+    
+    <!-- FORMULARIO -->
+    <div class="form-section" style="background: white; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <!-- FILA 1: Fecha y Monto (2 columnas) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    📅 Fecha
+                </label>
+                <input type="date" 
+                       id="fecha-retiro" 
+                       class="form-input" 
+                       style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 500; height: 40px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    💰 Monto
+                </label>
+                <input type="number" 
+                       id="monto-retiro" 
+                       class="form-input" 
+                       placeholder="0"
+                       style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 500; height: 40px;"
+                       min="0"
+                       step="1">
+            </div>
+        </div>
+        
+        <!-- FILA 2: Método -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                💳 Método
+            </label>
+            <select id="metodo-retiro" 
+                    class="form-select" 
+                    style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; height: 40px;">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Transferencia">🏦 Transferencia</option>
+            </select>
+        </div>
+        
+        <!-- FILA 3: Notas + Botones (70/30 layout) -->
+        <div style="display: grid; grid-template-columns: 70% 30%; gap: 12px; align-items: flex-end;">
+            <div>
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                    📝 Notas (Opcional)
+                </label>
+                <textarea id="notas-retiro" 
+                          class="form-input"
+                          placeholder="Detalles adicionales..."
+                          style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; height: 40px; resize: none; font-family: inherit; box-sizing: border-box;">
+                </textarea>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: space-between; align-items: flex-end;">
+                <button class="btn-touch btn-secondary"
+                        onclick="RetirosModule.volverPaso1()"
+                        style="padding: 8px 12px; font-size: 13px; font-weight: 700; flex: 1; height: 40px;">
+                    ✕ CANCELAR
+                </button>
+                <button id="btn-guardar-retiro" 
+                        class="btn-touch btn-success"
+                        onclick="RetirosModule.guardar()"
+                        style="padding: 8px 12px; font-size: 13px; font-weight: 700; flex: 1; height: 40px;">
+                    ✅ GUARDAR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Historial de Retiros -->
-<div class="form-section-compact" style="background: white;">
-    <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: bold;">
+<div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+    <h3 style="font-size: 14px; margin-bottom: 16px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 8px;">
         📊 Últimos Retiros
     </h3>
     
-    <div id="lista-retiros" style="display: grid; gap: 8px;">
-        <div style="text-align: center; color: #9ca3af; padding: 18px;">
+    <div id="lista-retiros" style="display: grid; gap: 12px;">
+        <div style="text-align: center; color: #9ca3af; padding: 20px; font-size: 13px;">
             Cargando retiros...
         </div>
     </div>
 </div>
 
 <!-- MODAL: Editar Retiro -->
-<div id="modal-editar-retiro" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
-    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
-        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
+<div id="modal-editar-retiro" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; overflow-y: auto; padding: 20px; backdrop-filter: blur(2px);">
+    <div style="background: white; margin: auto; border-radius: 12px; padding: 28px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+        <h2 style="font-size: 18px; margin-bottom: 24px; text-align: center; color: #f59e0b; font-weight: 700;">
             ✏️ EDITAR RETIRO
         </h2>
         
-        <div class="form-group">
-            <label class="form-label">📋 Concepto:</label>
-            <select id="edit-concepto-retiro" class="form-select">
-                <option value="Gastos" selected>💼 Gastos</option>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📅 Fecha:</label>
+            <input type="date" 
+                   id="edit-fecha-retiro" 
+                   class="form-input"
+                   style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">💰 Monto:</label>
+            <input type="number" 
+                   id="edit-monto-retiro" 
+                   class="form-input"
+                   step="1" 
+                   min="0"
+                   style="width: 100%; padding: 12px; border: 2px solid #f59e0b; border-radius: 8px; font-size: 14px; font-weight: 600;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📋 Concepto:</label>
+            <select id="edit-concepto-retiro" 
+                    class="form-select"
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
+                <option value="Gastos">💼 Gastos</option>
                 <option value="Pago Instituto">🏫 Pago Instituto</option>
                 <option value="Pago Extra">💳 Pago Extra</option>
             </select>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">📅 Fecha:</label>
-            <input type="date" id="edit-fecha-retiro" class="form-input">
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">💰 Monto:</label>
-            <input type="number" id="edit-monto-retiro" class="form-input" step="1" min="0">
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">💳 Método:</label>
-            <select id="edit-metodo-retiro" class="form-select">
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">💳 Método:</label>
+            <select id="edit-metodo-retiro" 
+                    class="form-select"
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
                 <option value="Efectivo">💵 Efectivo</option>
                 <option value="Transferencia">🏦 Transferencia</option>
             </select>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">📝 Notas:</label>
-            <input type="text" id="edit-notas-retiro" class="form-input" placeholder="Detalles adicionales...">
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📝 Notas (Opcional):</label>
+            <textarea id="edit-notas-retiro" 
+                      class="form-input"
+                      placeholder="Agregar nota..."
+                      style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; min-height: 80px; resize: vertical; font-family: inherit;">
+            </textarea>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 130px; gap: 9px; margin-top: 18px;">
-            <button class="btn-touch btn-success" onclick="RetirosModule.guardarEdicion()" style="height: auto; padding: 12px;">
-                📋 GUARDAR CAMBIOS
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <button class="btn-touch btn-success" 
+                    onclick="RetirosModule.guardarEdicion()" 
+                    style="padding: 12px; font-weight: 700;">
+                💾 GUARDAR
             </button>
-            <button class="btn-touch btn-cancel" onclick="RetirosModule.cerrarModal()" style="height: auto; padding: 12px;">
-                ✕ Cancelar
+            <button class="btn-touch btn-secondary" 
+                    onclick="RetirosModule.cerrarModal()" 
+                    style="padding: 12px; font-weight: 700;">
+                ✕ CANCELAR
+            </button>
+            <button class="btn-touch btn-danger" 
+                    onclick="RetirosModule.borrarRetiro()"
+                    style="padding: 12px; font-weight: 700;">
+                🗑️ BORRAR
             </button>
         </div>
-        
-        <button class="btn-touch btn-danger-soft btn-block" onclick="RetirosModule.borrarRetiro()" style="margin-top: 12px;">
-            🗑️ BORRAR RETIRO
-        </button>
     </div>
 </div>
 
 <script>
 const RetirosModule = {
     retiroEnEdicion: null,
+    conceptoSeleccionado: null,
+    totalesPorConcepto: { 'Gastos': 0, 'Pago Instituto': 0, 'Pago Extra': 0 },
     
     init() {
         console.log('RetirosModule iniciado');
         // Cargar retiros al iniciar
         this.cargarRetiros();
+        this.actualizarTotalesEnTarjetas();
         
-        // Cargar fecha hoy
+        // Cargar fecha hoy en paso 2
+        const hoy = new Date().toISOString().split('T')[0];
+        if (document.getElementById('fecha-retiro')) {
+            document.getElementById('fecha-retiro').value = hoy;
+        }
+    },
+    
+    actualizarTotalesEnTarjetas() {
+        Object.keys(this.totalesPorConcepto).forEach(concepto => {
+            const span = document.querySelector(`.total-concepto[data-concepto="${concepto}"]`);
+            if (span) {
+                span.textContent = this.totalesPorConcepto[concepto];
+            }
+        });
+    },
+    
+    filtrar(termino) {
+        const texto = normalizarTexto(termino);
+        const items = document.querySelectorAll('.item-card[data-concepto]');
+        
+        items.forEach(item => {
+            const concepto = normalizarTexto(item.getAttribute('data-concepto'));
+            if (concepto.includes(texto)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    },
+    
+    seleccionarConcepto(concepto) {
+        this.conceptoSeleccionado = concepto;
+        document.getElementById('concepto-seleccionado').textContent = concepto;
+        document.getElementById('paso-1').classList.add('hidden');
+        document.getElementById('paso-2').classList.remove('hidden');
+        
+        // Limpiar formulario para nueva entrada
+        document.getElementById('monto-retiro').value = '';
+        document.getElementById('metodo-retiro').value = 'Efectivo';
+        document.getElementById('notas-retiro').value = '';
         const hoy = new Date().toISOString().split('T')[0];
         document.getElementById('fecha-retiro').value = hoy;
+    },
+    
+    volverPaso1() {
+        this.conceptoSeleccionado = null;
+        document.getElementById('paso-1').classList.remove('hidden');
+        document.getElementById('paso-2').classList.add('hidden');
+    },
+    
+    calcularTotalesPorConcepto(retiros) {
+        this.totalesPorConcepto = { 'Gastos': 0, 'Pago Instituto': 0, 'Pago Extra': 0 };
+        if (retiros && Array.isArray(retiros)) {
+            retiros.forEach(retiro => {
+                if (this.totalesPorConcepto.hasOwnProperty(retiro.concepto)) {
+                    this.totalesPorConcepto[retiro.concepto] += retiro.monto;
+                }
+            });
+        }
     },
     
     async cargarRetiros() {
@@ -162,6 +330,8 @@ const RetirosModule = {
             const lista = document.getElementById('lista-retiros');
             
             if (data.status === 'success' && data.retiros && data.retiros.length > 0) {
+                this.calcularTotalesPorConcepto(data.retiros);
+                this.actualizarTotalesEnTarjetas();
                 lista.innerHTML = '';
                 const fragment = document.createDocumentFragment();
                 
@@ -173,27 +343,36 @@ const RetirosModule = {
                     }
                     
                     const div = document.createElement('div');
-                    div.style.cssText = 'display: grid; grid-template-columns: 80px 80px 1fr 60px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
+                    div.style.cssText = 'display: grid; grid-template-columns: 70px 100px 1fr 80px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
                     div.onmouseover = function() { this.style.background='#fffbeb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
                     div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
                     div.onclick = () => RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
                     
                     div.innerHTML = `
-                        <span style="font-weight: 600; color: #374151;">${fechaFormato}</span>
-                        <span style="color: #f59e0b; font-weight: 700; text-align: right;">$${Math.floor(retiro.monto)}</span>
-                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${retiro.concepto}</div>
-                        <span style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 9px;">✏️ EDITAR</span>
+                        <span style="font-weight: 600; color: #374151; font-size: 12px;">${fechaFormato}</span>
+                        <span style="color: #f59e0b; font-weight: 700; text-align: left; font-size: 12px;">💰 $${Math.floor(retiro.monto)}</span>
+                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px;">${retiro.concepto}</div>
+                        <button class="btn-touch btn-primary" style="width: 100%; height: 32px; font-size: 11px;">✏️ EDITAR</button>
                     `;
+                    
+                    // Agregar onclick al botón específicamente
+                    const btnEditar = div.querySelector('button');
+                    btnEditar.onclick = (e) => {
+                        e.stopPropagation();
+                        RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
+                    };
                     fragment.appendChild(div);
                 });
                 
                 lista.appendChild(fragment);
             } else {
-                lista.innerHTML = '<div style="text-align: center; padding: 18px; color: #9ca3af;">No hay retiros registrados</div>';
+                this.calcularTotalesPorConcepto([]);
+                this.actualizarTotalesEnTarjetas();
+                lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin registros de retiros</div>';
             }
         } catch (error) {
             console.error('[RETIROS] Error:', error);
-            document.getElementById('lista-retiros').innerHTML = '<div style="text-align: center; padding: 18px; color: #ef4444;">Error al cargar</div>';
+            document.getElementById('lista-retiros').innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444; font-size: 12px;">Error al cargar</div>';
         }
     },
     
@@ -272,6 +451,7 @@ const RetirosModule = {
             if (data.status === 'success') {
                 this.cerrarModal();
                 await this.cargarRetiros();
+                this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
             }
@@ -308,6 +488,7 @@ const RetirosModule = {
             
             if (data.status === 'success') {
                 await this.cargarRetiros();
+                this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
             }
@@ -318,7 +499,7 @@ const RetirosModule = {
     },
     
     async guardar() {
-        const concepto = document.getElementById('concepto-retiro').value;
+        const concepto = this.conceptoSeleccionado;
         const fecha = document.getElementById('fecha-retiro').value;
         const monto = document.getElementById('monto-retiro').value;
         const metodo = document.getElementById('metodo-retiro').value;
@@ -347,14 +528,11 @@ const RetirosModule = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                // Limpiar form
-                document.getElementById('concepto-retiro').value = '';
-                document.getElementById('monto-retiro').value = '';
-                document.getElementById('notas-retiro').value = '';
-                document.getElementById('monto-retiro').focus();
-                
-                // Recargar grilla
+                mostrarAlerta('Retiro guardado', 'success');
+                // Limpiar y volver a Paso 1
+                this.volverPaso1();
                 await this.cargarRetiros();
+                this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
             }

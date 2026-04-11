@@ -22,18 +22,24 @@
         <div class="item-card" 
              data-nombre="{{ miembro.apellido }}, {{ miembro.nombre }}"
              data-miembro-id="{{ miembro.id }}"
-             style="flex-direction: column; padding: 16px; min-height: 240px; cursor: pointer;">
+             style="flex-direction: column; padding: 16px; min-height: 200px; cursor: pointer;">
             <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); line-height: 1.3; text-align: left;">
                 {{ miembro.apellido }}, {{ miembro.nombre }}
             </div>
             
             <!-- RESUMEN DE TOTALES -->
-            <div style="font-size: 11px; margin-bottom: 6px; display: flex; gap: 6px;" class="miembro-totales" data-miembro-id="{{ miembro.id }}">
+            <div style="font-size: 11px; margin-bottom: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;" class="miembro-totales" data-miembro-id="{{ miembro.id }}">
+                <div style="background: #dbeafe; padding: 6px 8px; border-radius: 4px; color: #1e40af; font-weight: 600; white-space: nowrap;">
+                    🎓 $<span class="total-matricula">0</span>
+                </div>
                 <div style="background: #dcfce7; padding: 6px 8px; border-radius: 4px; color: #166534; font-weight: 600; white-space: nowrap;">
                     📚 $<span class="total-cuota">0</span>
                 </div>
-                <div style="background: #dbeafe; padding: 6px 8px; border-radius: 4px; color: #1e40af; font-weight: 600; white-space: nowrap;">
-                    🎓 $<span class="total-matricula">0</span>
+                <div style="background: #fed7aa; padding: 6px 8px; border-radius: 4px; color: #b45309; font-weight: 600; white-space: nowrap;">
+                    📖 $<span class="total-libro">0</span>
+                </div>
+                <div style="background: #f3e8ff; padding: 6px 8px; border-radius: 4px; color: #a21caf; font-weight: 600; white-space: nowrap;">
+                    🎁 $<span class="total-donacion">0</span>
                 </div>
             </div>
             
@@ -56,12 +62,18 @@
     <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="font-size: 18px; font-weight: bold; color: white;" id="miembro-seleccionado"></div>
-            <div style="display: flex; gap: 12px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="background: rgba(52, 152, 219, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    🎓 <span id="total-matricula">$0</span>
+                </div>
                 <div style="background: rgba(39, 174, 96, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
                     📚 <span id="total-cuota">$0</span>
                 </div>
-                <div style="background: rgba(52, 152, 219, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
-                    🎓 <span id="total-matricula">$0</span>
+                <div style="background: rgba(217, 119, 6, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    📖 <span id="total-libro">$0</span>
+                </div>
+                <div style="background: rgba(162, 28, 175, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    🎁 <span id="total-donacion">$0</span>
                 </div>
             </div>
         </div>
@@ -245,6 +257,16 @@
 </div>
 
 <script>
+// Función para normalizar texto sin acentos
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
 const PagosModule = {
     miembroSeleccionado: null,
     pagoEnEdicion: null,
@@ -274,6 +296,8 @@ const PagosModule = {
                 if (data.status === 'success' && data.pagos) {
                     let totalCuota = 0;
                     let totalMatricula = 0;
+                    let totalLibro = 0;
+                    let totalDonacion = 0;
                     
                     data.pagos.forEach(pago => {
                         const monto = parseFloat(pago.monto) || 0;
@@ -281,6 +305,10 @@ const PagosModule = {
                         
                         if (tipo === 'matrícula' || tipo === 'matricula') {
                             totalMatricula += monto;
+                        } else if (tipo === 'libro') {
+                            totalLibro += monto;
+                        } else if (tipo === 'donación' || tipo === 'donacion') {
+                            totalDonacion += monto;
                         } else if (tipo === 'cuota' || tipo === 'cuota mensual' || tipo.includes('cuota')) {
                             totalCuota += monto;
                         }
@@ -289,12 +317,20 @@ const PagosModule = {
                     // Actualizar tarjeta
                     const totalCuotaEl = tarjeta.querySelector('.total-cuota');
                     const totalMatriculaEl = tarjeta.querySelector('.total-matricula');
+                    const totalLibroEl = tarjeta.querySelector('.total-libro');
+                    const totalDonacionEl = tarjeta.querySelector('.total-donacion');
                     
                     if (totalCuotaEl) {
                         totalCuotaEl.textContent = Math.floor(totalCuota).toLocaleString();
                     }
                     if (totalMatriculaEl) {
                         totalMatriculaEl.textContent = Math.floor(totalMatricula).toLocaleString();
+                    }
+                    if (totalLibroEl) {
+                        totalLibroEl.textContent = Math.floor(totalLibro).toLocaleString();
+                    }
+                    if (totalDonacionEl) {
+                        totalDonacionEl.textContent = Math.floor(totalDonacion).toLocaleString();
                     }
                 }
             })
@@ -307,10 +343,10 @@ const PagosModule = {
     
     filtrar(termino) {
         const items = document.querySelectorAll('#paso-1 .item-card');
-        const terminoLower = termino.toLowerCase();
+        const terminoNormalizado = normalizarTexto(termino);
         items.forEach(item => {
-            const nombre = item.getAttribute('data-nombre').toLowerCase();
-            item.style.display = nombre.includes(terminoLower) ? '' : 'none';
+            const nombre = normalizarTexto(item.getAttribute('data-nombre'));
+            item.style.display = nombre.includes(terminoNormalizado) ? '' : 'none';
         });
     },
     
@@ -432,6 +468,8 @@ const PagosModule = {
                 // Calcular totales por tipo de pago
                 let totalCuota = 0;
                 let totalMatricula = 0;
+                let totalLibro = 0;
+                let totalDonacion = 0;
                 
                 data.pagos.forEach(pago => {
                     const monto = parseFloat(pago.monto) || 0;
@@ -439,6 +477,10 @@ const PagosModule = {
                     
                     if (tipo === 'matrícula' || tipo === 'matricula') {
                         totalMatricula += monto;
+                    } else if (tipo === 'libro') {
+                        totalLibro += monto;
+                    } else if (tipo === 'donación' || tipo === 'donacion') {
+                        totalDonacion += monto;
                     } else if (tipo === 'cuota' || tipo === 'cuota mensual' || tipo.includes('cuota')) {
                         totalCuota += monto;
                     }
@@ -447,9 +489,13 @@ const PagosModule = {
                 // Actualizar elementos del resumen (en encabezado)
                 const elementTotalCuota = document.getElementById('total-cuota');
                 const elementTotalMatricula = document.getElementById('total-matricula');
+                const elementTotalLibro = document.getElementById('total-libro');
+                const elementTotalDonacion = document.getElementById('total-donacion');
                 
                 const totalFormattedCuota = `$${Math.floor(totalCuota).toLocaleString()}`;
                 const totalFormattedMatricula = `$${Math.floor(totalMatricula).toLocaleString()}`;
+                const totalFormattedLibro = `$${Math.floor(totalLibro).toLocaleString()}`;
+                const totalFormattedDonacion = `$${Math.floor(totalDonacion).toLocaleString()}`;
                 
                 if (elementTotalCuota) {
                     elementTotalCuota.textContent = totalFormattedCuota;
@@ -457,8 +503,14 @@ const PagosModule = {
                 if (elementTotalMatricula) {
                     elementTotalMatricula.textContent = totalFormattedMatricula;
                 }
+                if (elementTotalLibro) {
+                    elementTotalLibro.textContent = totalFormattedLibro;
+                }
+                if (elementTotalDonacion) {
+                    elementTotalDonacion.textContent = totalFormattedDonacion;
+                }
                 
-                console.log('[PAGOS] Totales calculados:', { totalCuota, totalMatricula });
+                console.log('[PAGOS] Totales calculados:', { totalCuota, totalMatricula, totalLibro, totalDonacion });
                 
                 const t3 = performance.now();
                 console.log(`[PAGOS] ✅ Renderizado en ${(t3-t2).toFixed(0)}ms (total ${(t3-t0).toFixed(0)}ms)`);
@@ -470,8 +522,8 @@ const PagosModule = {
                 // Resetear totales cuando no hay pagos
                 const elementTotalCuota = document.getElementById('total-cuota');
                 const elementTotalMatricula = document.getElementById('total-matricula');
-                const elementTotalCuotaHistorial = document.getElementById('total-cuota-historial');
-                const elementTotalMatriculaHistorial = document.getElementById('total-matricula-historial');
+                const elementTotalLibro = document.getElementById('total-libro');
+                const elementTotalDonacion = document.getElementById('total-donacion');
                 
                 if (elementTotalCuota) {
                     elementTotalCuota.textContent = '$0';
@@ -479,11 +531,11 @@ const PagosModule = {
                 if (elementTotalMatricula) {
                     elementTotalMatricula.textContent = '$0';
                 }
-                if (elementTotalCuotaHistorial) {
-                    elementTotalCuotaHistorial.textContent = '$0';
+                if (elementTotalLibro) {
+                    elementTotalLibro.textContent = '$0';
                 }
-                if (elementTotalMatriculaHistorial) {
-                    elementTotalMatriculaHistorial.textContent = '$0';
+                if (elementTotalDonacion) {
+                    elementTotalDonacion.textContent = '$0';
                 }
                 
                 console.log('[PAGOS] No hay pagos para mostrar');

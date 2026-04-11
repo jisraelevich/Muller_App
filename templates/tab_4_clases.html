@@ -6,89 +6,279 @@
 
 {% block content %}
 
-<h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
+<h2 style="font-size: 16px; margin-bottom: 18px; text-align: center;">
     📚 CALENDARIO DE CLASES 2026
 </h2>
 
+<div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center;">
+    <button onclick="ClasesModule.abrirModalNuevaClase()" class="btn-touch btn-success" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; height: 40px; white-space: nowrap; flex-shrink: 0;">
+        ➕ Nueva Clase
+    </button>
+    <div class="search-box" style="flex: 1; margin-bottom: 0; position: relative;">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Buscar clase..." 
+               onkeyup="ClasesModule.filtrarClases(this.value)"
+               style="height: 40px; padding: 8px 16px 8px 45px; margin: 0;">
+    </div>
+</div>
+
 <div class="grid-container">
     {% for clase in clases %}
-    <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 16px; text-align: center; min-height: 200px;" onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.nombre }}', '{{ clase.descripcion or '' }}', '{{ clase.modalidad }}', '{{ clase.estado }}')">
-        <div style="font-size: 32px; margin-bottom: 12px;">
+    <div class="item-card" style="cursor: pointer; flex-direction: column; padding: 12px; text-align: center; height: 200px; transition: all 0.3s ease; border: 2px solid transparent; position: relative; justify-content: space-between;" 
+         onclick="ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.nombre }}', '{{ clase.descripcion or '' }}', '{{ clase.modalidad }}', '{{ clase.estado }}', '{{ clase.hora_inicio or '' }}', {{ clase.orador_id if clase.orador_id else 'null' }}, '{{ clase.orador_nombre | default('') }}', '{{ clase.orador_apellido | default('') }}')"
+         onmouseover="this.style.borderColor='#3498db'; this.style.boxShadow='0 4px 12px rgba(52, 152, 219, 0.2)';"
+         onmouseout="this.style.borderColor='transparent'; this.style.boxShadow='none';">
+        
+        <!-- Ícono Estado -->
+        <div style="font-size: 32px; display: flex; align-items: center; justify-content: center; height: 35px; flex-shrink: 0;">
             {% if clase.estado == 'Realizada' %}
-                ✓
+                <span style="color: #10b981; text-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">✅</span>
             {% elif clase.estado == 'Cancelada' %}
-                ✕
+                <span style="color: #ef4444; text-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);">❌</span>
             {% else %}
-                📅
+                <span style="color: #3498db; text-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);">📅</span>
             {% endif %}
         </div>
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; line-height: 1.3;">{{ clase.nombre }}</div>
-        <div style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
-            {{ clase.fecha }}
-        </div>
-        <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
-            {% if clase.descripcion %}
+        
+        <!-- Nombre -->
+        <div style="font-weight: 700; font-size: 14px; line-height: 1.2; margin: 4px 0; flex-shrink: 0;">{{ clase.nombre }}</div>
+        
+        <!-- Orador/Descripción -->
+        <div style="font-size: 12px; font-weight: 600; color: #4b5563; margin: 3px 0; flex-shrink: 0;">
+            {% set orador_nombre = clase.orador_nombre|default('') %}
+            {% set orador_apellido = clase.orador_apellido|default('') %}
+            {% if orador_nombre or orador_apellido %}
+                {{ orador_nombre }}{% if orador_apellido %} {{ orador_apellido }}{% endif %}
+            {% elif clase.descripcion %}
                 {{ clase.descripcion }}
             {% else %}
-                Sin descripción
+                —
             {% endif %}
         </div>
-        <div style="font-size: 13px; color: #6b7280;">
+        
+        <!-- Modalidad -->
+        <div style="font-size: 11px; color: #6b7280; margin: 2px 0; flex-shrink: 0;">
             {% if clase.modalidad == 'Presencial' %}
                 🏫 Presencial
             {% else %}
                 💻 {{ clase.modalidad }}
             {% endif %}
         </div>
+        
+        <!-- Botón Editar con Fecha -->
+        <button class="btn-touch btn-primary" onclick="event.stopPropagation(); ClasesModule.editarClase({{ clase.id }}, '{{ clase.fecha }}', '{{ clase.nombre }}', '{{ clase.descripcion or '' }}', '{{ clase.modalidad }}', '{{ clase.estado }}', '{{ clase.hora_inicio or '' }}', {{ clase.orador_id if clase.orador_id else 'null' }}, '{{ clase.orador_nombre | default('') }}', '{{ clase.orador_apellido | default('') }}')" style="display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 8px; font-size: 11px; margin-top: 4px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ✏️ {{ clase.fecha }}
+        </button>
     </div>
     {% endfor %}
 </div>
 
-<!-- Modal de Edición -->
-<div id="modal-editar-clase" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
-    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
-        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
-            ✏️ EDITAR CLASE
-        </h2>
+<!-- Modal de Edición - Estilo Profesional -->
+<div id="modal-editar-clase" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; padding: 20px; justify-content: center; align-items: center; flex-direction: column;" onclick="if(event.target === this) ClasesModule.cerrarModal();">
+    <div onclick="event.stopPropagation();" style="background: white; border-radius: 12px; max-width: 550px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; animation: slideDown 0.3s ease;">
         
-        <div class="form-group">
-            <label class="form-label">Nombre:</label>
-            <input type="text" id="edit-tema" class="form-input" readonly>
+        <!-- Header con Gradiente -->
+        <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding: 12px; color: white; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">✏️</span>
+            <div>
+                <h2 style="font-size: 14px; font-weight: 600; margin: 0;">Editar Clase</h2>
+                <p style="font-size: 10px; opacity: 0.85; margin: 1px 0 0 0;">Modifica los detalles</p>
+            </div>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">Descripción:</label>
-            <input type="text" id="edit-orador" class="form-input" readonly>
+        <!-- Contenido del Formulario -->
+        <div style="padding: 12px;">
+            <!-- Nombre -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📚 Nombre
+                </label>
+                <input type="text" id="edit-tema" class="form-input" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+            </div>
+            
+            <!-- Descripción -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📝 Descripción
+                </label>
+                <input type="text" id="edit-orador" class="form-input" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+            </div>
+            
+            <!-- Fila 1: Fecha y Hora -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <!-- Fecha -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📅 Fecha
+                    </label>
+                    <input type="date" id="edit-fecha" class="form-input" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+                </div>
+                
+                <!-- Hora Inicio -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ⏰ Hora
+                    </label>
+                    <input type="time" id="edit-hora" class="form-input" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+                </div>
+            </div>
+            
+            <!-- Orador -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    👤 Orador
+                </label>
+                <select id="edit-orador-select" class="form-select" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%; cursor: pointer;">
+                    <option value="">-- Sin Orador --</option>
+                </select>
+            </div>
+            
+            <!-- Fila 2: Modalidad y Estado -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <!-- Modalidad -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📍 Modalidad
+                    </label>
+                    <select id="edit-modalidad" class="form-select" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%; cursor: pointer;">
+                        <option value="Presencial">🏫 Presencial</option>
+                        <option value="Meet">💻 Meet</option>
+                    </select>
+                </div>
+                
+                <!-- Estado -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📊 Estado
+                    </label>
+                    <select id="edit-estado" class="form-select" style="background-color: white; border: 1.5px solid #3498db; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%; cursor: pointer;">
+                        <option value="Programada">📅 Programada</option>
+                        <option value="Realizada">✅ Realizada</option>
+                        <option value="Cancelada">❌ Cancelada</option>
+                    </select>
+                </div>
+            </div>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">Fecha:</label>
-            <input type="text" id="edit-fecha" class="form-input" readonly>
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">📋 Modalidad:</label>
-            <select id="edit-modalidad" class="form-select">
-                <option value="Presencial">🏫 Presencial</option>
-                <option value="Meet">💻 Meet</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">📊 Estado:</label>
-            <select id="edit-estado" class="form-select">
-                <option value="Programada">Programada (⏱)</option>
-                <option value="Realizada">Realizada (✓)</option>
-                <option value="Cancelada">Cancelada (✕)</option>
-            </select>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
-            <button class="btn-touch btn-success" onclick="ClasesModule.guardarCambios()" style="height: auto; padding: 12px;">
-                💾 GUARDAR
+        <!-- Botones -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 12px 12px 12px; border-top: 1px solid #e5e7eb;">
+            <button class="btn-touch" onclick="ClasesModule.eliminarClase()" style="height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 12px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                🗑️ Eliminar
             </button>
-            <button class="btn-touch btn-cancel" onclick="ClasesModule.cerrarModal()" style="height: auto; padding: 12px;">
-                ✕ CANCELAR
+            <button class="btn-touch btn-success" onclick="ClasesModule.guardarCambios()" style="height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 12px;">
+                💾 Guardar
+            </button>
+            <button class="btn-touch btn-cancel" onclick="ClasesModule.cerrarModal()" style="height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 12px;">
+                ✕ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#modal-editar-clase[style*="display: flex"],
+#modal-nueva-clase[style*="display: flex"] {
+    display: flex !important;
+}
+
+#modal-editar-clase,
+#modal-nueva-clase {
+    display: none !important;
+}
+</style>
+
+<!-- Modal para Nueva Clase -->
+<div id="modal-nueva-clase" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto; align-items: center; justify-content: center; padding: 20px; flex-direction: column;">
+    <div onclick="event.stopPropagation();" style="background: white; border-radius: 12px; max-width: 550px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; animation: slideDown 0.3s ease;">
+        
+        <!-- Header con Gradiente Verde -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 12px; color: white; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">➕</span>
+            <div>
+                <h2 style="font-size: 14px; font-weight: 600; margin: 0;">Nueva Clase</h2>
+                <p style="font-size: 10px; opacity: 0.9; margin: 2px 0 0 0;">Agrega una nueva clase al calendario</p>
+            </div>
+        </div>
+        
+        <!-- Contenido del Formulario -->
+        <div style="padding: 12px;">
+            <!-- Nombre -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📚 Nombre de la Clase
+                </label>
+                <input type="text" id="new-tema" class="form-input" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;" placeholder="Ej: Clase de Biblia">
+            </div>
+            
+            <!-- Descripción -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📝 Descripción
+                </label>
+                <input type="text" id="new-descripcion" class="form-input" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;" placeholder="Ej: Estudio del libro de Mateo">
+            </div>
+            
+            <!-- Fila 1: Fecha y Hora -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <!-- Fecha -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📅 Fecha
+                    </label>
+                    <input type="date" id="new-fecha" class="form-input" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+                </div>
+                
+                <!-- Hora Inicio -->
+                <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ⏰ Hora de Inicio
+                    </label>
+                    <input type="time" id="new-hora" class="form-input" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%;">
+                </div>
+            </div>
+            
+            <!-- Orador -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    👤 Orador
+                </label>
+                <select id="new-orador" class="form-select" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%; cursor: pointer;">
+                    <option value="">-- Sin Orador --</option>
+                </select>
+            </div>
+            
+            <!-- Fila 2: Modalidad -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📍 Modalidad
+                </label>
+                <select id="new-modalidad" class="form-select" style="background-color: white; border: 1.5px solid #10b981; padding: 8px 10px; border-radius: 6px; font-size: 13px; width: 100%; cursor: pointer;">
+                    <option value="Presencial">🏫 Presencial</option>
+                    <option value="Meet">💻 Meet</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Botones -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px 12px 12px; border-top: 1px solid #e5e7eb;">
+            <button class="btn-touch btn-success" onclick="ClasesModule.guardarNuevaClase()" style="height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 12px;">
+                💾 Guardar
+            </button>
+            <button class="btn-touch btn-cancel" onclick="ClasesModule.cerrarModalNuevaClase()" style="height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 12px;">
+                ✕ Cancelar
             </button>
         </div>
     </div>
@@ -99,19 +289,257 @@
 </div>
 
 <script>
+// Función para normalizar texto sin acentos
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
 const ClasesModule = {
     claseActual: null,
     
-    editarClase(id, fecha, tema, orador, modalidad, estado) {
-        this.claseActual = { id, fecha, tema, orador, modalidad, estado };
+    abrirModalNuevaClase() {
+        console.log('🔵 abrirModalNuevaClase() - Iniciando...');
+        try {
+            const modal = document.getElementById('modal-nueva-clase');
+            console.log('Modal encontrado:', modal);
+            
+            document.getElementById('new-tema').value = '';
+            document.getElementById('new-descripcion').value = '';
+            document.getElementById('new-fecha').value = '';
+            document.getElementById('new-hora').value = '';
+            document.getElementById('new-modalidad').value = 'Presencial';
+            document.getElementById('new-orador').value = '';
+            this.cargarOradores('new-orador');
+            
+            modal.style.display = 'flex';
+            console.log('✅ Modal mostrado. Display =', modal.style.display);
+        } catch (e) {
+            console.error('❌ Error en abrirModalNuevaClase():', e);
+        }
+    },
+    
+    cerrarModalNuevaClase() {
+        document.getElementById('modal-nueva-clase').style.display = 'none';
+    },
+    
+    async cargarOradores(selectId = 'edit-orador-select', orador_id_a_seleccionar = null, nombre_orador_a_buscar = '') {
+        try {
+            const select = document.getElementById(selectId);
+            if (!select) {
+                console.warn('Select no encontrado:', selectId);
+                return;
+            }
+            
+            const response = await fetch('/api/oradores/all');
+            if (!response.ok) {
+                console.error('Error al obtener oradores:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            // Normalizar entrada
+            const id_buscar = (orador_id_a_seleccionar && orador_id_a_seleccionar !== 'null') ? parseInt(orador_id_a_seleccionar) : null;
+            const nombre_buscar = (nombre_orador_a_buscar || '').toLowerCase().trim();
+            
+            console.log('cargarOradores - selectId:', selectId, 'orador_id:', id_buscar, 'nombre:', nombre_buscar);
+            
+            if (data.status !== 'success' || !data.data) {
+                console.warn('Respuesta inválida de API oradores:', data);
+                return;
+            }
+            
+            select.innerHTML = '<option value="">-- Sin Orador --</option>';
+            
+            let oradorSeleccionado = null;
+            
+            data.data.forEach(orador => {
+                try {
+                    const nombre_completo = `${orador.nombre || ''}${orador.apellido ? ' ' + orador.apellido : ''}`.trim();
+                    const option = document.createElement('option');
+                    option.value = orador.id;
+                    option.textContent = nombre_completo;
+                    select.appendChild(option);
+                    
+                    // Intenta match por ID primero
+                    if (id_buscar && orador.id == id_buscar) {
+                        oradorSeleccionado = orador.id;
+                        console.log('Match por ID encontrado:', orador.id, nombre_completo);
+                    }
+                    
+                    // Si no hay ID match, busca por nombre/apellido
+                    if (!oradorSeleccionado && nombre_buscar) {
+                        const apellido = (orador.apellido || '').toLowerCase();
+                        const nombre = (orador.nombre || '').toLowerCase();
+                        
+                        // Busca por apellido primero, luego por nombre
+                        if (apellido && nombre_buscar.includes(apellido)) {
+                            oradorSeleccionado = orador.id;
+                            console.log('Match por APELLIDO encontrado:', orador.id, nombre_completo);
+                        } else if (nombre && nombre_buscar.includes(nombre)) {
+                            oradorSeleccionado = orador.id;
+                            console.log('Match por NOMBRE encontrado:', orador.id, nombre_completo);
+                        }
+                    }
+                } catch (itemError) {
+                    console.error('Error procesando orador:', orador, itemError);
+                }
+            });
+            
+            // Seleccionar el orador encontrado
+            if (oradorSeleccionado !== null) {
+                select.value = oradorSeleccionado;
+                console.log('Orador SELECCIONADO en dropdown:', oradorSeleccionado);
+            } else {
+                console.log('No se encontró orador. Búsqueda: ID=' + id_buscar + ', nombre=' + nombre_buscar);
+                select.value = '';
+            }
+        } catch (error) {
+            console.error('Error cargando oradores:', error);
+            // No lanzar error - permitir que continúe aunque falle
+        }
+    },
+    
+    async eliminarClase() {
+        try {
+            // Validar que tememos una clase actual
+            if (!this.claseActual || !this.claseActual.id) {
+                console.error('No hay clase actual válida:', this.claseActual);
+                mostrarAlerta('Error: No hay clase seleccionada', 'error');
+                return;
+            }
+            
+            const claseID = this.claseActual.id;
+            const nombreClase = document.getElementById('edit-tema').value.trim() || `Clase ${claseID}`;
+            
+            // Confirmar antes de eliminar
+            if (!confirm(`¿Está seguro de que desea eliminar la clase "${nombreClase}"?\n\nEsta acción no se puede deshacer.`)) {
+                return;
+            }
+            
+            console.log('Eliminando clase:', claseID);
+            
+            const response = await fetch('/api/clases/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    id: claseID
+                })
+            });
+            
+            const data = await response.json();
+            console.log('Response from server:', data);
+            
+            if (data.status === 'success') {
+                console.log('Delete was successful');
+                
+                // Cerrar modal
+                this.cerrarModal();
+                
+                // Mostrar alerta de éxito
+                mostrarAlerta('✅ Clase eliminada correctamente', 'success');
+                
+                // Recargar página
+                setTimeout(() => location.reload(), 500);
+            } else {
+                console.log('Delete failed with message:', data.message);
+                mostrarAlerta('Error al eliminar: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Exception during delete:', error);
+            console.error('Stack:', error.stack);
+            mostrarAlerta('Error al eliminar: ' + error.message, 'error');
+        }
+    },
+    
+    async guardarNuevaClase() {
+        const nombre = document.getElementById('new-tema').value.trim();
+        const descripcion = document.getElementById('new-descripcion').value.trim();
+        const fecha = document.getElementById('new-fecha').value.trim();
+        const hora = document.getElementById('new-hora').value.trim();
+        const modalidad = document.getElementById('new-modalidad').value;
+        const orador_id = document.getElementById('new-orador').value;
         
-        document.getElementById('edit-tema').value = tema;
-        document.getElementById('edit-orador').value = orador;
-        document.getElementById('edit-fecha').value = fecha;
-        document.getElementById('edit-modalidad').value = modalidad;
-        document.getElementById('edit-estado').value = estado;
+        if (!nombre || !fecha || !hora) {
+            mostrarAlerta('⚠️ Por favor completa nombre, fecha y hora', 'warning');
+            return;
+        }
         
-        document.getElementById('modal-editar-clase').style.display = 'block';
+        try {
+            const response = await fetch('/api/clases/crear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    nombre: nombre,
+                    descripcion: descripcion,
+                    fecha: fecha,
+                    hora_inicio: hora,
+                    modalidad: modalidad,
+                    orador_id: orador_id || undefined
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                mostrarAlerta('✅ Clase creada correctamente', 'success');
+                this.cerrarModalNuevaClase();
+                // Recargar página para ver la nueva clase
+                setTimeout(() => location.reload(), 500);
+            } else {
+                mostrarAlerta('❌ Error: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarAlerta('❌ Error al guardar: ' + error.message, 'error');
+        }
+    },
+    
+    editarClase(id, fecha, tema, orador, modalidad, estado, hora, orador_id, orador_nombre, orador_apellido) {
+        console.log('🔵 editarClase() - Iniciando con ID:', id);
+        console.log('editarClase llamada con:', {id, fecha, tema, orador, modalidad, estado, hora, orador_id, orador_nombre, orador_apellido});
+        
+        try {
+            // Normalizar orador_id: convertir 'null' string a null, y números a int
+            const orador_id_normalizado = (orador_id && orador_id !== 'null') ? parseInt(orador_id) : null;
+            
+            // Normalizar nombres - asegurar que son strings válidos
+            const nombre_norm = (orador_nombre || '').trim();
+            const apellido_norm = (orador_apellido || '').trim();
+            const nombre_orador_completo = `${nombre_norm}${apellido_norm ? ' ' + apellido_norm : ''}`.trim();
+            
+            // Verificar que tenemos ID válido
+            if (!id) {
+                console.error('Error: ID de clase no válido', id);
+                mostrarAlerta('Error: ID de clase no válido', 'error');
+                return;
+            }
+            
+            this.claseActual = { id, fecha, tema, orador, modalidad, estado, hora, orador_id: orador_id_normalizado };
+            
+            document.getElementById('edit-tema').value = tema;
+            document.getElementById('edit-fecha').value = fecha;
+            document.getElementById('edit-hora').value = hora || '';
+            document.getElementById('edit-modalidad').value = modalidad;
+            document.getElementById('edit-estado').value = estado;
+            
+            console.log('editarClase - claseActual guardada:', this.claseActual, 'nombre completo orador:', nombre_orador_completo);
+            
+            // Cargar lista de oradores y seleccionar el actual (busca por nombre/apellido)
+            this.cargarOradores('edit-orador-select', orador_id_normalizado, nombre_orador_completo);
+            
+            const modal = document.getElementById('modal-editar-clase');
+            console.log('Modal encontrado:', modal);
+            modal.style.display = 'flex';
+            console.log('✅ Modal mostrado. Display =', modal.style.display);
+        } catch (e) {
+            console.error('❌ Error en editarClase():', e);
+        }
     },
     
     cerrarModal() {
@@ -120,27 +548,44 @@ const ClasesModule = {
     },
     
     async guardarCambios() {
-        if (!this.claseActual) {
-            console.error('No hay clase actual');
-            mostrarAlerta('Error: No hay clase seleccionada', 'error');
-            return;
-        }
-        
-        const modalidad = document.getElementById('edit-modalidad').value;
-        const estado = document.getElementById('edit-estado').value;
-        
-        console.log('Guardando cambios para clase:', this.claseActual.id);
-        console.log('Nuevo estado:', estado);
-        console.log('Nueva modalidad:', modalidad);
-        
         try {
+            // Validar que tememos una clase actual
+            if (!this.claseActual || !this.claseActual.id) {
+                console.error('No hay clase actual válida:', this.claseActual);
+                mostrarAlerta('Error: No hay clase seleccionada', 'error');
+                return;
+            }
+            
+            const claseID = this.claseActual.id;
+            const nombre = document.getElementById('edit-tema').value.trim();
+            const descripcion = document.getElementById('edit-orador').value.trim();
+            const fecha = document.getElementById('edit-fecha').value;
+            const modalidad = document.getElementById('edit-modalidad').value;
+            const estado = document.getElementById('edit-estado').value;
+            const hora_inicio = document.getElementById('edit-hora').value;
+            const orador_id = document.getElementById('edit-orador-select').value;
+            
+            console.log('Guardando cambios para clase:', claseID);
+            console.log('Nombre:', nombre);
+            console.log('Descripción:', descripcion);
+            console.log('Fecha:', fecha);
+            console.log('Nuevo estado:', estado);
+            console.log('Nueva modalidad:', modalidad);
+            console.log('Nueva hora:', hora_inicio);
+            console.log('Orador ID:', orador_id);
+            
             const response = await fetch('/api/clases/update', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    id: this.claseActual.id,
+                    id: claseID,
+                    nombre: nombre || undefined,
+                    descripcion: descripcion || undefined,
+                    fecha: fecha || undefined,
                     modalidad: modalidad,
-                    estado: estado
+                    estado: estado,
+                    hora_inicio: hora_inicio || undefined,
+                    orador_id: orador_id || undefined
                 })
             });
             
@@ -150,31 +595,32 @@ const ClasesModule = {
             if (data.status === 'success') {
                 console.log('Update was successful');
                 
-                // Guardar el estado actualizado ANTES de limpiar
-                const claseID = this.claseActual.id;
+                // Guardar datos actualizados
                 this.claseActual.estado = estado;
                 this.claseActual.modalidad = modalidad;
                 
-                // Cerrar modal (esto hace this.claseActual = null)
+                // Cerrar modal
                 this.cerrarModal();
                 
                 // Mostrar alerta de éxito
                 mostrarAlerta('✅ Clase actualizada correctamente', 'success');
                 
-                // Actualizar la clase visualmente con el ID guardado
-                this.actualizarClaseEnDOM(claseID, estado);
+                // Cerrar modal
+                this.cerrarModal();
             } else {
                 console.log('Update failed with message:', data.message);
                 mostrarAlerta('Error al guardar: ' + data.message, 'error');
             }
         } catch (error) {
             console.error('Exception during save:', error);
+            console.error('Stack:', error.stack);
             mostrarAlerta('Error al guardar: ' + error.message, 'error');
         }
     },
     
-    actualizarClaseEnDOM(claseID, nuevoEstado) {
+    actualizarClaseEnDOM(claseID, nuevoEstado, claseActualizada = {}) {
         console.log('Actualizando clase en DOM para ID:', claseID);
+        console.log('Datos actualizados:', claseActualizada);
         
         // Encontrar todas las tarjetas y buscar la que coincida con el ID
         const tarjetas = document.querySelectorAll('.item-card');
@@ -189,27 +635,67 @@ const ClasesModule = {
                 console.log(`Tarjeta encontrada en índice ${index}`);
                 encontrada = true;
                 
-                // Actualizar ícono
-                const iconDiv = tarjeta.querySelector('div:first-child');
+                // Actualizar ícono de estado - buscar el primer div que contiene el span con emoji
+                const divs = tarjeta.querySelectorAll('div');
+                let iconDiv = null;
+                for (let div of divs) {
+                    const span = div.querySelector('span');
+                    if (span && (span.textContent === '✅' || span.textContent === '❌' || span.textContent === '📅')) {
+                        iconDiv = span;
+                        break;
+                    }
+                }
+                
                 if (iconDiv) {
                     console.log('Actualizando ícono...');
                     if (nuevoEstado === 'Realizada') {
-                        iconDiv.innerHTML = '✓';
+                        iconDiv.innerHTML = '✅';
                         iconDiv.style.color = '#10b981';
-                        iconDiv.style.fontWeight = 'bold';
-                        console.log('Ícono actualizado a: ✓ (Realizada)');
+                        iconDiv.style.textShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
+                        console.log('Ícono actualizado a: ✅ (Realizada)');
                     } else if (nuevoEstado === 'Cancelada') {
-                        iconDiv.innerHTML = '✕';
+                        iconDiv.innerHTML = '❌';
                         iconDiv.style.color = '#ef4444';
-                        iconDiv.style.fontWeight = 'bold';
-                        console.log('Ícono actualizado a: ✕ (Cancelada)');
+                        iconDiv.style.textShadow = '0 2px 4px rgba(239, 68, 68, 0.3)';
+                        console.log('Ícono actualizado a: ❌ (Cancelada)');
                     } else {
                         iconDiv.innerHTML = '📅';
-                        iconDiv.style.color = 'inherit';
+                        iconDiv.style.color = '#3498db';
+                        iconDiv.style.textShadow = '0 2px 4px rgba(52, 152, 219, 0.3)';
                         console.log('Ícono actualizado a: 📅 (Programada)');
                     }
                 } else {
-                    console.warn('No se encontró div de ícono');
+                    console.warn('No se encontró ícono');
+                }
+                
+                // Actualizar nombre del orador si se cambió
+                if (claseActualizada && (claseActualizada.orador_nombre || claseActualizada.orador_apellido)) {
+                    console.log('Buscando div del orador...');
+                    const divs_internos = tarjeta.querySelectorAll('div');
+                    
+                    // Buscar el div que contiene el orador (es el 3er div después del icon y nombre)
+                    let oradorEncontrado = false;
+                    for (let i = 0; i < divs_internos.length; i++) {
+                        const div = divs_internos[i];
+                        const texto = div.textContent.trim();
+                        
+                        // Si es un div que está vacío o solo con markdown, puede ser el del orador
+                        if (div.children.length === 0 && texto && !texto.includes('🏫') && !texto.includes('💻') && !texto.includes('✏️')) {
+                            // Potencial div del orador - actualizar si parece que es
+                            if (!div.querySelector('button')) {
+                                // Actualizar el contenido
+                                const oradorText = `${claseActualizada.orador_nombre || ''}${claseActualizada.orador_apellido ? ' ' + claseActualizada.orador_apellido : ''}`.trim();
+                                div.textContent = oradorText || '—';
+                                console.log('Orador actualizado a:', oradorText);
+                                oradorEncontrado = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!oradorEncontrado) {
+                        console.warn('No se encontró div del orador para actualizar');
+                    }
                 }
             }
         });
@@ -219,6 +705,25 @@ const ClasesModule = {
         } else {
             console.log('Clase actualizada exitosamente en DOM');
         }
+    },
+    
+    filtrarClases(termo) {
+        const tarjetas = document.querySelectorAll('.item-card');
+        const filtroNormalizado = normalizarTexto(termo);
+        
+        tarjetas.forEach(tarjeta => {
+            // Obtener el contenido de texto de la tarjeta y normalizar
+            const nombreClase = normalizarTexto(tarjeta.querySelector('div:nth-child(2)') ? tarjeta.querySelector('div:nth-child(2)').textContent : '');
+            const fechaClase = normalizarTexto(tarjeta.querySelector('div:nth-child(3)') ? tarjeta.querySelector('div:nth-child(3)').textContent : '');
+            const descripcionClase = normalizarTexto(tarjeta.querySelector('div:nth-child(4)') ? tarjeta.querySelector('div:nth-child(4)').textContent : '');
+            
+            // Mostrar/ocultar según si coincide con el filtro normalizado
+            if (nombreClase.includes(filtroNormalizado) || fechaClase.includes(filtroNormalizado) || descripcionClase.includes(filtroNormalizado) || filtroNormalizado === '') {
+                tarjeta.style.display = 'block';
+            } else {
+                tarjeta.style.display = 'none';
+            }
+        });
     }
 };
 </script>

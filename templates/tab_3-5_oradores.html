@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}Oradores - Instituto Jorge Müller{% endblock %}
+{% block page_id %}oradores{% endblock %}
+{% block page_title %}🎤 ORADORES{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 16px; margin-bottom: 20px; text-align: center;">
+    🎤 LISTA DE ORADORES
+</h2>
+
+<!-- SECCIÓN DE ORADORES -->
+<div id="seccion-oradores" style="display: block;">
+    <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center;">
+        <button onclick="abrirModalNuevoOrador()" class="btn-touch btn-success" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; height: 40px; white-space: nowrap; flex-shrink: 0;">
+            ➕ Nuevo Orador
+        </button>
+        <div class="search-box" style="flex: 1; margin-bottom: 0; position: relative;">
+            <span class="search-icon">🔍</span>
+            <input type="text" 
+                   class="search-input" 
+                   placeholder="Buscar orador..." 
+                   onkeyup="filtrarTabla(this.value)"
+                   style="height: 40px; padding: 8px 16px 8px 45px; margin: 0;">
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid-oradores">
+        {% for orador in oradores %}
+        <div class="item-card" data-nombre="{{ orador.nombre }} {{ orador.apellido }}" style="flex-direction: column; padding: 16px; min-height: 200px;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); line-height: 1.3;">
+                {{ orador.nombre }}<br>{{ orador.apellido }}
+            </div>
+            
+            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 2px;">
+                📧 {{ orador.email or '-' }}
+            </div>
+            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 2px;">
+                📱 {{ orador.telefono or '-' }}
+            </div>
+            <div style="font-size: 13px; color: var(--color-text-light); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                {% if orador.especialidad %}
+                <span style="background: var(--color-info, #0ea5e9); color: white; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; display: inline-block;">
+                    {{ orador.especialidad }}
+                </span>
+                {% endif %}
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto;">
+                <button onclick="abrirModalEditar({{ orador.id }}, '{{ orador.nombre }}', '{{ orador.apellido }}', '{{ orador.email or '' }}', '{{ orador.telefono or '' }}', '{{ orador.especialidad or '' }}')" style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #3498db; border: 2px solid #3498db; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    ✏️ Editar
+                </button>
+                <button onclick="borrarOrador({{ orador.id }}, '{{ orador.nombre }} {{ orador.apellido }}')" style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #ef4444; border: 2px solid #fecaca; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    🗑️ Eliminar
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280;">
+        Total: {{ oradores|length }} oradores
+    </div>
+</div>
+
+<!-- Modal para crear nuevo orador -->
+<div id="modal-nuevo-orador" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 0; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
+        <!-- ENCABEZADO CON GRADIENTE -->
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px 24px; border-radius: 12px 12px 0 0; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
+            <h3 style="font-size: 18px; margin: 0; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px;">
+                ➕ Nuevo Orador
+            </h3>
+        </div>
+        
+        <!-- CONTENIDO DEL FORMULARIO -->
+        <div style="padding: 24px; flex: 1; overflow-y: auto;">
+            <!-- FILA 1: Nombre y Apellido (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Nombre
+                    </label>
+                    <input type="text" id="new-nombre" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Apellido
+                    </label>
+                    <input type="text" id="new-apellido" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 2: Email y Teléfono (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        ✉️ Email
+                    </label>
+                    <input type="email" id="new-email" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        📱 Teléfono
+                    </label>
+                    <input type="tel" id="new-telefono" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 3: Especialidad (full width) -->
+            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    🎯 Especialidad
+                </label>
+                <input type="text" id="new-especialidad" class="form-input" placeholder="Ej: Biblia, Doctrina, Música..." style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+            </div>
+        </div>
+        
+        <!-- BOTONES (footer) -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafafa; border-radius: 0 0 12px 12px;">
+            <button onclick="guardarNuevoOrador()" class="btn-touch btn-success" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✓ Crear
+            </button>
+            <button onclick="cerrarModalNuevoOrador()" class="btn-touch btn-secondary" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✕ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar orador -->
+<div id="modal-editar-orador" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 0; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
+        <!-- ENCABEZADO CON GRADIENTE -->
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px 24px; border-radius: 12px 12px 0 0; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
+            <h3 style="font-size: 18px; margin: 0; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px;">
+                ✏️ Editar Orador
+            </h3>
+        </div>
+        
+        <!-- CONTENIDO DEL FORMULARIO -->
+        <div style="padding: 24px; flex: 1; overflow-y: auto;">
+            <!-- FILA 1: Nombre y Apellido (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Nombre
+                    </label>
+                    <input type="text" id="edit-nombre" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        👤 Apellido
+                    </label>
+                    <input type="text" id="edit-apellido" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 2: Email y Teléfono (2 columnas) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        ✉️ Email
+                    </label>
+                    <input type="email" id="edit-email" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                        📱 Teléfono
+                    </label>
+                    <input type="tel" id="edit-telefono" class="form-input" style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <!-- FILA 3: Especialidad (full width) -->
+            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <label class="form-label" style="font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; display: block;">
+                    🎯 Especialidad
+                </label>
+                <input type="text" id="edit-especialidad" class="form-input" placeholder="Ej: Biblia, Doctrina, Música..." style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; box-sizing: border-box;">
+            </div>
+        </div>
+        
+        <!-- BOTONES (footer) -->
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #fafafa; border-radius: 0 0 12px 12px;">
+            <button onclick="guardarEdicionOrador()" class="btn-touch btn-success" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✓ Guardar
+            </button>
+            <button onclick="cerrarModalEditar()" class="btn-touch btn-secondary" style="padding: 12px; font-weight: 700; border-radius: 8px;">
+                ✕ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Asegurar que los modales están cerrados al cargar
+window.addEventListener('load', function() {
+    const modalNuevo = document.getElementById('modal-nuevo-orador');
+    const modalEditar = document.getElementById('modal-editar-orador');
+    if (modalNuevo) modalNuevo.style.display = 'none';
+    if (modalEditar) modalEditar.style.display = 'none';
+});
+
+let oradorActual = null;
+
+function abrirModalNuevoOrador() {
+    // Limpiar formulario
+    document.getElementById('new-nombre').value = '';
+    document.getElementById('new-apellido').value = '';
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-telefono').value = '';
+    document.getElementById('new-especialidad').value = '';
+    
+    document.getElementById('modal-nuevo-orador').style.display = 'flex';
+}
+
+function cerrarModalNuevoOrador() {
+    const modal = document.getElementById('modal-nuevo-orador');
+    modal.style.display = 'none';
+}
+
+function guardarNuevoOrador() {
+    const nombre = document.getElementById('new-nombre').value.trim();
+    const apellido = document.getElementById('new-apellido').value.trim();
+    const email = document.getElementById('new-email').value.trim();
+    const telefono = document.getElementById('new-telefono').value.trim();
+    const especialidad = document.getElementById('new-especialidad').value.trim();
+    
+    if (!nombre || !apellido) {
+        alert('Nombre y apellido son requeridos');
+        return;
+    }
+    
+    fetch('/api/oradores/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            nombre: nombre,
+            apellido: apellido,
+            email: email,
+            telefono: telefono,
+            especialidad: especialidad
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Orador agregado correctamente');
+            cerrarModalNuevoOrador();
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al agregar orador');
+    });
+}
+
+function abrirModalEditar(idOrador, nombre, apellido, email, telefono, especialidad) {
+    oradorActual = idOrador;
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-apellido').value = apellido;
+    document.getElementById('edit-email').value = email || '';
+    document.getElementById('edit-telefono').value = telefono || '';
+    document.getElementById('edit-especialidad').value = especialidad || '';
+    
+    document.getElementById('modal-editar-orador').style.display = 'flex';
+}
+
+function cerrarModalEditar() {
+    const modal = document.getElementById('modal-editar-orador');
+    modal.style.display = 'none';
+    oradorActual = null;
+}
+
+function guardarEdicionOrador() {
+    if (!oradorActual) {
+        alert('Error: No se identificó el orador');
+        return;
+    }
+    
+    const nombre = document.getElementById('edit-nombre').value.trim();
+    const apellido = document.getElementById('edit-apellido').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+    const telefono = document.getElementById('edit-telefono').value.trim();
+    const especialidad = document.getElementById('edit-especialidad').value.trim();
+    
+    if (!nombre || !apellido) {
+        alert('Nombre y apellido son requeridos');
+        return;
+    }
+    
+    fetch(`/api/oradores/update/${oradorActual}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            nombre: nombre,
+            apellido: apellido,
+            email: email,
+            telefono: telefono,
+            especialidad: especialidad
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Datos actualizados correctamente');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al guardar datos');
+    });
+}
+
+function borrarOrador(idOrador, nombreOrador) {
+    if (!confirm(`¿Eliminar a ${nombreOrador}?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    fetch(`/api/oradores/delete/${idOrador}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ Orador eliminado correctamente');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al eliminar orador');
+    });
+}
+
+// Cerrar modales al hacer click fuera
+document.addEventListener('click', function(event) {
+    const modalNuevo = document.getElementById('modal-nuevo-orador');
+    const modalEditar = document.getElementById('modal-editar-orador');
+    if (event.target === modalNuevo) {
+        cerrarModalNuevoOrador();
+    }
+    if (event.target === modalEditar) {
+        cerrarModalEditar();
+    }
+});
+
+// Función para normalizar texto sin acentos
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function filtrarTabla(termino) {
+    const cards = document.querySelectorAll('#grid-oradores .item-card');
+    const terminoNormalizado = normalizarTexto(termino);
+    
+    cards.forEach(card => {
+        const nombre = card.getAttribute('data-nombre');
+        if (nombre && normalizarTexto(nombre).includes(terminoNormalizado)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -122,13 +122,13 @@ class Database:
         with self.get_cursor() as cursor:
             if tipo_asistencia:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
                     "WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre LIMIT 200",
                     (tipo_asistencia, estado)
                 )
             else:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
                     "WHERE estado=%s ORDER BY nombre LIMIT 200",
                     (estado,)
                 )
@@ -138,7 +138,7 @@ class Database:
         """Get all inactive members"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
+                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
                 "WHERE estado='Inactivo' ORDER BY nombre LIMIT 200"
             )
             return cursor.fetchall()
@@ -157,13 +157,19 @@ class Database:
             cursor.execute("SELECT * FROM miembros WHERE id=%s", (miembro_id,))
             return cursor.fetchone()
     
-    def add_miembro(self, nombre, apellido, email, tipo_asistencia, matricula=None):
+    def add_miembro(self, nombre, apellido, email, tipo_asistencia, matricula=None, congregacion=None, localidad=None):
         """Add new member"""
+        # Usar valores por defecto si no se proporcionan
+        if not congregacion:
+            congregacion = 'ICE Fco Arias'
+        if not localidad:
+            localidad = 'Salta Capital'
+            
         with self.get_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO miembros (nombre, apellido, email, tipo_asistencia, matricula) "
-                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
-                (nombre, apellido, email, tipo_asistencia, matricula)
+                "INSERT INTO miembros (nombre, apellido, email, tipo_asistencia, matricula, congregacion, localidad) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (nombre, apellido, email, tipo_asistencia, matricula, congregacion, localidad)
             )
             result = cursor.fetchone()
             # Handle both tuple and dict returns
@@ -179,39 +185,43 @@ class Database:
                 (nuevo_tipo, miembro_id)
             )
     
-    def update_miembro_datos(self, miembro_id, nombre, apellido, email):
-        """Update member personal data (name, apellido, email)"""
+    def update_miembro_datos(self, miembro_id, nombre, apellido, email, congregacion=None, localidad=None, tipo_asistencia=None):
+        """Update member personal data (name, apellido, email, congregacion, localidad, tipo_asistencia)"""
+        with self.get_cursor() as cursor:
+            update_fields = ["nombre=%s", "apellido=%s", "email=%s"]
+            values = [nombre, apellido, email]
+            
+            if congregacion:
+                update_fields.append("congregacion=%s")
+                values.append(congregacion)
+            
+            if localidad:
+                update_fields.append("localidad=%s")
+                values.append(localidad)
+            
+            # SIEMPRE actualiza tipo_asistencia si se proporciona (no solo si es truthy)
+            if tipo_asistencia is not None:
+                update_fields.append("tipo_asistencia=%s")
+                values.append(tipo_asistencia)
+            
+            update_fields.append("updated_at=NOW()")
+            values.append(miembro_id)
+            
+            query = f"UPDATE miembros SET {', '.join(update_fields)} WHERE id=%s"
+            cursor.execute(query, values)
+    
+    def inactivar_miembro(self, miembro_id):
+        """Mark a member as Inactive (NEVER delete data)"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "UPDATE miembros SET nombre=%s, apellido=%s, email=%s, updated_at=NOW() WHERE id=%s",
-                (nombre, apellido, email, miembro_id)
+                "UPDATE miembros SET estado='Inactivo', updated_at=NOW() WHERE id=%s",
+                (miembro_id,)
             )
+            return {"status": "success", "message": "Miembro inactivado"}
     
     def delete_miembro(self, miembro_id):
-        """Disable a member (mark as Inactivo instead of deleting if has history)"""
-        with self.get_cursor() as cursor:
-            # Check if member has asistencia records
-            cursor.execute("SELECT COUNT(*) as cnt FROM asistencia WHERE miembro_id=%s", (miembro_id,))
-            result = cursor.fetchone()
-            asistencia_count = result.get('cnt') if hasattr(result, 'get') else result[0]
-            
-            # Check if member has pagos records
-            cursor.execute("SELECT COUNT(*) as cnt FROM pagos WHERE miembro_id=%s", (miembro_id,))
-            result = cursor.fetchone()
-            pagos_count = result.get('cnt') if hasattr(result, 'get') else result[0]
-            
-            # If no history, delete completely. Otherwise, mark as inactive
-            if asistencia_count == 0 and pagos_count == 0:
-                # Safe to delete - no history
-                cursor.execute("DELETE FROM miembros WHERE id=%s", (miembro_id,))
-                return {"deleted": True, "message": "Miembro eliminado completamente"}
-            else:
-                # Has history - mark as inactive (AQUÍ se setea a Inactivo)
-                cursor.execute(
-                    "UPDATE miembros SET estado='Inactivo', updated_at=NOW() WHERE id=%s",
-                    (miembro_id,)
-                )
-                return {"deleted": False, "message": "Miembro deshabilitado (tiene historial de asistencia/pagos)"}
+        """Alias for inactivar_miembro for backward compatibility"""
+        return self.inactivar_miembro(miembro_id)
     
     # ========================================================================
     # CLASES (Classes) Operations
@@ -230,22 +240,176 @@ class Database:
             return cursor.fetchone()
     
     @cache_result(timeout=300, cache_key='get_clases')  # Cache for 5 minutes
+    def asignar_oradores_automatico(self):
+        """Migración SQL puro: Busca oradores en descripción y asigna orador_id a clases
+        Retorna dict con resumen de la migración"""
+        resultado = {
+            'status': 'error',
+            'total_clases': 0,
+            'asignados': 0,
+            'no_encontrados': 0,
+            'detalles': []
+        }
+        
+        try:
+            with self.get_cursor() as cursor:
+                # 1. Contar clases sin orador
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM clases WHERE orador_id IS NULL OR orador_id = 0"
+                )
+                row = cursor.fetchone()
+                total_sin_orador = row['count'] if isinstance(row, dict) else row[0]
+                resultado['total_clases'] = total_sin_orador
+                
+                if total_sin_orador == 0:
+                    resultado['status'] = 'success'
+                    resultado['detalles'].append("✅ No hay clases sin orador que actualizar")
+                    print("✅ No hay clases sin orador que actualizar")
+                    return resultado
+                
+                print(f"🔍 Migrando {total_sin_orador} clases sin orador asignado...\n")
+                
+                # 2. UPDATE SQL: Buscar apellido en descripción, asignar orador_id
+                # Prioridad: 1) Apellido del orador en descripción, 2) Nombre del orador
+                update_apellido_sql = """
+                UPDATE clases c
+                SET orador_id = (
+                    SELECT id FROM oradores o
+                    WHERE LOWER(o.apellido) != ''
+                    AND LOWER(c.descripcion) LIKE CONCAT('%', LOWER(o.apellido), '%')
+                    ORDER BY LENGTH(o.apellido) DESC
+                    LIMIT 1
+                )
+                WHERE (c.orador_id IS NULL OR c.orador_id = 0)
+                AND EXISTS (
+                    SELECT 1 FROM oradores o
+                    WHERE LOWER(o.apellido) != ''
+                    AND LOWER(c.descripcion) LIKE CONCAT('%', LOWER(o.apellido), '%')
+                )
+                """
+                
+                cursor.execute(update_apellido_sql)
+                asignados_apellido = cursor.rowcount
+                print(f"✓ {asignados_apellido} clases asignadas por APELLIDO\n")
+                resultado['asignados'] += asignados_apellido
+                
+                # 3. UPDATE SQL: Buscar nombre en descripción
+                update_nombre_sql = """
+                UPDATE clases c
+                SET orador_id = (
+                    SELECT id FROM oradores o
+                    WHERE LOWER(o.nombre) != ''
+                    AND LOWER(c.descripcion) LIKE CONCAT('%', LOWER(o.nombre), '%')
+                    ORDER BY LENGTH(o.nombre) DESC
+                    LIMIT 1
+                )
+                WHERE (c.orador_id IS NULL OR c.orador_id = 0)
+                AND EXISTS (
+                    SELECT 1 FROM oradores o
+                    WHERE LOWER(o.nombre) != ''
+                    AND LOWER(c.descripcion) LIKE CONCAT('%', LOWER(o.nombre), '%')
+                )
+                """
+                
+                cursor.execute(update_nombre_sql)
+                asignados_nombre = cursor.rowcount
+                print(f"✓ {asignados_nombre} clases asignadas por NOMBRE\n")
+                resultado['asignados'] += asignados_nombre
+                
+                # 4. Reporte detallado - solo contar clases actualizadas
+                cursor.execute("""
+                    SELECT COUNT(*) as total
+                    FROM clases c
+                    WHERE c.orador_id IS NOT NULL AND c.orador_id != 0
+                """)
+                row = cursor.fetchone()
+                total_con_orador = row.get('total', 0) if isinstance(row, dict) else row[0]
+                
+                print(f"=== CLASES ACTUALIZADAS ({total_con_orador} total) ===\n")
+                
+                # 5. Contar clases que quedaron sin orador
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM clases WHERE orador_id IS NULL OR orador_id = 0"
+                )
+                row = cursor.fetchone()
+                no_encontrados = row['count'] if isinstance(row, dict) else row[0]
+                resultado['no_encontrados'] = no_encontrados
+                
+                resultado['status'] = 'success'
+                resumen = f"\n✅ MIGRACIÓN COMPLETADA:\n   • Total iniciales: {total_sin_orador}\n   • Asignadas: {resultado['asignados']}\n   • Sin asignar: {no_encontrados}"
+                print(resumen)
+                resultado['detalles'].append(resumen)
+                
+        except Exception as e:
+            print(f"❌ Error en migración SQL: {e}")
+            import traceback
+            traceback.print_exc()
+            resultado['detalles'].append(f"❌ Error: {str(e)}")
+        
+        return resultado
+
+    def actualizar_hora_clases(self, hora='21:00'):
+        """Actualizar todas las clases a una hora específica (default 21:00 = 9:00 PM)"""
+        resultado = {'status': 'error', 'actualizadas': 0}
+        
+        try:
+            with self.get_cursor() as cursor:
+                # Contar clases actuales
+                cursor.execute("SELECT COUNT(*) as count FROM clases")
+                row = cursor.fetchone()
+                total_clases = row['count'] if isinstance(row, dict) else row[0]
+                
+                # Actualizar todas a la hora especificada
+                cursor.execute(
+                    "UPDATE clases SET hora_inicio = %s WHERE 1=1",
+                    (hora,)
+                )
+                actualizadas = cursor.rowcount
+                
+                resultado['status'] = 'success'
+                resultado['actualizadas'] = actualizadas
+                resultado['total'] = total_clases
+                resultado['hora'] = hora
+                
+                print(f"✅ ACTUALIZACIÓN DE HORA COMPLETADA:")
+                print(f"   • Total clases: {total_clases}")
+                print(f"   • Actualizadas a {hora}: {actualizadas}")
+                
+        except Exception as e:
+            print(f"❌ Error actualizando hora de clases: {e}")
+            resultado['error'] = str(e)
+        
+        return resultado
+
     def get_clases(self):
         """Get all classes - cached for 5 minutes, limited to 100, ordered ascending by date"""
         with self.get_cursor() as cursor:
-            cursor.execute(
-                "SELECT id, nombre, descripcion, fecha, hora_inicio, modalidad, estado, link_meet "
-                "FROM clases ORDER BY fecha ASC LIMIT 100"
-            )
-            return cursor.fetchall()
+            try:
+                # Intenta con el JOIN si existe la columna orador_id
+                cursor.execute(
+                    "SELECT c.id, c.nombre, c.descripcion, c.fecha, c.hora_inicio, c.modalidad, c.estado, c.link_meet, "
+                    "c.orador_id, "
+                    "COALESCE(o.nombre, '') as orador_nombre, COALESCE(o.apellido, '') as orador_apellido "
+                    "FROM clases c "
+                    "LEFT JOIN oradores o ON c.orador_id = o.id "
+                    "ORDER BY c.fecha ASC LIMIT 100"
+                )
+                return cursor.fetchall()
+            except:
+                # Si falla (columna no existe), usa query simple
+                cursor.execute(
+                    "SELECT id, nombre, descripcion, fecha, hora_inicio, modalidad, estado, link_meet "
+                    "FROM clases ORDER BY fecha ASC LIMIT 100"
+                )
+                return cursor.fetchall()
     
-    def add_clase(self, nombre, fecha, hora_inicio, modalidad, link_meet=None):
+    def add_clase(self, nombre, fecha, hora_inicio, modalidad, link_meet=None, orador_id=None):
         """Add new class"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO clases (nombre, fecha, hora_inicio, modalidad, link_meet) "
-                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
-                (nombre, fecha, hora_inicio, modalidad, link_meet)
+                "INSERT INTO clases (nombre, fecha, hora_inicio, modalidad, link_meet, orador_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                (nombre, fecha, hora_inicio, modalidad, link_meet, orador_id)
             )
             result = cursor.fetchone()
             if isinstance(result, tuple):
@@ -433,6 +597,22 @@ class Database:
             if isinstance(result, tuple):
                 return result[0]
             return result.get('id') if hasattr(result, 'get') else result[0]
+    
+    def update_orador(self, id_orador, nombre, apellido='', email='', telefono='', especialidad=''):
+        """Update a speaker"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE oradores SET nombre=%s, apellido=%s, email=%s, telefono=%s, especialidad=%s "
+                "WHERE id=%s",
+                (nombre, apellido, email, telefono, especialidad, id_orador)
+            )
+            return cursor.rowcount > 0
+    
+    def delete_orador(self, id_orador):
+        """Delete a speaker"""
+        with self.get_cursor() as cursor:
+            cursor.execute("DELETE FROM oradores WHERE id=%s", (id_orador,))
+            return cursor.rowcount > 0
     
     # ========================================================================
     # REPORTS / QUERIES
