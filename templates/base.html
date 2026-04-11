@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2c3e50">
     <title>{% block title %}Instituto Jorge Müller{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260410b">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260411a">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
 <body data-page="{% block page_id %}{% endblock %}">
     
@@ -22,37 +23,37 @@
                 <ul class="sidebar-nav">
                     <li class="sidebar-nav-item">
                         <a href="/tab/1" class="sidebar-nav-link">
-                            <span>✔</span> <span>Asistencia</span>
+                            <span class="icon-wrapper"><i class="fas fa-clipboard-list"></i></span> <span>Asistencia</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/2" class="sidebar-nav-link">
-                            <span>$</span> <span>Pagos</span>
+                            <span class="icon-wrapper"><i class="fas fa-credit-card"></i></span> <span>Pagos</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/6" class="sidebar-nav-link">
-                            <span>✕</span> <span>Retiros</span>
+                            <span class="icon-wrapper"><i class="fas fa-piggy-bank"></i></span> <span>Retiros</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/3" class="sidebar-nav-link">
-                            <span>⊙</span> <span>Miembros</span>
+                            <span class="icon-wrapper"><i class="fas fa-people-group"></i></span> <span>Miembros</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/3-5" class="sidebar-nav-link">
-                            <span>🎤</span> <span>Oradores</span>
+                            <span class="icon-wrapper"><i class="fas fa-microphone"></i></span> <span>Oradores</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/4" class="sidebar-nav-link">
-                            <span>◆</span> <span>Clases</span>
+                            <span class="icon-wrapper"><i class="fas fa-book-open"></i></span> <span>Clases</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item">
                         <a href="/tab/5" class="sidebar-nav-link">
-                            <span>⊞</span> <span>Reportes</span>
+                            <span class="icon-wrapper"><i class="fas fa-chart-bar"></i></span> <span>Reportes</span>
                         </a>
                     </li>
                 </ul>
