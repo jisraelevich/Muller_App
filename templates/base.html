@@ -3,31 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2c3e50">
     <title>{% block title %}Instituto Jorge Müller{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260410b">
 </head>
 <body data-page="{% block page_id %}{% endblock %}">
     
-    <!-- HEADER -->
-    <header class="header">
-        <div class="header-content">
-            <div class="header-start">
-                <div class="header-actions">
-                    {% block header_actions %}
-                    {% endblock %}
-                </div>
-                <div>
-                    <h1 class="header-title">{{ config.instituto }}</h1>
-                    <p class="header-subtitle">{{ config.ciudad }} - Sistema de Gestión</p>
-                </div>
+    <div class="layout-wrapper">
+        
+        <!-- SIDEBAR MODERNO -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="MÜLLER" class="sidebar-logo">
+                <div class="sidebar-brand-text">MÜLLER</div>
             </div>
+            
+            <nav>
+                <ul class="sidebar-nav">
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/1" class="sidebar-nav-link">
+                            ✔ Asistencia
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/2" class="sidebar-nav-link">
+                            $ Pagos
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/3" class="sidebar-nav-link">
+                            ⊙ Miembros
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/4" class="sidebar-nav-link">
+                            ◆ Clases
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/5" class="sidebar-nav-link">
+                            ⊞ Reportes
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="/tab/6" class="sidebar-nav-link">
+                            ✕ Retiros
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <!-- CONTENT AREA -->
+        <div class="content-wrapper">
+            
+            <!-- HEADER MODERNO -->
+            <header class="header">
+                <div class="header-content">
+                    <div class="header-start">
+                        <div class="header-title-section">
+                            <h1 class="header-title">{% block page_title %}{{ config.instituto }}{% endblock %}</h1>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- CONTENIDO PRINCIPAL -->
+            <main class="container">
+                {% block content %}{% endblock %}
+            </main>
+            
         </div>
-    </header>
-    
-    <!-- CONTENIDO PRINCIPAL -->
-    <main class="container">
-        {% block content %}{% endblock %}
-    </main>
+        
+    </div>
     
     <!-- SCRIPTS -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

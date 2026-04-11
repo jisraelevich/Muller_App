@@ -1,66 +1,47 @@
 {% extends "base.html" %}
 
-{% block title %}Inicio - Instituto Jorge Müller{% endblock %}
+{% block title %}Dashboard - Instituto Jorge Müller{% endblock %}
 {% block page_id %}dashboard{% endblock %}
+{% block page_title %}DASHBOARD{% endblock %}
 
 {% block content %}
 
+<!-- HERO SECTION - CLASE DE HOY -->
 {% if clase_hoy %}
-<div class="clase-actual">
-    <div class="clase-titulo">📅 Clase de Hoy</div>
-    <div class="clase-info">
-        <strong>{{ clase_hoy.tema }}</strong> - {{ clase_hoy.orador }}
-        <br>
-        Modalidad: {{ clase_hoy.modalidad }}
+<div style="background: linear-gradient(135deg, #3b82f6 0%, #0052cc 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);">
+    <div style="font-size: 28px; font-weight: 700; margin-bottom: 16px;">📅 Clase de Hoy</div>
+    <div style="font-size: 16px; line-height: 1.8; opacity: 0.98;">
+        <strong>{{ clase_hoy.tema }}</strong><br>
+        👤&nbsp; <strong>Orador:</strong> {{ clase_hoy.orador }}<br>
+        🎯 <strong>Modalidad:</strong> {{ clase_hoy.modalidad }}
     </div>
 </div>
 {% endif %}
 
-<div class="dashboard-grid">
+<!-- ESTADÍSTICAS PRINCIPALES - KPI CARDS -->
+<h2 style="font-size: 20px; font-weight: 700; color: #0052cc; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.5px;">📊 Estadísticas</h2>
+
+<div class="dashboard-header-section">
     
-    <!-- ASISTENCIA -->
-    <div class="card-dashboard card-asistencia" onclick="navigateToTab(1)">
-        <div class="card-icon">✅</div>
-        <div class="card-title">ASISTENCIA</div>
-        <div class="card-description">Marcar quién vino hoy</div>
+    <!-- KPI: MIEMBROS -->
+    <div class="kpi-card">
+        <div class="kpi-label">👥 Miembros Activos</div>
+        <div class="kpi-value">{{ stats.miembros_regulares or 0 }}</div>
+        <div class="kpi-subtext">{{ stats.miembros_oyentes or 0 }} oyentes • {{ stats.miembros or 0 }} total</div>
     </div>
     
-    <!-- PAGOS -->
-    <div class="card-dashboard card-pagos" onclick="navigateToTab(2)">
-        <div class="card-icon">💰</div>
-        <div class="card-title">PAGOS</div>
-        <div class="card-stats">${{ "%.0f"|format(stats.pagos or 0) }}</div>
-        <div class="card-description">Registrar un pago</div>
+    <!-- KPI: CLASES -->
+    <div class="kpi-card">
+        <div class="kpi-label">📚 Clases Emitidas</div>
+        <div class="kpi-value">{{ stats.clases or 0 }}</div>
+        <div class="kpi-subtext">Clases realizadas en lo que va del año</div>
     </div>
     
-    <!-- MIEMBROS -->
-    <div class="card-dashboard card-miembros" onclick="navigateToTab(3)">
-        <div class="card-icon">👥</div>
-        <div class="card-title">MIEMBROS</div>
-        <div class="card-stats">{{ stats.miembros or 0 }}</div>
-        <div class="card-description">Ver lista completa</div>
-    </div>
-    
-    <!-- CLASES -->
-    <div class="card-dashboard card-clases" onclick="navigateToTab(4)">
-        <div class="card-icon">📚</div>
-        <div class="card-title">CLASES</div>
-        <div class="card-stats">{{ stats.clases or 0 }}</div>
-        <div class="card-description">Ver calendario</div>
-    </div>
-    
-    <!-- REPORTES -->
-    <div class="card-dashboard card-reportes" onclick="navigateToTab(5)">
-        <div class="card-icon">📊</div>
-        <div class="card-title">REPORTES</div>
-        <div class="card-description">Ver estadísticas</div>
-    </div>
-    
-    <!-- RETIROS -->
-    <div class="card-dashboard card-retiros" onclick="navigateToTab(6)">
-        <div class="card-icon">💸</div>
-        <div class="card-title">RETIROS</div>
-        <div class="card-description">Registrar retiro</div>
+    <!-- KPI: PAGOS -->
+    <div class="kpi-card">
+        <div class="kpi-label">💰 Pagos Recolectados</div>
+        <div class="kpi-value">${{ "%.0f"|format(stats.pagos or 0) }}</div>
+        <div class="kpi-subtext">Esperado: ${{ "%.0f"|format(stats.pagos_esperado or 0) }} ({{ stats.pagos_porcentaje or 0 }}%)</div>
     </div>
     
 </div>

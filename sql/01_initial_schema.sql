@@ -79,6 +79,7 @@ CREATE TABLE pagos (
     monto DECIMAL(10, 2) NOT NULL,
     fecha DATE NOT NULL,
     mes VARCHAR(20), -- 'Marzo', 'Abril', 'Mayo', etc.
+    tipo_pago VARCHAR(50) DEFAULT 'Cuota', -- 'Cuota', 'Matrícula', 'Libro', 'Donación'
     descripcion VARCHAR(255),
     metodo_pago VARCHAR(50), -- 'Efectivo', 'Transferencia', 'PayPal', etc.
     estado VARCHAR(50) DEFAULT 'Completado', -- 'Completado', 'Pendiente', 'Cancelado'

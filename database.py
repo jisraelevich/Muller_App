@@ -122,17 +122,34 @@ class Database:
         with self.get_cursor() as cursor:
             if tipo_asistencia:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
                     "WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre LIMIT 200",
                     (tipo_asistencia, estado)
                 )
             else:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, tipo_asistencia, estado FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
                     "WHERE estado=%s ORDER BY nombre LIMIT 200",
                     (estado,)
                 )
             return cursor.fetchall()
+    
+    def get_miembros_inactivos(self):
+        """Get all inactive members"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado FROM miembros "
+                "WHERE estado='Inactivo' ORDER BY nombre LIMIT 200"
+            )
+            return cursor.fetchall()
+    
+    def reactivar_miembro(self, miembro_id):
+        """Reactivate an inactive member"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE miembros SET estado='Activo', updated_at=NOW() WHERE id=%s AND estado='Inactivo'",
+                (miembro_id,)
+            )
     
     def get_miembro(self, miembro_id):
         """Get single member by ID"""
@@ -161,6 +178,40 @@ class Database:
                 "UPDATE miembros SET tipo_asistencia=%s, updated_at=NOW() WHERE id=%s",
                 (nuevo_tipo, miembro_id)
             )
+    
+    def update_miembro_datos(self, miembro_id, nombre, apellido, email):
+        """Update member personal data (name, apellido, email)"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE miembros SET nombre=%s, apellido=%s, email=%s, updated_at=NOW() WHERE id=%s",
+                (nombre, apellido, email, miembro_id)
+            )
+    
+    def delete_miembro(self, miembro_id):
+        """Disable a member (mark as Inactivo instead of deleting if has history)"""
+        with self.get_cursor() as cursor:
+            # Check if member has asistencia records
+            cursor.execute("SELECT COUNT(*) as cnt FROM asistencia WHERE miembro_id=%s", (miembro_id,))
+            result = cursor.fetchone()
+            asistencia_count = result.get('cnt') if hasattr(result, 'get') else result[0]
+            
+            # Check if member has pagos records
+            cursor.execute("SELECT COUNT(*) as cnt FROM pagos WHERE miembro_id=%s", (miembro_id,))
+            result = cursor.fetchone()
+            pagos_count = result.get('cnt') if hasattr(result, 'get') else result[0]
+            
+            # If no history, delete completely. Otherwise, mark as inactive
+            if asistencia_count == 0 and pagos_count == 0:
+                # Safe to delete - no history
+                cursor.execute("DELETE FROM miembros WHERE id=%s", (miembro_id,))
+                return {"deleted": True, "message": "Miembro eliminado completamente"}
+            else:
+                # Has history - mark as inactive (AQUÍ se setea a Inactivo)
+                cursor.execute(
+                    "UPDATE miembros SET estado='Inactivo', updated_at=NOW() WHERE id=%s",
+                    (miembro_id,)
+                )
+                return {"deleted": False, "message": "Miembro deshabilitado (tiene historial de asistencia/pagos)"}
     
     # ========================================================================
     # CLASES (Classes) Operations
@@ -236,22 +287,24 @@ class Database:
         """Get recent attendance records - limited to 500 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, m.nombre, m.apellido "
+                "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, "
+                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre, "
+                "c.nombre as clase_nombre "
                 "FROM asistencia a "
                 "JOIN miembros m ON a.miembro_id = m.id "
+                "LEFT JOIN clases c ON a.clase_id = c.id "
                 "ORDER BY a.fecha DESC, m.nombre LIMIT 500"
             )
             return cursor.fetchall()
     
     def add_asistencia(self, miembro_id, clase_id, fecha, asistio):
-        """Record attendance"""
+        """Record attendance - PostgreSQL compatible with update on duplicate"""
         with self.get_cursor() as cursor:
             cursor.execute(
                 "INSERT INTO asistencia (miembro_id, clase_id, fecha, asistio) "
                 "VALUES (%s, %s, %s, %s) "
-                "ON CONFLICT (miembro_id, clase_id, fecha) "
-                "DO UPDATE SET asistio=%s, updated_at=NOW()",
-                (miembro_id, clase_id, fecha, asistio, asistio)
+                "ON CONFLICT (miembro_id, clase_id, fecha) DO UPDATE SET asistio=EXCLUDED.asistio, updated_at=NOW()",
+                (miembro_id, clase_id, fecha, asistio)
             )
     
     # ========================================================================
@@ -262,7 +315,7 @@ class Database:
         """Get payments for a member - limited to last 20 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, miembro_id, monto, fecha, mes, descripcion AS tipo_pago, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
+                "SELECT id, miembro_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
                 (miembro_id,)
             )
             return cursor.fetchall()
@@ -271,18 +324,21 @@ class Database:
         """Get recent payments - limited to 300 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, miembro_id, monto, fecha, mes, descripcion, metodo_pago FROM pagos "
-                "ORDER BY fecha DESC LIMIT 300"
+                "SELECT p.id, p.miembro_id, p.monto, p.fecha, p.mes, p.descripcion, p.metodo_pago, "
+                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre "
+                "FROM pagos p "
+                "LEFT JOIN miembros m ON p.miembro_id = m.id "
+                "ORDER BY p.fecha DESC LIMIT 300"
             )
             return cursor.fetchall()
     
-    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo'):
+    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo', tipo_pago='Cuota'):
         """Add payment record"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago) "
-                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-                (miembro_id, monto, fecha, mes, descripcion, metodo_pago)
+                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago)
             )
             result = cursor.fetchone()
             if isinstance(result, tuple):
@@ -294,13 +350,13 @@ class Database:
         with self.get_cursor() as cursor:
             cursor.execute("DELETE FROM pagos WHERE id=%s", (pago_id,))
     
-    def update_pago(self, pago_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo'):
+    def update_pago(self, pago_id, monto, fecha, mes, tipo_pago=None, descripcion=None, metodo_pago='Efectivo'):
         """Update payment record"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, descripcion=%s, metodo_pago=%s, updated_at=NOW() "
+                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, tipo_pago=%s, descripcion=%s, metodo_pago=%s, updated_at=NOW() "
                 "WHERE id=%s",
-                (monto, fecha, mes, descripcion, metodo_pago, pago_id)
+                (monto, fecha, mes, tipo_pago, descripcion, metodo_pago, pago_id)
             )
     
     # ========================================================================

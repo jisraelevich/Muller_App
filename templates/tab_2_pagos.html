@@ -2,19 +2,12 @@
 
 {% block title %}Pagos - Instituto Jorge Müller{% endblock %}
 {% block page_id %}pagos{% endblock %}
-
-{% block header_actions %}
-<a href="/" class="btn-volver">◀ VOLVER</a>
-{% endblock %}
+{% block page_title %}$ PAGOS{% endblock %}
 
 {% block content %}
 
 <!-- PASO 1: Seleccionar Miembro -->
 <div id="paso-1">
-    <h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
-        1️⃣ ¿QUIÉN PAGÓ?
-    </h2>
-    
     <div class="search-box">
         <span class="search-icon">🔍</span>
         <input type="text" 
@@ -23,139 +16,231 @@
                onkeyup="PagosModule.filtrar(this.value)">
     </div>
     
-    <div class="item-list">
+    <div class="grid-container">
         {% for miembro in miembros %}
         {% if miembro.tipo_asistencia == 'Regular' %}
         <div class="item-card" 
              data-nombre="{{ miembro.apellido }}, {{ miembro.nombre }}"
-             onclick="PagosModule.seleccionarMiembro({{ miembro.id }}, '{{ miembro.apellido }}, {{ miembro.nombre }}')">
-            <div class="item-info">
-                <div class="item-name">{{ miembro.apellido }}, {{ miembro.nombre }}</div>
-                <div class="item-details">{{ miembro.congregacion or 'Sin congregación' }}</div>
+             data-miembro-id="{{ miembro.id }}"
+             style="flex-direction: column; padding: 16px; min-height: 240px; cursor: pointer;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: var(--color-text); line-height: 1.3; text-align: left;">
+                {{ miembro.apellido }}, {{ miembro.nombre }}
             </div>
-            <div style="font-size: 32px; color: #10b981;">▶</div>
+            
+            <!-- RESUMEN DE TOTALES -->
+            <div style="font-size: 11px; margin-bottom: 6px; display: flex; gap: 6px;" class="miembro-totales" data-miembro-id="{{ miembro.id }}">
+                <div style="background: #dcfce7; padding: 6px 8px; border-radius: 4px; color: #166534; font-weight: 600; white-space: nowrap;">
+                    📚 $<span class="total-cuota">0</span>
+                </div>
+                <div style="background: #dbeafe; padding: 6px 8px; border-radius: 4px; color: #1e40af; font-weight: 600; white-space: nowrap;">
+                    🎓 $<span class="total-matricula">0</span>
+                </div>
+            </div>
+            
+            <div style="flex-grow: 0.05;"></div>
+            
+            <button class="btn-touch btn-success btn-block"
+                    onclick="PagosModule.seleccionarMiembro({{ miembro.id }}, '{{ miembro.apellido }}, {{ miembro.nombre }}')"
+                    style="min-height: 40px;">
+                💰 Seleccionar
+            </button>
         </div>
         {% endif %}
         {% endfor %}
     </div>
 </div>
 
-<!-- PASO 2: Ingresar Pago (Compacto) -->
+<!-- PASO 2: Ingresar Pago -->
 <div id="paso-2" class="hidden">
-    <!-- ENCABEZADO: Nombre del alumno + Botón Cambiar -->
-    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 16px;">
-        <div>
-            <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">Pago de:</div>
-            <div style="font-size: 16px; font-weight: bold; color: #3b82f6;" id="miembro-seleccionado"></div>
+    <!-- ENCABEZADO CON TOTALES COMO LABELS -->
+    <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="font-size: 18px; font-weight: bold; color: white;" id="miembro-seleccionado"></div>
+            <div style="display: flex; gap: 12px;">
+                <div style="background: rgba(39, 174, 96, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    📚 <span id="total-cuota">$0</span>
+                </div>
+                <div style="background: rgba(52, 152, 219, 0.9); padding: 8px 14px; border-radius: 8px; color: white; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    🎓 <span id="total-matricula">$0</span>
+                </div>
+            </div>
         </div>
-        <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-secondary" style="min-width: 90px; min-height: 48px; font-size: 11px; padding: 4px;">
+        <button onclick="PagosModule.volverPaso1()" class="btn-touch btn-outline" style="background: white; color: #3498db; border: none;">
             ◀ Cambiar
         </button>
     </div>
     
-    <!-- FILA 1: Fecha, Tipo y Método en UNA LÍNEA -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📅 Fecha</label>
-            <input type="date" id="fecha-pago" class="form-input" style="font-size: 11px; padding: 6px;">
+    <!-- FORMULARIO -->
+    <div class="form-section" style="background: white; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <!-- FILA 1: Fecha y Monto (2 columnas) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    📅 Fecha
+                </label>
+                <input type="date" 
+                       id="fecha-pago" 
+                       class="form-input" 
+                       style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 500; height: 40px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    💵 Monto
+                </label>
+                <input type="number" 
+                       id="monto-pago" 
+                       class="form-input"
+                       placeholder="0"
+                       min="0"
+                       step="1"
+                       style="flex: 1; padding: 10px; font-size: 13px; font-weight: 600; border: 2px solid #27ae60; border-radius: 8px; height: 40px;">
+            </div>
         </div>
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">📋 Tipo</label>
-            <select id="tipo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
-                <option value="Cuota">Cuota</option>
-                <option value="Matrícula">Matrícula</option>
-                <option value="Libro">Libro</option>
-                <option value="Donación">Donación</option>
-            </select>
+        
+        <!-- FILA 2: Tipo y Método (2 columnas) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    📋 Tipo
+                </label>
+                <select id="tipo-pago" 
+                        class="form-select" 
+                        style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; height: 40px;">
+                    <option value="Cuota">Cuota Mensual</option>
+                    <option value="Matrícula">Matrícula</option>
+                    <option value="Libro">Libro</option>
+                    <option value="Donación">Donación</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
+                    💳 Método
+                </label>
+                <select id="metodo-pago" 
+                        class="form-select" 
+                        style="flex: 1; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; height: 40px;">
+                    <option value="Efectivo">💵 Efectivo</option>
+                    <option value="Transferencia">🏦 Transferencia</option>
+                </select>
+            </div>
         </div>
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💳 Pago</label>
-            <select id="metodo-pago" class="form-select" style="font-size: 11px; padding: 6px; cursor: pointer;">
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transfer.</option>
-            </select>
+        
+        <!-- FILA 3: Notas + Botones (70/30 layout) -->
+        <div style="display: grid; grid-template-columns: 70% 30%; gap: 12px; align-items: flex-end;">
+            <div>
+                <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                    📝 Notas (Opcional)
+                </label>
+                <textarea id="notas-pago" 
+                          class="form-input"
+                          placeholder="Nota..."
+                          style="width: 100%; padding: 10px; font-size: 13px; border: 2px solid #e5e7eb; border-radius: 8px; height: 40px; resize: none; font-family: inherit; box-sizing: border-box;">
+                </textarea>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: space-between; align-items: flex-end;">
+                <button class="btn-touch btn-secondary"
+                        onclick="PagosModule.volverPaso1()"
+                        style="padding: 8px 12px; font-size: 13px; font-weight: 700; flex: 1; height: 40px;">
+                    ✕ CANCELAR
+                </button>
+                <button id="btn-guardar-pago" 
+                        class="btn-touch btn-success"
+                        onclick="PagosModule.guardar()"
+                        style="padding: 8px 12px; font-size: 13px; font-weight: 700; flex: 1; height: 40px;">
+                    ✅ GUARDAR
+                </button>
+            </div>
         </div>
     </div>
     
-    <!-- FILA 2: Monto + Botón Guardar -->
-    <div style="display: grid; grid-template-columns: 120px auto 1fr; gap: 8px; margin-bottom: 12px; align-items: flex-end;">
-        <div>
-            <label style="font-size: 9px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px;">💵 Monto</label>
-            <input type="number" 
-                   id="monto-pago" 
-                   class="form-input" 
-                   placeholder="0"
-                   min="0"
-                   step="1"
-                   style="font-size: 14px; font-weight: bold; text-align: right; padding: 6px; width: 100%;">
-        </div>
-        <button id="btn-guardar-pago" 
-                class="btn-touch btn-success"
-                onclick="PagosModule.guardar()"
-                style="min-width: 75px; min-height: 48px; font-size: 12px; padding: 4px; white-space: nowrap;">
-            💰 GUARDAR
-        </button>
-        <div id="msg-exito" style="padding: 8px 12px; background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534; font-weight: 600; font-size: 11px; text-align: center; display: none; animation: slideIn 0.3s ease-out;">
-            ✅ ¡GUARDADO!
-        </div>
-    </div>
-    
-    <!-- PAGOS PREVIOS DEL MIEMBRO - GRILLA -->
-    <div id="pagos-previos-container" style="display: none; background: #f3f4f6; border-radius: 6px; padding: 10px; margin-top: 12px; border: 1px solid #d1d5db;">
-        <h4 style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #374151; margin-top: 0;">📝 ÚLTIMOS PAGOS</h4>
-        <div id="lista-pagos-previos" style="display: grid; gap: 6px; font-size: 10px;">
-            <!-- Se llena dinámicamente con grid items -->
+    <!-- HISTORIAL -->
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h3 style="font-size: 14px; margin-bottom: 16px; font-weight: 700; color: #3498db; display: flex; align-items: center; gap: 8px;">
+            📊 Histórico
+        </h3>
+        
+        <div id="lista-pagos-previos" style="display: grid; gap: 12px;">
+            <div style="text-align: center; color: #9ca3af; padding: 20px; font-size: 13px;">
+                Cargando pagos...
+            </div>
         </div>
     </div>
 </div>
 
 <!-- MODAL: Editar Pago -->
-<div id="modal-editar-pago" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
-    <div style="background: white; margin: 12px; border-radius: 7px; padding: 18px; max-width: 360px; margin-left: auto; margin-right: auto;">
-        <h2 style="font-size: 17px; margin-bottom: 18px; text-align: center;">
+<div id="modal-editar-pago" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; overflow-y: auto; padding: 20px; backdrop-filter: blur(2px);">
+    <div style="background: white; margin: auto; border-radius: 12px; padding: 28px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+        <h2 style="font-size: 18px; margin-bottom: 24px; text-align: center; color: #f39c12; font-weight: 700;">
             ✏️ EDITAR PAGO
         </h2>
         
-        <div class="form-group">
-            <label class="form-label">📅 Fecha:</label>
-            <input type="date" id="edit-fecha-pago" class="form-input">
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📅 Fecha:</label>
+            <input type="date" 
+                   id="edit-fecha-pago" 
+                   class="form-input"
+                   style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
         </div>
         
-        <div class="form-group">
-            <label class="form-label">💵 Monto:</label>
-            <input type="number" id="edit-monto-pago" class="form-input" step="1" min="0">
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">💵 Monto:</label>
+            <input type="number" 
+                   id="edit-monto-pago" 
+                   class="form-input"
+                   step="1" 
+                   min="0"
+                   style="width: 100%; padding: 12px; border: 2px solid #27ae60; border-radius: 8px; font-size: 14px; font-weight: 600;">
         </div>
         
-        <div class="form-group">
-            <label class="form-label">📋 Tipo:</label>
-            <select id="edit-tipo-pago" class="form-select" style="cursor: pointer;">
-                <option value="Cuota">Cuota</option>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📋 Tipo:</label>
+            <select id="edit-tipo-pago" 
+                    class="form-select"
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
+                <option value="Cuota">Cuota Mensual</option>
                 <option value="Matrícula">Matrícula</option>
                 <option value="Libro">Libro</option>
                 <option value="Donación">Donación</option>
             </select>
         </div>
         
-        <div class="form-group">
-            <label class="form-label">💳 Método:</label>
-            <select id="edit-metodo-pago" class="form-select" style="cursor: pointer;">
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">💳 Método:</label>
+            <select id="edit-metodo-pago" 
+                    class="form-select"
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Transferencia">🏦 Transferencia</option>
             </select>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 18px;">
-            <button class="btn-touch btn-success" onclick="PagosModule.guardarEdicion()" style="min-height: 48px;">
-                💾 GUARDAR
-            </button>
-            <button class="btn-touch btn-secondary" onclick="PagosModule.cerrarModal()" style="min-height: 48px;">
-                ✕ CANCELAR
-            </button>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="color: #2c3e50;">📝 Notas (Opcional):</label>
+            <textarea id="edit-notas-pago" 
+                      class="form-input"
+                      placeholder="Agregar nota..."
+                      style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; min-height: 80px; resize: vertical; font-family: inherit;">
+            </textarea>
         </div>
         
-        <button class="btn-touch btn-danger" onclick="PagosModule.borrarPago()" style="min-height: 48px; margin-top: 9px; width: 100%; background: #ef4444; color: white;">
-            🗑️ BORRAR PAGO
-        </button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <button class="btn-touch btn-success" 
+                    onclick="PagosModule.guardarEdicion()" 
+                    style="padding: 12px; font-weight: 700;">
+                💾 GUARDAR
+            </button>
+            <button class="btn-touch btn-secondary" 
+                    onclick="PagosModule.cerrarModal()" 
+                    style="padding: 12px; font-weight: 700;">
+                ✕ CANCELAR
+            </button>
+            <button class="btn-touch btn-danger" 
+                    onclick="PagosModule.borrarPago()"
+                    style="padding: 12px; font-weight: 700;">
+                🗑️ BORRAR
+            </button>
+        </div>
     </div>
 </div>
 
@@ -168,14 +253,64 @@ const PagosModule = {
         console.log('PagosModule iniciado');
         document.getElementById('paso-1').style.display = 'block';
         document.getElementById('paso-2').classList.add('hidden');
+        
+        // Cargar totales de pagos para cada miembro
+        this.cargarTotalesMiembros();
+    },
+    
+    async cargarTotalesMiembros() {
+        const tarjetas = document.querySelectorAll('.item-card[data-miembro-id]');
+        
+        // Hacer todas las llamadas en paralelo
+        const promesas = Array.from(tarjetas).map(tarjeta => {
+            const miembroId = tarjeta.getAttribute('data-miembro-id');
+            
+            return fetch(`/api/pagos/miembro/${miembroId}`, {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.pagos) {
+                    let totalCuota = 0;
+                    let totalMatricula = 0;
+                    
+                    data.pagos.forEach(pago => {
+                        const monto = parseFloat(pago.monto) || 0;
+                        const tipo = (pago.tipo_pago || '').toLowerCase();
+                        
+                        if (tipo === 'matrícula' || tipo === 'matricula') {
+                            totalMatricula += monto;
+                        } else if (tipo === 'cuota' || tipo === 'cuota mensual' || tipo.includes('cuota')) {
+                            totalCuota += monto;
+                        }
+                    });
+                    
+                    // Actualizar tarjeta
+                    const totalCuotaEl = tarjeta.querySelector('.total-cuota');
+                    const totalMatriculaEl = tarjeta.querySelector('.total-matricula');
+                    
+                    if (totalCuotaEl) {
+                        totalCuotaEl.textContent = Math.floor(totalCuota).toLocaleString();
+                    }
+                    if (totalMatriculaEl) {
+                        totalMatriculaEl.textContent = Math.floor(totalMatricula).toLocaleString();
+                    }
+                }
+            })
+            .catch(error => console.error(`Error cargando pagos de miembro ${miembroId}:`, error));
+        });
+        
+        // Esperar a que todas se completen
+        await Promise.all(promesas);
     },
     
     filtrar(termino) {
-        const items = document.querySelectorAll('.item-card');
+        const items = document.querySelectorAll('#paso-1 .item-card');
         const terminoLower = termino.toLowerCase();
         items.forEach(item => {
             const nombre = item.getAttribute('data-nombre').toLowerCase();
-            item.style.display = nombre.includes(terminoLower) ? 'flex' : 'none';
+            item.style.display = nombre.includes(terminoLower) ? '' : 'none';
         });
     },
     
@@ -186,10 +321,8 @@ const PagosModule = {
         document.getElementById('paso-2').classList.remove('hidden');
         
         // Mostrar loading inmediatamente
-        const container = document.getElementById('pagos-previos-container');
         const lista = document.getElementById('lista-pagos-previos');
         lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">⏳ Cargando historial...</div>';
-        container.style.display = 'block';
         
         // Resetear formulario
         const hoy = new Date().toISOString().split('T')[0];
@@ -211,7 +344,6 @@ const PagosModule = {
             const t0 = performance.now();
             
             // Obtener referencias a elementos
-            const container = document.getElementById('pagos-previos-container');
             const lista = document.getElementById('lista-pagos-previos');
             
             // LIMPIAR COMPLETAMENTE ANTES DE EMPEZAR
@@ -223,9 +355,6 @@ const PagosModule = {
             // Mostrar loading
             if (lista) {
                 lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">⏳ Cargando...</div>';
-            }
-            if (container) {
-                container.style.display = 'block';
             }
             
             console.log(`[PAGOS] Fetching pagos de miembro ${miembroId}`);
@@ -257,7 +386,14 @@ const PagosModule = {
                 // Renderizar usando fragment
                 const fragment = document.createDocumentFragment();
                 
-                data.pagos.slice(0, 12).forEach(pago => {
+                // Ordenar por fecha descendente (más recientes primero)
+                const pagosOrdenados = data.pagos.sort((a, b) => {
+                    const fechaA = new Date(a.fecha);
+                    const fechaB = new Date(b.fecha);
+                    return fechaB - fechaA; // Descendente
+                }).slice(0, 12);
+                
+                pagosOrdenados.forEach(pago => {
                     let fechaFormato = pago.fecha;
                     if (pago.fecha && typeof pago.fecha === 'string' && pago.fecha.includes('-')) {
                         const fechaParts = pago.fecha.split('T')[0].split('-');
@@ -265,17 +401,25 @@ const PagosModule = {
                     }
                     
                     const div = document.createElement('div');
-                    div.style.cssText = 'display: grid; grid-template-columns: 70px 60px 1fr 60px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
+                    div.style.cssText = 'display: grid; grid-template-columns: 60px 100px 80px 1fr 92px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; transition: all 0.2s;';
                     div.onmouseover = function() { this.style.background='#eff6ff'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
                     div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
-                    div.onclick = () => PagosModule.abrirEdicion(pago.id, pago.fecha, pago.monto, pago.tipo_pago, pago.metodo_pago);
                     
+                    const nota = pago.descripcion ? `📝 ${pago.descripcion}` : '-';
                     div.innerHTML = `
-                        <span style="font-weight: 600; color: #374151;">${fechaFormato}</span>
-                        <span style="color: #059669; font-weight: 700; text-align: right;">$${Math.floor(pago.monto)}</span>
-                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${pago.tipo_pago}</div>
-                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 3px; font-weight: 600; font-size: 9px;">✏️️ EDITAR</span>
+                        <span style="font-weight: 600; color: #374151; font-size: 12px;">${fechaFormato}</span>
+                        <span style="color: #059669; font-weight: 700; text-align: left; font-size: 12px;">💵 $${Math.floor(pago.monto)}</span>
+                        <span style="color: #6b7280; font-size: 12px; text-align: center; background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${pago.tipo_pago || 'Cuota'}</span>
+                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px;">${nota}</div>
+                        <button class="btn-touch btn-primary" style="width: 100%; height: 32px; font-size: 11px;">✏️ EDITAR</button>
                     `;
+                    
+                    // Agregar onclick al botón específicamente
+                    const btnEditar = div.querySelector('button');
+                    btnEditar.onclick = (e) => {
+                        e.stopPropagation();
+                        PagosModule.abrirEdicion(pago.id, pago.fecha, pago.monto, pago.tipo_pago, pago.metodo_pago, pago.descripcion);
+                    };
                     fragment.appendChild(div);
                 });
                 
@@ -285,12 +429,63 @@ const PagosModule = {
                     console.log('[PAGOS] Grid actualizado con', fragment.childNodes.length, 'elementos');
                 }
                 
+                // Calcular totales por tipo de pago
+                let totalCuota = 0;
+                let totalMatricula = 0;
+                
+                data.pagos.forEach(pago => {
+                    const monto = parseFloat(pago.monto) || 0;
+                    const tipo = (pago.tipo_pago || '').toLowerCase();
+                    
+                    if (tipo === 'matrícula' || tipo === 'matricula') {
+                        totalMatricula += monto;
+                    } else if (tipo === 'cuota' || tipo === 'cuota mensual' || tipo.includes('cuota')) {
+                        totalCuota += monto;
+                    }
+                });
+                
+                // Actualizar elementos del resumen (en encabezado)
+                const elementTotalCuota = document.getElementById('total-cuota');
+                const elementTotalMatricula = document.getElementById('total-matricula');
+                
+                const totalFormattedCuota = `$${Math.floor(totalCuota).toLocaleString()}`;
+                const totalFormattedMatricula = `$${Math.floor(totalMatricula).toLocaleString()}`;
+                
+                if (elementTotalCuota) {
+                    elementTotalCuota.textContent = totalFormattedCuota;
+                }
+                if (elementTotalMatricula) {
+                    elementTotalMatricula.textContent = totalFormattedMatricula;
+                }
+                
+                console.log('[PAGOS] Totales calculados:', { totalCuota, totalMatricula });
+                
                 const t3 = performance.now();
                 console.log(`[PAGOS] ✅ Renderizado en ${(t3-t2).toFixed(0)}ms (total ${(t3-t0).toFixed(0)}ms)`);
             } else {
                 if (lista) {
                     lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin histórico de pagos</div>';
                 }
+                
+                // Resetear totales cuando no hay pagos
+                const elementTotalCuota = document.getElementById('total-cuota');
+                const elementTotalMatricula = document.getElementById('total-matricula');
+                const elementTotalCuotaHistorial = document.getElementById('total-cuota-historial');
+                const elementTotalMatriculaHistorial = document.getElementById('total-matricula-historial');
+                
+                if (elementTotalCuota) {
+                    elementTotalCuota.textContent = '$0';
+                }
+                if (elementTotalMatricula) {
+                    elementTotalMatricula.textContent = '$0';
+                }
+                if (elementTotalCuotaHistorial) {
+                    elementTotalCuotaHistorial.textContent = '$0';
+                }
+                if (elementTotalMatriculaHistorial) {
+                    elementTotalMatriculaHistorial.textContent = '$0';
+                }
+                
                 console.log('[PAGOS] No hay pagos para mostrar');
             }
         } catch (error) {
@@ -302,8 +497,8 @@ const PagosModule = {
         }
     },
     
-    abrirEdicion(pagoId, fecha, monto, tipo, metodo) {
-        console.log('[PAGO EDIT] Abriendo edición de pago:', { pagoId, fecha, monto, tipo, metodo });
+    abrirEdicion(pagoId, fecha, monto, tipo, metodo, notas = '') {
+        console.log('[PAGO EDIT] Abriendo edición de pago:', { pagoId, fecha, monto, tipo, metodo, notas });
         console.log('[PAGO EDIT] miembroSeleccionado:', this.miembroSeleccionado);
         
         if (!this.miembroSeleccionado || !this.miembroSeleccionado.id) {
@@ -339,13 +534,18 @@ const PagosModule = {
         const inputMonto = document.getElementById('edit-monto-pago');
         const selectTipo = document.getElementById('edit-tipo-pago');
         const selectMetodo = document.getElementById('edit-metodo-pago');
+        const textareNotas = document.getElementById('edit-notas-pago');
+
         
-        console.log('[PAGO EDIT] Elementos del modal:', { inputFecha, inputMonto, selectTipo, selectMetodo });
+        console.log('[PAGO EDIT] Elementos del modal:', { inputFecha, inputMonto, selectTipo, selectMetodo, textareNotas });
         
         inputFecha.value = fechaProcesada;
         inputMonto.value = monto;
         selectTipo.value = tipo;
         selectMetodo.value = metodo;
+        if (textareNotas) {
+            textareNotas.value = notas || '';  // Cargar notas actuales o vacío
+        }
         
         console.log('[PAGO EDIT] Valores cargados:', {
             fecha: inputFecha.value,
@@ -366,10 +566,6 @@ const PagosModule = {
             lista.innerHTML = '';
             console.log('[PAGOS] Grilla limpiada completamente');
         }
-        const container = document.getElementById('pagos-previos-container');
-        if (container) {
-            container.style.display = 'none';
-        }
     },
     
     cerrarModal() {
@@ -377,6 +573,14 @@ const PagosModule = {
         if (modal) {
             modal.style.display = 'none';
         }
+        
+        // Limpiar todos los campos del modal
+        document.getElementById('edit-fecha-pago').value = '';
+        document.getElementById('edit-monto-pago').value = '';
+        document.getElementById('edit-tipo-pago').value = 'Cuota';
+        document.getElementById('edit-metodo-pago').value = 'Efectivo';
+        document.getElementById('edit-notas-pago').value = '';
+        
         this.pagoEnEdicion = null;
     },
     
@@ -393,8 +597,9 @@ const PagosModule = {
         const monto = document.getElementById('edit-monto-pago').value;
         const tipo = document.getElementById('edit-tipo-pago').value;
         const metodo = document.getElementById('edit-metodo-pago').value;
+        const notas = document.getElementById('edit-notas-pago').value.trim();
         
-        console.log('[PAGO EDIT] Valores del formulario:', { fecha, monto, tipo, metodo });
+        console.log('[PAGO EDIT] Valores del formulario:', { fecha, monto, tipo, metodo, notas });
         
         if (!fecha) {
             mostrarAlerta('Seleccione una fecha', 'error');
@@ -417,7 +622,8 @@ const PagosModule = {
                 fecha: fecha,
                 mes: new Date(fecha).getMonth() + 1,
                 tipo_pago: tipo,
-                metodo_pago: metodo
+                metodo_pago: metodo,
+                descripcion: notas
             };
             
             console.log(`[PAGO EDIT] Actualizando pago ${this.pagoEnEdicion.id}:`, payload);
@@ -435,11 +641,16 @@ const PagosModule = {
             console.log(`[PAGO EDIT] Respuesta del servidor:`, data);
             
             if (data.status === 'success') {
-                // Cerrar modal INMEDIATAMENTE
+                // Guardar miembro_id ANTES de cerrar modal
+                const miembroId = this.pagoEnEdicion.miembro_id;
+                
+                // Cerrar modal
                 this.cerrarModal();
                 
-                // Recargar grilla y esperar a que termine
-                await this.cargarPagosPrevios(this.pagoEnEdicion.miembro_id);
+                // Recargar grilla con el miembro_id guardado
+                await this.cargarPagosPrevios(miembroId);
+                
+                mostrarAlerta('✅ Pago actualizado correctamente', 'success');
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
             }
@@ -480,6 +691,25 @@ const PagosModule = {
     },
     
     volverPaso1() {
+        // Resetear totales
+        const elementTotalCuota = document.getElementById('total-cuota');
+        const elementTotalMatricula = document.getElementById('total-matricula');
+        const elementTotalCuotaHistorial = document.getElementById('total-cuota-historial');
+        const elementTotalMatriculaHistorial = document.getElementById('total-matricula-historial');
+        
+        if (elementTotalCuota) {
+            elementTotalCuota.textContent = '$0';
+        }
+        if (elementTotalMatricula) {
+            elementTotalMatricula.textContent = '$0';
+        }
+        if (elementTotalCuotaHistorial) {
+            elementTotalCuotaHistorial.textContent = '$0';
+        }
+        if (elementTotalMatriculaHistorial) {
+            elementTotalMatriculaHistorial.textContent = '$0';
+        }
+        
         document.getElementById('paso-1').style.display = 'block';
         document.getElementById('paso-2').classList.add('hidden');
         this.miembroSeleccionado = null;
@@ -518,13 +748,17 @@ const PagosModule = {
         }
         
         try {
+            const notasInput = document.getElementById('notas-pago');
+            const notas = notasInput ? notasInput.value.trim() : '';
+            
             const payload = {
                 miembro_id: this.miembroSeleccionado.id,
                 monto: parseInt(monto),
                 fecha: fecha,
                 mes: new Date(fecha).getMonth() + 1,
                 tipo_pago: tipo,
-                metodo_pago: metodo
+                metodo_pago: metodo,
+                descripcion: notas
             };
             
             const response = await fetch('/api/pagos/save', {
@@ -536,13 +770,11 @@ const PagosModule = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                // Mostrar éxito brevemente
-                const msgExito = document.getElementById('msg-exito');
-                msgExito.style.display = 'block';
-                setTimeout(() => { msgExito.style.display = 'none'; }, 1200);
+                mostrarAlerta('✅ Pago registrado correctamente', 'success');
                 
-                // Limpiar formulario
+                // Limpiar TODOS los campos del formulario
                 document.getElementById('monto-pago').value = '';
+                document.getElementById('notas-pago').value = '';
                 document.getElementById('monto-pago').focus();
                 
                 // Recargar grilla y esperar a que termine
@@ -582,6 +814,10 @@ function mostrarAlerta(mensaje, tipo) {
 
 document.addEventListener('DOMContentLoaded', function() {
     PagosModule.init();
+    
+    // Cargar fecha actual
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha-pago').value = hoy;
 });
 </script>
 

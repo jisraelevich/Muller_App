@@ -201,14 +201,21 @@ def index():
                 else:
                     end_date = date(date.today().year, date.today().month + 1, 1)
                 
-                pagos_mes = db.get_resumen_pagos(start_date, end_date)
-                total_pagos = sum(float(p.get('total_pagos') or 0) for p in pagos_mes)
+                # Pagos este mes
+                pagos_mes = db.get_pagos()
+                total_pagos = sum(float(p['monto']) for p in pagos_mes if p.get('monto'))
+                
+                # Total esperado (miembros regulares * cuota mensual)
+                total_esperado = len(miembros_regulares) * 100  # Asumiendo cuota de $100 por miembro
                 
                 stats = {
                     'miembros': len(miembros),
                     'miembros_regulares': len(miembros_regulares),
+                    'miembros_oyentes': len(miembros) - len(miembros_regulares),
                     'clases': len(clases),
-                    'pagos': total_pagos
+                    'pagos': total_pagos,
+                    'pagos_esperado': total_esperado,
+                    'pagos_porcentaje': int((total_pagos / total_esperado * 100) if total_esperado > 0 else 0)
                 }
             except Exception as e:
                 print(f"Error obteniendo datos: {e}")
@@ -218,8 +225,11 @@ def index():
             stats = {
                 'miembros': 0,
                 'miembros_regulares': 0,
+                'miembros_oyentes': 0,
                 'clases': 0,
                 'pagos': 0,
+                'pagos_esperado': 0,
+                'pagos_porcentaje': 0,
                 'info': '⚠️ Base de datos no disponible - Modo testing'
             }
         
@@ -371,6 +381,46 @@ def get_asistencia_fecha(fecha):
         print(f"Error: {e}")
         return jsonify({"status": "success", "asistencia": []})
 
+@app.route('/api/asistencia/obtain/<clase_id>', methods=['GET'])
+def get_asistencia_clase(clase_id):
+    """Obtener asistencia guardada para una clase específica de HOY - todos los registros"""
+    try:
+        from datetime import date
+        hoy = str(date.today())
+        
+        if db:
+            # Usar el objeto db existente que ya está conectado a PostgreSQL
+            with db.get_cursor() as cursor:
+                query = """
+                    SELECT a.miembro_id, a.asistio, a.fecha,
+                           m.nombre || ' ' || m.apellido as nombre_completo
+                    FROM asistencia a
+                    JOIN miembros m ON a.miembro_id = m.id
+                    WHERE a.clase_id = %s AND DATE(a.fecha) = %s
+                    ORDER BY m.nombre
+                """
+                cursor.execute(query, (int(clase_id), hoy))
+                registros = cursor.fetchall()
+            
+            # Convertir a formato esperado por el frontend
+            datos_procesados = [
+                {
+                    'id_miembro': registro['miembro_id'],
+                    'nombre_completo': registro['nombre_completo'],
+                    'presente': bool(registro['asistio'])  # True si asistio=1, False si asistio=0
+                }
+                for registro in registros
+            ]
+            
+            return jsonify({"status": "success", "data": datos_procesados})
+        else:
+            return jsonify({"status": "success", "data": []})
+    except Exception as e:
+        print(f"Error al obtener asistencia de clase {clase_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "data": [], "message": str(e)})
+
 # ========== API ENDPOINTS - CLASES ==========
 
 @app.route('/api/clases/todas', methods=['GET'])
@@ -484,13 +534,14 @@ def save_pago():
         datos = request.json
         print(f"[PAGOS] Datos recibidos: {datos}")
         
-        # Aceptar tanto 'miembro_id' como 'id_miembro' para compatibilidad
+        # Parámetros del pago
         miembro_id = datos.get('miembro_id') or datos.get('id_miembro')
         monto = float(datos.get('monto', 0))
         fecha = datos.get('fecha', str(date.today()))
         mes = datos.get('mes', '')
-        tipo_pago = datos.get('tipo_pago', 'Cuota')  # Campo adicional
+        tipo_pago = datos.get('tipo_pago', 'Cuota')  
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
+        descripcion = datos.get('descripcion', '')  # Notas del pago
         
         if not miembro_id:
             return jsonify({"status": "error", "message": "ID de miembro es requerido"}), 400
@@ -498,10 +549,10 @@ def save_pago():
         if monto <= 0:
             return jsonify({"status": "error", "message": "Monto debe ser mayor a 0"}), 400
         
-        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}")
+        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}, metodo={metodo_pago}, notas={descripcion}")
         
-        # Pasar tipo_pago como descripcion (para compatibilidad con schema actual)
-        pago_id = db.add_pago(miembro_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        # Pasar tipo_pago y descripción (notas) a la BD
+        pago_id = db.add_pago(miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago)
         
         print(f"[PAGOS] Pago guardado exitosamente con ID: {pago_id}")
         return jsonify({"status": "success", "message": "Pago registrado correctamente", "id": pago_id})
@@ -585,12 +636,13 @@ def update_pago(pago_id):
         monto = float(datos.get('monto'))
         fecha = datos.get('fecha', str(date.today()))
         mes = datos.get('mes', '')
-        tipo_pago = datos.get('tipo_pago', datos.get('descripcion', ''))  # Aceptar ambos nombres
+        tipo_pago = datos.get('tipo_pago', 'Cuota')
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
+        descripcion = datos.get('descripcion', '')  # Notas del pago
         
-        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}")
+        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}, notas={descripcion}")
         
-        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, metodo_pago)
+        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago)
         
         print(f"[PAGOS UPDATE] Pago {pago_id} actualizado exitosamente")
         return jsonify({"status": "success", "message": "Pago actualizado correctamente"})
@@ -802,6 +854,95 @@ def update_miembro():
         db.update_miembro_tipo(miembro_id, nuevo_tipo)
         
         return jsonify({"status": "success", "message": "Miembro actualizado correctamente"})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/update-datos', methods=['POST'])
+def update_miembro_datos():
+    """Actualizar datos personales de un miembro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        nombre = datos.get('nombre')
+        apellido = datos.get('apellido')
+        email = datos.get('email')
+        
+        if not miembro_id or not nombre or not apellido:
+            return jsonify({"status": "error", "message": "Faltan datos requeridos"}), 400
+        
+        db.update_miembro_datos(miembro_id, nombre, apellido, email)
+        
+        return jsonify({"status": "success", "message": "Datos actualizados correctamente"})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/delete', methods=['POST'])
+def delete_miembro():
+    """Eliminar o deshabilitar un miembro"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        
+        if not miembro_id:
+            return jsonify({"status": "error", "message": "ID de miembro requerido"}), 400
+        
+        result = db.delete_miembro(miembro_id)
+        
+        return jsonify({
+            "status": "success", 
+            "message": result.get("message"),
+            "deleted": result.get("deleted")
+        })
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/inactivos', methods=['GET'])
+def get_miembros_inactivos():
+    """Obtener todos los miembros inactivos"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        miembros = db.get_miembros_inactivos()
+        return jsonify({"status": "success", "data": miembros})
+    except DatabaseError as e:
+        return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/miembros/reactivar', methods=['POST'])
+def reactivar_miembro():
+    """Reactivar un miembro inactivo"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json
+        miembro_id = datos.get('id_miembro')
+        
+        if not miembro_id:
+            return jsonify({"status": "error", "message": "ID de miembro requerido"}), 400
+        
+        db.reactivar_miembro(miembro_id)
+        db.clear_cache()
+        
+        return jsonify({"status": "success", "message": "Miembro reactivado correctamente"})
     except DatabaseError as e:
         return jsonify({"status": "error", "message": f"Error de conexión: {str(e)}"}), 500
     except Exception as e:
@@ -1095,6 +1236,8 @@ def get_todos_asistencia():
                     asist_dict['fecha'] = fecha.isoformat().split('T')[0]
                 else:
                     asist_dict['fecha'] = str(fecha)
+            # Convertir asistio a estado
+            asist_dict['estado'] = 'Presente' if asist_dict.get('asistio') else 'Ausente'
             asist_list.append(asist_dict)
         
         return jsonify({"status": "success", "asistencias": asist_list})
