@@ -71,10 +71,15 @@ function crearAlertContainer() {
     const container = document.createElement('div');
     container.id = 'alert-container';
     container.style.position = 'fixed';
-    container.style.top = '100px';
-    container.style.right = '20px';
+    container.style.top = '70px';
+    container.style.left = '50%';
+    container.style.transform = 'translateX(-50%)';
     container.style.zIndex = '9999';
-    container.style.maxWidth = '500px';
+    container.style.maxWidth = '600px';
+    container.style.width = '90%';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '8px';
     document.body.appendChild(container);
     return container;
 }
@@ -225,7 +230,33 @@ const AsistenciaModule = {
         const clase = this.clasesDisponibles.find(c => c.id == claseId);
         if (clase) {
             this.claseSeleccionada = clase;
-            this.asistenciaActual = {};
+            
+            // Primero, intentar recuperar de BD
+            try {
+                const responseDB = await fetchAPI(`${APP_CONFIG.apiBase}/asistencia/obtain/${clase.id}`);
+                if (responseDB.status === 'success' && responseDB.data && responseDB.data.length > 0) {
+                    // Convertir array de BD a objeto por ID de miembro
+                    this.asistenciaActual = {};
+                    responseDB.data.forEach(registro => {
+                        this.asistenciaActual[registro.id_miembro] = {
+                            id_miembro: registro.id_miembro,
+                            nombre_completo: registro.nombre_completo,
+                            presente: registro.presente  // Usar el valor real de la BD (true/false)
+                        };
+                    });
+                } else {
+                    // Si no hay datos en BD, usar localStorage como respaldo
+                    const claveLocalStorage = `asistencia_${clase.id}`;
+                    const asistenciaGuardada = localStorage.getItem(claveLocalStorage);
+                    this.asistenciaActual = asistenciaGuardada ? JSON.parse(asistenciaGuardada) : {};
+                }
+            } catch (error) {
+                console.warn('No se pudo obtener asistencia de BD, usando localStorage:', error);
+                const claveLocalStorage = `asistencia_${clase.id}`;
+                const asistenciaGuardada = localStorage.getItem(claveLocalStorage);
+                this.asistenciaActual = asistenciaGuardada ? JSON.parse(asistenciaGuardada) : {};
+            }
+            
             this.actualizarContador();
             
             // Actualizar información de la clase
@@ -260,28 +291,55 @@ const AsistenciaModule = {
                     <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 8px; line-height: 1.3;">
                         ${miembro.apellido}<br>${miembro.nombre}
                     </div>
-                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 10px;">
+                    <div style="font-size: 15px; color: #6b7280; margin-bottom: 10px;">
                         ${miembro.tipo_asistencia}
                     </div>
                 </div>
-                <div style="display: flex; gap: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <button id="ausente-${miembro.id}" 
-                            class="btn-action-small btn-ausente"
-                            onclick="AsistenciaModule.toggleAsistencia(${miembro.id}, '${miembro.apellido}, ${miembro.nombre}')"
-                            style="flex: 1; font-size: 10px; min-height: 32px;">
-                        ✗
+                            class="btn-ausente-asistencia"
+                            onclick="AsistenciaModule.marcarAusente(${miembro.id}, '${miembro.apellido}, ${miembro.nombre}')"
+                            style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #3498db; border: 2px solid #3498db; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <span style="font-size: 14px;">✗</span> AUSENTE
                     </button>
                     <button id="presente-${miembro.id}" 
-                            class="btn-action-small btn-secondary"
-                            onclick="AsistenciaModule.toggleAsistencia(${miembro.id}, '${miembro.apellido}, ${miembro.nombre}')"
-                            style="flex: 1; font-size: 10px; min-height: 32px;">
-                        ✓
+                            class="btn-presente-asistencia"
+                            onclick="AsistenciaModule.marcarPresente(${miembro.id}, '${miembro.apellido}, ${miembro.nombre}')"
+                            style="padding: 10px 12px; font-size: 13px; font-weight: 700; background: white; color: #3498db; border: 2px solid #3498db; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <span style="font-size: 14px;">✓</span> PRESENTE
                     </button>
                 </div>
             `;
             
             card.innerHTML = html;
             contenedor.appendChild(card);
+            
+            // Aplicar estado guardado si existe
+            if (this.asistenciaActual[miembro.id]) {
+                const btnPresente = document.getElementById(`presente-${miembro.id}`);
+                const btnAusente = document.getElementById(`ausente-${miembro.id}`);
+                
+                // Verificar si está marcado como presente o ausente
+                if (this.asistenciaActual[miembro.id].presente === true) {
+                    // PRESENTE: botón verde, activo
+                    btnPresente.style.background = '#27ae60';
+                    btnPresente.style.color = 'white';
+                    btnPresente.classList.add('btn-success');
+                    
+                    btnAusente.style.background = 'white';
+                    btnAusente.style.color = '#3498db';
+                    btnAusente.classList.remove('btn-ausente');
+                } else {
+                    // AUSENTE: botón azul, activo
+                    btnAusente.style.background = '#3498db';
+                    btnAusente.style.color = 'white';
+                    btnAusente.classList.add('btn-ausente');
+                    
+                    btnPresente.style.background = 'white';
+                    btnPresente.style.color = '#3498db';
+                    btnPresente.classList.remove('btn-success');
+                }
+            }
         });
     },
     
@@ -302,31 +360,63 @@ const AsistenciaModule = {
     /**
      * Marcar/desmarcar asistencia
      */
-    toggleAsistencia(idMiembro, nombreCompleto) {
+    marcarPresente(idMiembro, nombreCompleto) {
         const btnPresente = document.getElementById(`presente-${idMiembro}`);
         const btnAusente = document.getElementById(`ausente-${idMiembro}`);
         
-        if (this.asistenciaActual[idMiembro]) {
-            // Marcar como ausente
-            delete this.asistenciaActual[idMiembro];
-            btnPresente.classList.remove('btn-success');
-            btnPresente.classList.add('btn-secondary');
-            btnAusente.classList.remove('btn-secondary');
-            btnAusente.classList.add('btn-ausente');
-        } else {
-            // Marcar como presente
-            this.asistenciaActual[idMiembro] = {
-                id_miembro: idMiembro,
-                nombre_completo: nombreCompleto,
-                presente: true
-            };
-            btnPresente.classList.remove('btn-secondary');
-            btnPresente.classList.add('btn-success');
-            btnAusente.classList.remove('btn-ausente');
-            btnAusente.classList.add('btn-secondary');
-        }
+        // Agregar a presente
+        this.asistenciaActual[idMiembro] = {
+            id_miembro: idMiembro,
+            nombre_completo: nombreCompleto,
+            presente: true
+        };
+        
+        // Actualizar estilos
+        btnPresente.style.background = '#27ae60';
+        btnPresente.style.color = 'white';
+        btnPresente.classList.add('btn-success');
+        
+        btnAusente.style.background = 'white';
+        btnAusente.style.color = '#3498db';
+        btnAusente.classList.remove('btn-ausente');
         
         this.actualizarContador();
+    },
+    
+    marcarAusente(idMiembro, nombreCompleto) {
+        // Buscar miembro para obtener los datos completos
+        const miembroData = this.miembros.find(m => m.id == idMiembro);
+        if (!miembroData) return;
+        
+        const btnPresente = document.getElementById(`presente-${idMiembro}`);
+        const btnAusente = document.getElementById(`ausente-${idMiembro}`);
+        
+        // Registrar como ausente (presente: false)
+        this.asistenciaActual[idMiembro] = {
+            id_miembro: idMiembro,
+            nombre_completo: nombreCompleto,
+            presente: false
+        };
+        
+        // Actualizar estilos
+        btnAusente.style.background = '#3498db';
+        btnAusente.style.color = 'white';
+        btnAusente.classList.add('btn-ausente');
+        
+        btnPresente.style.background = 'white';
+        btnPresente.style.color = '#3498db';
+        btnPresente.classList.remove('btn-success');
+        
+        this.actualizarContador();
+    },
+    
+    toggleAsistencia(idMiembro, nombreCompleto) {
+        // Mantener para compatibilidad (deprecated)
+        if (this.asistenciaActual[idMiembro]) {
+            this.marcarAusente(idMiembro, nombreCompleto);
+        } else {
+            this.marcarPresente(idMiembro, nombreCompleto);
+        }
     },
     
     /**
@@ -335,7 +425,8 @@ const AsistenciaModule = {
     actualizarContador() {
         const contador = document.getElementById('contador-presentes');
         if (contador) {
-            const presentes = Object.keys(this.asistenciaActual).length;
+            // Contar solo los que tienen presente = true
+            const presentes = Object.values(this.asistenciaActual).filter(asist => asist.presente === true).length;
             contador.textContent = presentes;
         }
     },
@@ -380,16 +471,23 @@ const AsistenciaModule = {
             });
             
             if (response.status === 'success') {
+                // Guardar en localStorage
+                const claveLocalStorage = `asistencia_${this.claseSeleccionada.id}`;
+                localStorage.setItem(claveLocalStorage, JSON.stringify(this.asistenciaActual));
+                
                 mostrarAlerta('✅ Asistencia guardada correctamente', 'success');
-                setTimeout(() => {
-                    volverInicio();
-                }, 2000);
+                
+                // NO redirigir - solo mostrar éxito
+                if (btnGuardar) {
+                    btnGuardar.disabled = false;
+                    btnGuardar.textContent = '✅ GUARDAR';
+                }
             }
         } catch (error) {
             console.error('Error guardando asistencia:', error);
             if (btnGuardar) {
                 btnGuardar.disabled = false;
-                btnGuardar.textContent = '✅ GUARDAR ASISTENCIA';
+                btnGuardar.textContent = '✅ GUARDAR';
             }
         }
     },
@@ -466,42 +564,74 @@ const PagosModule = {
      * Guardar pago
      */
     async guardar() {
-        if (!this.miembroSeleccionado) {
-            mostrarAlerta('Debe seleccionar un miembro', 'warning');
-            return;
-        }
-        
-        const montoStr = document.getElementById('monto-pago').value.replace(/[^0-9]/g, '');
-        const monto = parseInt(montoStr);
-        
-        if (!monto || monto <= 0) {
-            mostrarAlerta('Debe ingresar un monto válido', 'warning');
-            return;
-        }
-        
-        const fecha = document.getElementById('fecha-pago').value;
-        if (!fecha) {
-            mostrarAlerta('Debe seleccionar una fecha', 'warning');
-            return;
-        }
-        
-        const tipoPago = document.getElementById('tipo-pago').value;
-        const metodoPago = document.getElementById('metodo-pago').value;
-        
-        const btnGuardar = document.getElementById('btn-guardar-pago');
-        if (btnGuardar) {
-            btnGuardar.disabled = true;
-            btnGuardar.textContent = 'Guardando...';
-        }
-        
         try {
+            if (!this.miembroSeleccionado) {
+                mostrarAlerta('Debe seleccionar un miembro', 'warning');
+                return;
+            }
+            
+            const montoInput = document.getElementById('monto-pago');
+            if (!montoInput) {
+                console.error('No se encontró elemento monto-pago');
+                mostrarAlerta('Error: no se encontró campo de monto', 'error');
+                return;
+            }
+            
+            const montoStr = montoInput.value.replace(/[^0-9]/g, '');
+            const monto = parseInt(montoStr);
+            
+            if (!monto || monto <= 0) {
+                mostrarAlerta('Debe ingresar un monto válido', 'warning');
+                return;
+            }
+            
+            const fechaInput = document.getElementById('fecha-pago');
+            if (!fechaInput) {
+                console.error('No se encontró elemento fecha-pago');
+                mostrarAlerta('Error: no se encontró campo de fecha', 'error');
+                return;
+            }
+            
+            const fecha = fechaInput.value;
+            if (!fecha) {
+                mostrarAlerta('Debe seleccionar una fecha', 'warning');
+                return;
+            }
+            
+            const tipoSelect = document.getElementById('tipo-pago');
+            if (!tipoSelect) {
+                console.error('No se encontró elemento tipo-pago');
+                mostrarAlerta('Error: no se encontró campo de tipo', 'error');
+                return;
+            }
+            
+            const metodSelect = document.getElementById('metodo-pago');
+            if (!metodSelect) {
+                console.error('No se encontró elemento metodo-pago');
+                mostrarAlerta('Error: no se encontró campo de método', 'error');
+                return;
+            }
+            
+            const tipoPago = tipoSelect.value;
+            const metodoPago = metodSelect.value;
+            
+            // Obtener notas si existen
+            const notasInput = document.getElementById('notas-pago');
+            const notas = notasInput ? notasInput.value.trim() : '';
+            
+            const btnGuardar = document.getElementById('btn-guardar-pago');
+            if (btnGuardar) {
+                btnGuardar.disabled = true;
+                btnGuardar.textContent = 'Guardando...';
+            }
+            
             const datos = {
                 id_miembro: this.miembroSeleccionado.id,
-                nombre_completo: this.miembroSeleccionado.nombre,
                 monto: monto,
-                concepto: tipoPago,
-                metodo: metodoPago,
-                fecha: fecha
+                tipo_pago: tipoPago,
+                metodo_pago: metodoPago,
+                fecha: fecha,
+                descripcion: notas
             };
             
             const response = await fetchAPI(`${APP_CONFIG.apiBase}/pagos/save`, {
@@ -510,16 +640,27 @@ const PagosModule = {
             });
             
             if (response.status === 'success') {
-                mostrarAlerta(`✅ Pago de ${formatearMoneda(monto)} (${tipoPago} - ${metodoPago}) registrado correctamente`, 'success');
+                mostrarAlerta(`✅ Pago registrado correctamente`, 'success');
+                this.miembroSeleccionado = null;
                 setTimeout(() => {
-                    volverInicio();
-                }, 2000);
+                    this.volverPaso1();
+                }, 1500);
+            } else {
+                mostrarAlerta(`Error: ${response.message || 'No se pudo guardar el pago'}`, 'error');
+            }
+            
+            if (btnGuardar) {
+                btnGuardar.disabled = false;
+                btnGuardar.textContent = '✅ GUARDAR PAGO';
             }
         } catch (error) {
             console.error('Error guardando pago:', error);
+            mostrarAlerta(`Error: ${error.message}`, 'error');
+            
+            const btnGuardar = document.getElementById('btn-guardar-pago');
             if (btnGuardar) {
                 btnGuardar.disabled = false;
-                btnGuardar.textContent = '💰 GUARDAR PAGO';
+                btnGuardar.textContent = '✅ GUARDAR PAGO';
             }
         }
     },

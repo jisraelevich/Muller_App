@@ -298,14 +298,13 @@ class Database:
             return cursor.fetchall()
     
     def add_asistencia(self, miembro_id, clase_id, fecha, asistio):
-        """Record attendance"""
+        """Record attendance - PostgreSQL compatible with update on duplicate"""
         with self.get_cursor() as cursor:
             cursor.execute(
                 "INSERT INTO asistencia (miembro_id, clase_id, fecha, asistio) "
                 "VALUES (%s, %s, %s, %s) "
-                "ON CONFLICT (miembro_id, clase_id, fecha) "
-                "DO UPDATE SET asistio=%s, updated_at=NOW()",
-                (miembro_id, clase_id, fecha, asistio, asistio)
+                "ON CONFLICT (miembro_id, clase_id, fecha) DO UPDATE SET asistio=EXCLUDED.asistio, updated_at=NOW()",
+                (miembro_id, clase_id, fecha, asistio)
             )
     
     # ========================================================================
@@ -316,7 +315,7 @@ class Database:
         """Get payments for a member - limited to last 20 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, miembro_id, monto, fecha, mes, descripcion AS tipo_pago, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
+                "SELECT id, miembro_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
                 (miembro_id,)
             )
             return cursor.fetchall()
@@ -333,13 +332,13 @@ class Database:
             )
             return cursor.fetchall()
     
-    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo'):
+    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo', tipo_pago='Cuota'):
         """Add payment record"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago) "
-                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-                (miembro_id, monto, fecha, mes, descripcion, metodo_pago)
+                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago)
             )
             result = cursor.fetchone()
             if isinstance(result, tuple):
@@ -351,13 +350,13 @@ class Database:
         with self.get_cursor() as cursor:
             cursor.execute("DELETE FROM pagos WHERE id=%s", (pago_id,))
     
-    def update_pago(self, pago_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo'):
+    def update_pago(self, pago_id, monto, fecha, mes, tipo_pago=None, descripcion=None, metodo_pago='Efectivo'):
         """Update payment record"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, descripcion=%s, metodo_pago=%s, updated_at=NOW() "
+                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, tipo_pago=%s, descripcion=%s, metodo_pago=%s, updated_at=NOW() "
                 "WHERE id=%s",
-                (monto, fecha, mes, descripcion, metodo_pago, pago_id)
+                (monto, fecha, mes, tipo_pago, descripcion, metodo_pago, pago_id)
             )
     
     # ========================================================================

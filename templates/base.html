@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0052cc">
+    <meta name="theme-color" content="#2c3e50">
     <title>{% block title %}Instituto Jorge Müller{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260410b">
 </head>
@@ -14,8 +14,8 @@
         <!-- SIDEBAR MODERNO -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="sidebar-brand-text">■ MÜLLER</div>
-                <div class="sidebar-brand-subtitle">Sistema de Gestión</div>
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="MÜLLER" class="sidebar-logo">
+                <div class="sidebar-brand-text">MÜLLER</div>
             </div>
             
             <nav>
@@ -61,13 +61,8 @@
             <header class="header">
                 <div class="header-content">
                     <div class="header-start">
-                        <div class="header-actions">
-                            {% block header_actions %}
-                            {% endblock %}
-                        </div>
-                        <div>
-                            <h1 class="header-title">{{ config.instituto }}</h1>
-                            <p class="header-subtitle">{{ config.ciudad }} • Sistema de Gestión</p>
+                        <div class="header-title-section">
+                            <h1 class="header-title">{% block page_title %}{{ config.instituto }}{% endblock %}</h1>
                         </div>
                     </div>
                 </div>

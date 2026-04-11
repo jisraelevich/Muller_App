@@ -2,29 +2,29 @@
 
 {% block title %}Asistencia - Instituto Jorge Müller{% endblock %}
 {% block page_id %}asistencia{% endblock %}
-
-{% block header_actions %}
-<button id="btn-guardar-asistencia" 
-        class="btn-touch btn-success"
-        onclick="AsistenciaModule.guardarConFecha()">
-    ✅ GUARDAR ASISTENCIA
-</button>
-<a href="/" class="btn-volver">◀ VOLVER</a>
-{% endblock %}
+{% block page_title %}✓ ASISTENCIA{% endblock %}
 
 {% block content %}
 
 <!-- Selector de Clases Disponibles -->
-<div style="background: #f5f5f5; padding: 12px; border-radius: 5px; margin-bottom: 8px;">
-    <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 6px; color: #374151;">
-        📅 Seleccionar Clase
-    </label>
-    <select id="selector-clase" 
-           class="form-select" 
-           onchange="AsistenciaModule.cargarClaseSeleccionada(this.value)"
-           style="cursor: pointer;">
-        <option value="">-- Cargando clases --</option>
-    </select>
+<div style="background: #ffffff; padding: 16px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-end; border: 1px solid #e5e7eb;">
+    <div style="flex: 1;">
+        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #1f2937;">
+            📅 Seleccionar Clase
+        </label>
+        <select id="selector-clase" 
+               class="form-select" 
+               onchange="AsistenciaModule.cargarClaseSeleccionada(this.value)"
+               style="cursor: pointer; width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #ffffff;">
+            <option value="">-- Cargando clases --</option>
+        </select>
+    </div>
+    <button id="btn-guardar-asistencia" 
+            class="btn-touch btn-success"
+            onclick="AsistenciaModule.guardarConFecha()"
+            style="padding: 10px 12px; font-size: 13px; font-weight: 700;">
+        ✅ GUARDAR
+    </button>
 </div>
 
 <!-- Información de la clase seleccionada -->
