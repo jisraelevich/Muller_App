@@ -205,6 +205,20 @@ body {
     font-weight: 500;
     font-size: 15px;
     border-left: 3px solid transparent;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.sidebar-nav-link span:first-child {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-nav-link span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .sidebar-nav-link:hover {
