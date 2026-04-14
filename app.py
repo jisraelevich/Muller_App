@@ -104,7 +104,8 @@ TABS = {
     3: {"id": "tab_3", "label": "Miembros", "icon": "Users", "route": "miembros"},
     4: {"id": "tab_4", "label": "Clases", "icon": "Book", "route": "clases"},
     5: {"id": "tab_5", "label": "Reportes", "icon": "BarChart", "route": "reportes"},
-    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"}
+    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"},
+    7: {"id": "tab_7", "label": "Pagos (Calendario)", "icon": "Calendar", "route": "reportes_pagos"}
 }
 
 # ========== FUNCIONES AUXILIARES ==========
@@ -380,6 +381,37 @@ def render_oradores():
     except Exception as e:
         print(f"Error al cargar tab oradores: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/tab/7')
+@login_required
+def render_reportes_pagos():
+    """Renderizar tab de Reporte de Pagos por Calendario"""
+    try:
+        current_user = GoogleOAuth.get_session_user()
+        
+        data = {}
+        if db:
+            try:
+                data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
+                data['pagos'] = db.get_pagos()
+            except Exception as e:
+                print(f"Error obteniendo datos de pagos: {e}")
+                data['miembros'] = []
+                data['pagos'] = []
+                data['error'] = f"Error obteniendo datos: {str(e)}"
+        else:
+            data['miembros'] = []
+            data['pagos'] = []
+            data['error'] = "⚠️ Base de datos no disponible"
+        
+        return render_template('tab_7_reportes_pagos.html',
+                             tabs=TABS,
+                             active_tab=7,
+                             current_user=current_user,
+                             **data)
+    
+    except Exception as e:
+        print(f"Error al cargar tab 7 (reportes pagos): {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - ASISTENCIA ==========
