@@ -190,9 +190,33 @@ def index():
         if db:
             # Si hay base de datos, obtener datos reales
             try:
-                miembros = db.get_miembros()
+                # Obtener miembros ACTIVOS e INACTIVOS separados
+                miembros_activos = db.get_miembros()  # Solo activos (estado='Activo' por defecto)
+                miembros_inactivos = db.get_miembros_inactivos()
+                miembros_total = miembros_activos + miembros_inactivos
+                
                 miembros_regulares = db.get_miembros(tipo_asistencia='Regular')
                 clases = db.get_clases()
+                
+                # Debug: mostrar estados de las clases
+                print("[DEBUG CLASES] Estados en BD:")
+                for c in clases[:10]:  # Mostrar primeras 10
+                    print(f"  - {c.get('nombre', 'Sin nombre')}: estado='{c.get('estado', 'NULL')}'")
+                
+                # Contar clases realizadas (estado = "Realizada")
+                # Más flexible: busca "realizada" en cualquier posición o si tiene checkmark
+                clases_realizadas = sum(1 for c in clases if c.get('estado') and ('realizada' in str(c.get('estado', '')).lower() or '✓' in str(c.get('estado', ''))))
+                
+                print(f"[DEBUG CLASES] Total: {len(clases)}, Realizadas: {clases_realizadas}")
+                print(f"[DEBUG MIEMBROS] Activos: {len(miembros_activos)}, Inactivos: {len(miembros_inactivos)}, Total: {len(miembros_total)}")
+                
+                # Debug: mostrar miembros inactivos si existen
+                if miembros_inactivos:
+                    print("[DEBUG MIEMBROS INACTIVOS]:")
+                    for m in miembros_inactivos:
+                        print(f"  - {m.get('nombre', '')} {m.get('apellido', '')}: estado='{m.get('estado', 'NULL')}'")
+                else:
+                    print("[DEBUG MIEMBROS INACTIVOS] No hay miembros inactivos")
                 
                 # Obtener pagos este mes
                 start_date = date(date.today().year, date.today().month, 1)
@@ -205,17 +229,25 @@ def index():
                 pagos_mes = db.get_pagos()
                 total_pagos = sum(float(p['monto']) for p in pagos_mes if p.get('monto'))
                 
-                # Total esperado (miembros regulares * cuota mensual)
-                total_esperado = len(miembros_regulares) * 100  # Asumiendo cuota de $100 por miembro
+                # Retiros
+                retiros = db.get_retiros()
+                total_retiros = sum(float(r['monto']) for r in retiros if r.get('monto')) if retiros else 0
+                
+                # Total esperado (miembros regulares * cuota mensual $30,000)
+                total_esperado = len(miembros_regulares) * 30000
                 
                 stats = {
-                    'miembros': len(miembros),
+                    'miembros_activos': len(miembros_activos),
+                    'miembros_inactivos': len(miembros_inactivos),
+                    'miembros': len(miembros_total),
                     'miembros_regulares': len(miembros_regulares),
-                    'miembros_oyentes': len(miembros) - len(miembros_regulares),
+                    'miembros_oyentes': len(miembros_activos) - len(miembros_regulares),
                     'clases': len(clases),
+                    'clases_realizadas': clases_realizadas,
                     'pagos': total_pagos,
                     'pagos_esperado': total_esperado,
-                    'pagos_porcentaje': int((total_pagos / total_esperado * 100) if total_esperado > 0 else 0)
+                    'pagos_porcentaje': int((total_pagos / total_esperado * 100) if total_esperado > 0 else 0),
+                    'retiros': total_retiros
                 }
             except Exception as e:
                 print(f"Error obteniendo datos: {e}")
@@ -223,13 +255,17 @@ def index():
         else:
             # Sin base de datos - mostrar mensaje de prueba
             stats = {
+                'miembros_activos': 0,
+                'miembros_inactivos': 0,
                 'miembros': 0,
                 'miembros_regulares': 0,
                 'miembros_oyentes': 0,
                 'clases': 0,
+                'clases_realizadas': 0,
                 'pagos': 0,
                 'pagos_esperado': 0,
                 'pagos_porcentaje': 0,
+                'retiros': 0,
                 'info': '⚠️ Base de datos no disponible - Modo testing'
             }
         
@@ -918,16 +954,27 @@ def save_pago():
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
         descripcion = datos.get('descripcion', '')  # Notas del pago
         
+        # Nuevos parámetros para multi-mes y estado
+        meses_seleccionados = datos.get('meses_seleccionados', [])
+        estado_pago = 'Puntual'  # Default value, no se envía desde el frontend
+        
         if not miembro_id:
             return jsonify({"status": "error", "message": "ID de miembro es requerido"}), 400
         
         if monto <= 0:
             return jsonify({"status": "error", "message": "Monto debe ser mayor a 0"}), 400
         
-        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}, metodo={metodo_pago}, notas={descripcion}")
+        # Calcular mes_inicio y mes_fin si hay meses seleccionados
+        mes_inicio = None
+        mes_fin = None
+        if tipo_pago == 'Cuota' and meses_seleccionados:
+            mes_inicio = min(meses_seleccionados)
+            mes_fin = max(meses_seleccionados)
         
-        # Pasar tipo_pago y descripción (notas) a la BD
-        pago_id = db.add_pago(miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago)
+        print(f"[PAGOS] Guardando pago: miembro_id={miembro_id}, monto={monto}, fecha={fecha}, tipo={tipo_pago}, metodo={metodo_pago}, notas={descripcion}, meses={meses_seleccionados}, estado={estado_pago}")
+        
+        # Pasar nuevos parámetros a la BD
+        pago_id = db.add_pago(miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago, mes_inicio, mes_fin, estado_pago)
         
         print(f"[PAGOS] Pago guardado exitosamente con ID: {pago_id}")
         return jsonify({"status": "success", "message": "Pago registrado correctamente", "id": pago_id})
@@ -1450,8 +1497,18 @@ def reportes_pagos_calendario():
         return error, code
     
     try:
-        # Obtener todos los miembros activos
-        miembros = db.get_miembros(estado='Activo')
+        # Parámetro para filtrar solo regulares
+        solo_regulares = request.args.get('solo_regulares', 'true').lower() == 'true'
+        
+        # Obtener miembros SIN CACHE para asegurar datos frescos
+        miembros = db.get_miembros_fresh(estado='Activo')
+        
+        # Filtrar solo regulares si se solicita
+        if solo_regulares:
+            miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
+        
+        # Obtener todos los pagos
+        pagos = db.get_pagos()
         
         # Obtener todos los pagos
         pagos = db.get_pagos()
@@ -1464,6 +1521,7 @@ def reportes_pagos_calendario():
             row = {
                 'miembro_id': miembro_dict.get('id'),
                 'nombre': f"{miembro_dict.get('nombre', '')} {miembro_dict.get('apellido', '')}".strip(),
+                'matricula_monto': 0,  # Monto total pagado por matrícula
                 'estado': miembro_dict.get('estado', 'Activo'),
                 'meses': {}
             }
@@ -1476,20 +1534,38 @@ def reportes_pagos_calendario():
             for pago in pagos:
                 pago_dict = dict(pago)
                 if pago_dict.get('miembro_id') == miembro_dict.get('id'):
-                    # Extraer mes de fecha
-                    if pago_dict.get('fecha'):
-                        fecha = pago_dict['fecha']
-                        if hasattr(fecha, 'month'):
-                            mes_key = f"{fecha.month:02d}"
-                        else:
-                            # Parsear string
-                            from datetime import datetime as dt
-                            fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
-                            mes_key = f"{fecha_obj.month:02d}"
+                    monto = float(pago_dict.get('monto', 0))
+                    tipo_pago = pago_dict.get('tipo_pago', '')
+                    
+                    # Si es pago de Matrícula, agregarlo separately
+                    if tipo_pago == 'Matrícula':
+                        row['matricula_monto'] += int(monto)
+                    else:
+                        # Si es cuota mensual, verificar si tiene mes_inicio y mes_fin
+                        mes_inicio = pago_dict.get('mes_inicio')
+                        mes_fin = pago_dict.get('mes_fin')
                         
-                        # Sumar al mes correspondiente
-                        monto = float(pago_dict.get('monto', 0))
-                        row['meses'][mes_key] += int(monto)
+                        if mes_inicio and mes_fin:
+                            # Distribuir el monto entre los meses del rango
+                            cantidad_meses = mes_fin - mes_inicio + 1
+                            monto_por_mes = int(monto / cantidad_meses) if cantidad_meses > 0 else int(monto)
+                            
+                            for mes in range(mes_inicio, mes_fin + 1):
+                                mes_key = f'{mes:02d}'
+                                row['meses'][mes_key] += monto_por_mes
+                        else:
+                            # Usar el mes de la fecha (comportamiento anterior)
+                            if pago_dict.get('fecha'):
+                                fecha = pago_dict['fecha']
+                                if hasattr(fecha, 'month'):
+                                    mes_key = f"{fecha.month:02d}"
+                                else:
+                                    # Parsear string
+                                    from datetime import datetime as dt
+                                    fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
+                                    mes_key = f"{fecha_obj.month:02d}"
+                                
+                                row['meses'][mes_key] += int(monto)
             
             reporte.append(row)
         

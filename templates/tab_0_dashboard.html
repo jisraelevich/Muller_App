@@ -26,22 +26,29 @@
     <!-- KPI: MIEMBROS -->
     <div class="kpi-card">
         <div class="kpi-label">👥 Miembros Activos</div>
-        <div class="kpi-value">{{ stats.miembros_regulares or 0 }}</div>
-        <div class="kpi-subtext">{{ stats.miembros_oyentes or 0 }} oyentes • {{ stats.miembros or 0 }} total</div>
+        <div class="kpi-value">{{ stats.miembros_activos or 0 }}</div>
+        <div class="kpi-subtext">{{ stats.miembros_inactivos or 0 }} inactivos • {{ stats.miembros or 0 }} total</div>
     </div>
     
     <!-- KPI: CLASES -->
     <div class="kpi-card">
         <div class="kpi-label">📚 Clases Emitidas</div>
-        <div class="kpi-value">{{ stats.clases or 0 }}</div>
-        <div class="kpi-subtext">Clases realizadas en lo que va del año</div>
+        <div class="kpi-value">{{ stats.clases_realizadas or 0 }}/{{ stats.clases or 0 }}</div>
+        <div class="kpi-subtext">Clases realizadas de {{ stats.clases or 0 }} total en lo que va del año</div>
     </div>
     
     <!-- KPI: PAGOS -->
     <div class="kpi-card">
         <div class="kpi-label">💰 Pagos Recolectados</div>
-        <div class="kpi-value">${{ "%.0f"|format(stats.pagos or 0) }}</div>
-        <div class="kpi-subtext">Esperado: ${{ "%.0f"|format(stats.pagos_esperado or 0) }} ({{ stats.pagos_porcentaje or 0 }}%)</div>
+        <div class="kpi-value">${{ "{:,.0f}".format(stats.pagos or 0) }}</div>
+        <div class="kpi-subtext">Esperado: ${{ "{:,.0f}".format(stats.pagos_esperado or 0) }} ({{ stats.pagos_porcentaje or 0 }}%)</div>
+    </div>
+    
+    <!-- KPI: RETIROS -->
+    <div class="kpi-card">
+        <div class="kpi-label">🔄 Retiros / Reembolsos</div>
+        <div class="kpi-value">${{ "{:,.0f}".format(stats.retiros or 0) }}</div>
+        <div class="kpi-subtext">Total de retiros procesados</div>
     </div>
     
 </div>

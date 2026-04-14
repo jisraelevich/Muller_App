@@ -122,13 +122,13 @@ class Database:
         with self.get_cursor() as cursor:
             if tipo_asistencia:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad, matricula FROM miembros "
                     "WHERE tipo_asistencia=%s AND estado=%s ORDER BY nombre LIMIT 200",
                     (tipo_asistencia, estado)
                 )
             else:
                 cursor.execute(
-                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
+                    "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad, matricula FROM miembros "
                     "WHERE estado=%s ORDER BY nombre LIMIT 200",
                     (estado,)
                 )
@@ -138,8 +138,18 @@ class Database:
         """Get all inactive members"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad FROM miembros "
+                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad, matricula FROM miembros "
                 "WHERE estado='Inactivo' ORDER BY nombre LIMIT 200"
+            )
+            return cursor.fetchall()
+    
+    def get_miembros_fresh(self, estado='Activo'):
+        """Get members WITHOUT cache - for reports"""
+        with self.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT id, nombre, apellido, email, telefono, tipo_asistencia, estado, congregacion, localidad, matricula FROM miembros "
+                "WHERE estado=%s ORDER BY nombre LIMIT 200",
+                (estado,)
             )
             return cursor.fetchall()
     
@@ -479,7 +489,7 @@ class Database:
         """Get payments for a member - limited to last 20 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, miembro_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
+                "SELECT id, miembro_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago, mes_inicio, mes_fin FROM pagos WHERE miembro_id=%s ORDER BY fecha DESC LIMIT 20",
                 (miembro_id,)
             )
             return cursor.fetchall()
@@ -488,7 +498,7 @@ class Database:
         """Get recent payments - limited to 300 most recent"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "SELECT p.id, p.miembro_id, p.monto, p.fecha, p.mes, p.descripcion, p.metodo_pago, "
+                "SELECT p.id, p.miembro_id, p.monto, p.fecha, p.mes, p.descripcion, p.metodo_pago, p.tipo_pago, p.mes_inicio, p.mes_fin, "
                 "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre "
                 "FROM pagos p "
                 "LEFT JOIN miembros m ON p.miembro_id = m.id "
@@ -496,13 +506,13 @@ class Database:
             )
             return cursor.fetchall()
     
-    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo', tipo_pago='Cuota'):
-        """Add payment record"""
+    def add_pago(self, miembro_id, monto, fecha, mes, descripcion=None, metodo_pago='Efectivo', tipo_pago='Cuota', mes_inicio=None, mes_fin=None, estado_pago='Puntual'):
+        """Add payment record with optional multi-month coverage and payment status"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-                (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago)
+                "INSERT INTO pagos (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago, mes_inicio, mes_fin, estado_pago) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (miembro_id, monto, fecha, mes, descripcion, metodo_pago, tipo_pago, mes_inicio, mes_fin, estado_pago)
             )
             result = cursor.fetchone()
             if isinstance(result, tuple):

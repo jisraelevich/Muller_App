@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Fondo circular -->
+  <circle cx="96" cy="96" r="96" fill="#2c3e50"/>
+  
+  <!-- Letra M estilizada -->
+  <g fill="#ffffff">
+    <!-- Línea vertical izquierda -->
+    <rect x="40" y="50" width="12" height="92" rx="6"/>
+    
+    <!-- Línea diagonal izquierda -->
+    <path d="M 52 50 Q 96 85 96 92" stroke="#ffffff" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Línea diagonal derecha -->
+    <path d="M 96 92 Q 140 85 140 50" stroke="#ffffff" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Línea vertical derecha -->
+    <rect x="140" y="50" width="12" height="92" rx="6"/>
+  </g>
+  
+  <!-- Subrayado decorativo -->
+  <rect x="40" y="155" width="112" height="4" rx="2" fill="#e74c3c"/>
+</svg>

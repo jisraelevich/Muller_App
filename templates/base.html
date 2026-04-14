@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2c3e50">
     <title>{% block title %}Instituto Jorge Müller{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260411a">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
@@ -14,9 +15,9 @@
         
         <!-- SIDEBAR MODERNO -->
         <aside class="sidebar">
-            <div class="sidebar-brand">
-                <img src="{{ url_for('static', filename='logo.svg') }}" alt="MÜLLER" class="sidebar-logo">
-                <div class="sidebar-brand-text">MÜLLER</div>
+            <div class="sidebar-brand" onclick="window.location.href='/'" style="cursor: pointer;">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="MÜLLER" class="sidebar-logo" style="cursor: pointer;">
+                <div class="sidebar-brand-text" style="cursor: pointer;">MÜLLER</div>
             </div>
             
             <nav>
