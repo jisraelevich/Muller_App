@@ -302,7 +302,7 @@ async function cargarReporteCalendario() {
             // Matrícula
             const montoMatricula = alumno.matricula_monto || 0;
             const colorMatricula = montoMatricula > 0 ? '#d4edda' : '#ffcccc';
-            const textoMatricula = montoMatricula > 0 ? `$${montoMatricula}` : '-';
+            const textoMatricula = montoMatricula > 0 ? `$${montoMatricula.toLocaleString()}` : '-';
             html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${colorMatricula}; font-weight: 600; color: #333;">${textoMatricula}</td>`;
             totalAlumno += montoMatricula;
             totalMatriculas += montoMatricula;
@@ -324,7 +324,7 @@ async function cargarReporteCalendario() {
                     textColor = '#856404';
                 }
                 
-                html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${bgColor}; color: ${textColor}; font-weight: 600;">${monto > 0 ? monto : '-'}</td>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${bgColor}; color: ${textColor}; font-weight: 600;">${monto > 0 ? monto.toLocaleString() : '-'}</td>`;
             }
             
             // Libro
