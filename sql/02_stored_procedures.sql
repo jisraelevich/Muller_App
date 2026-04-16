@@ -13,6 +13,7 @@ RETURNS TABLE (
     nombre VARCHAR,
     apellido VARCHAR,
     matricula VARCHAR,
+    matricula_monto DECIMAL,
     marzo DECIMAL,
     abril DECIMAL,
     mayo DECIMAL,
@@ -21,7 +22,8 @@ RETURNS TABLE (
     agosto DECIMAL,
     septiembre DECIMAL,
     octubre DECIMAL,
-    noviembre DECIMAL
+    noviembre DECIMAL,
+    libro DECIMAL
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -30,81 +32,84 @@ BEGIN
         m.nombre,
         m.apellido,
         m.matricula,
+        -- MATRÍCULA (suma de todos los pagos tipo Matricula)
+        COALESCE(SUM(CASE 
+            WHEN p.tipo_pago = 'Matricula'
+            THEN p.monto 
+            ELSE NULL 
+        END), 0),
         -- MARZO (mes 3)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 3 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 3))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 3
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- ABRIL (mes 4)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 4 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 4))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 4
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- MAYO (mes 5)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 5 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 5))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 5
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- JUNIO (mes 6)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 6 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 6))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 6
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- JULIO (mes 7)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 7 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 7))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 7
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- AGOSTO (mes 8)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 8 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 8))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 8
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- SEPTIEMBRE (mes 9)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 9 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 9))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 9
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- OCTUBRE (mes 10)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 10 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 10))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 10
             THEN p.monto 
             ELSE NULL 
         END), 0),
         -- NOVIEMBRE (mes 11)
         COALESCE(SUM(CASE 
-            WHEN p.tipo_pago = 'Cuota' AND p.estado_pago IS NOT NULL 
-                 AND ((p.mes_inicio IS NOT NULL AND p.mes_fin IS NOT NULL AND 11 BETWEEN p.mes_inicio AND p.mes_fin)
-                      OR (p.mes IS NOT NULL AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 11))
+            WHEN p.tipo_pago = 'Pago Mensual' AND p.estado_pago IS NOT NULL 
+                 AND EXTRACT(MONTH FROM p.fecha)::INTEGER = 11
+            THEN p.monto 
+            ELSE NULL 
+        END), 0),
+        -- LIBRO (suma de todos los pagos tipo Libro)
+        COALESCE(SUM(CASE 
+            WHEN p.tipo_pago = 'Libro'
             THEN p.monto 
             ELSE NULL 
         END), 0)
     FROM miembros m
     LEFT JOIN pagos p ON m.id = p.miembro_id 
-    WHERE m.tipo_asistencia = 'Regular' AND m.estado = 'Activo'
+    WHERE m.estado = 'Activo' AND (m.tipo_asistencia = 'Regular' OR p.tipo_pago = 'Matricula')
     GROUP BY m.id, m.nombre, m.apellido, m.matricula
     ORDER BY m.nombre, m.apellido;
 END;

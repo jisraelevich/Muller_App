@@ -101,31 +101,37 @@
     <!-- REPORTE PAGOS POR MES -->
     <div id="reporte-pagos-mes" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0;">📅 Calendar de Pagos por Mes (Marzo - Noviembre)</h3>
+            <h3 style="margin: 0;">� REPORTE DE PAGOS POR MES</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporteCalendario()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #333; font-size: 12px;">
+                    <input type="checkbox" id="chk-solo-regulares-tab5" checked style="width: 18px; height: 18px; cursor: pointer;">
+                    Solo Regulares
+                </label>
+                <button onclick="exportarExcelNuevo()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
-            <table id="tabla-pagos-mes" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <table id="tabla-pagos-mes-nuevo" style="width: 100%; border-collapse: collapse; font-size: 11px;">
                 <thead>
-                    <tr style="background: #f0f0f0;">
-                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 150px;">Alumno</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; font-weight: bold; background: #e3f2fd;">03 Marzo</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #e3f2fd;">04 Abril</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #e3f2fd;">05 Mayo</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">06 Junio</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">07 Julio</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #f3e5f5;">08 Agosto</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">09 Septiembre</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">10 Octubre</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 60px; background: #fff3e0;">11 Noviembre</th>
-                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd; min-width: 70px; font-weight: bold; background: #e0e0e0;">TOTAL</th>
+                    <tr style="background: #f0f0f0; position: sticky; top: 0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 120px;">👤 Alumno</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 80px;">🎓 Matrícula</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03 MAR</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04 ABR</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05 MAY</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06 JUN</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07 JUL</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08 AGO</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09 SEP</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10 OCT</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11 NOV</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">📚 Libro</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px; font-weight: bold;">💰 TOTAL</th>
                     </tr>
                 </thead>
-                <tbody id="tbody-pagos-calendario">
+                <tbody id="tbody-pagos-mes-nuevo">
                     <tr>
-                        <td colspan="11" style="text-align: center; padding: 20px; color: #999;">
+                        <td colspan="13" style="text-align: center; padding: 20px; color: #999;">
                             Cargando datos...
                         </td>
                     </tr>
@@ -133,11 +139,14 @@
             </table>
         </div>
         <div style="text-align: center; margin-top: 12px; color: #666; font-size: 10px;">
-            🟢 Verde (>= $1000) = Pago completo | 🟡 Amarillo ($1-999) = Pago parcial | 🔴 Rojo ($0) = Sin pagar
+            ✓ Verde (≥1000) = Pagó completo | ⚠️ Amarillo (1-999) = Pagó parcial | ❌ Rojo (0) = Sin pagar
         </div>
     </div>
     
 </div>
+
+<!-- Librerías para exportación -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 
 <script>
 async function mostrarReporte(tipo) {
@@ -261,74 +270,160 @@ async function cargarReporteMiembros() {
 
 async function cargarReporteCalendario() {
     try {
-        const response = await fetch('/api/reportes/pagos-calendario?t=' + new Date().getTime());
+        const soloRegulares = document.getElementById('chk-solo-regulares-tab5')?.checked ?? true;
+        const response = await fetch('/api/reportes/pagos-calendario?t=' + new Date().getTime() + '&solo_regulares=' + soloRegulares);
         const data = await response.json();
-        const tbody = document.getElementById('tbody-pagos-calendario');
+        const tbody = document.getElementById('tbody-pagos-mes-nuevo');
         tbody.innerHTML = '';
         
-        if (data.reporte && data.reporte.length > 0) {
-            const fragment = document.createDocumentFragment();
-            let totalGeneral = {};
+        if (data.status !== 'success' || !data.reporte || data.reporte.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #999;">No hay datos</td></tr>';
+            return;
+        }
+        
+        const fragment = document.createDocumentFragment();
+        let totalPorMes = {};
+        for (let i = 3; i <= 11; i++) {
+            totalPorMes[`${i.toString().padStart(2, '0')}`] = 0;
+        }
+        
+        let totalMatriculas = 0;
+        let totalLibros = 0;
+        
+        const mesesMostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11];
+        
+        data.reporte.forEach(alumno => {
+            const row = document.createElement('tr');
+            row.style.cssText = 'border-bottom: 1px solid #e5e7eb;';
             
-            // Solo contar meses de marzo (03) a noviembre (11)
-            for (let mes = 3; mes <= 11; mes++) {
-                totalGeneral[`${mes.toString().padStart(2, '0')}`] = 0;
-            }
+            let totalAlumno = 0;
+            let html = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: 600; text-align: left;">${alumno.nombre}</td>`;
             
-            data.reporte.forEach(alumno => {
-                const row = document.createElement('tr');
-                let celdas = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${alumno.nombre}</td>`;
-                let subtotal = 0;
+            // Matrícula
+            const montoMatricula = alumno.matricula_monto || 0;
+            const colorMatricula = montoMatricula > 0 ? '#d4edda' : '#ffcccc';
+            const textoMatricula = montoMatricula > 0 ? `$${montoMatricula}` : '-';
+            html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${colorMatricula}; font-weight: 600; color: #333;">${textoMatricula}</td>`;
+            totalAlumno += montoMatricula;
+            totalMatriculas += montoMatricula;
+            
+            // Meses
+            for (let mes of mesesMostrar) {
+                const mesKey = mes.toString().padStart(2, '0');
+                const monto = alumno.meses[mesKey] || 0;
+                totalAlumno += monto;
+                totalPorMes[mesKey] += monto;
                 
-                // Iterar solo meses de marzo (3) a noviembre (11)
-                for (let mes = 3; mes <= 11; mes++) {
-                    const mesClave = `${mes.toString().padStart(2, '0')}`;
-                    const monto = alumno.meses[mesClave] || 0;
-                    subtotal += monto;
-                    totalGeneral[mesClave] += monto;
-                    
-                    let bgcolor = '#f0f0f0';
-                    if (monto >= 1000) {
-                        bgcolor = '#90EE90';
-                    } else if (monto > 0 && monto < 1000) {
-                        bgcolor = '#FFFF99';
-                    } else if (monto === 0) {
-                        bgcolor = '#FFB3B3';
-                    }
-                    
-                    celdas += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background-color: ${bgcolor};">$${monto.toLocaleString()}</td>`;
+                let bgColor = '#ffcccc';
+                let textColor = '#c82333';
+                if (monto >= 1000) {
+                    bgColor = '#d4edda';
+                    textColor = '#155724';
+                } else if (monto > 0) {
+                    bgColor = '#fff3cd';
+                    textColor = '#856404';
                 }
                 
-                celdas += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #E0E0E0;">$${subtotal.toLocaleString()}</td>`;
-                
-                row.innerHTML = celdas;
-                fragment.appendChild(row);
-            });
-            
-            const rowTotal = document.createElement('tr');
-            let celdatotal = '<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; background-color: #FFA500; color: white;">TOTAL</td>';
-            let totalFinal = 0;
-            
-            // Totales solo para meses de marzo (3) a noviembre (11)
-            for (let mes = 3; mes <= 11; mes++) {
-                const mesClave = `${mes.toString().padStart(2, '0')}`;
-                const total = totalGeneral[mesClave];
-                totalFinal += total;
-                celdatotal += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #FFE4B5;">$${total.toLocaleString()}</td>`;
+                html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${bgColor}; color: ${textColor}; font-weight: 600;">${monto > 0 ? monto : '-'}</td>`;
             }
             
-            celdatotal += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; background-color: #FF8C00; color: white;">$${totalFinal.toLocaleString()}</td>`;
-            rowTotal.innerHTML = celdatotal;
-            fragment.appendChild(rowTotal);
+            // Libro
+            const montoLibro = alumno.libro || 0;
+            const colorLibro = montoLibro > 0 ? '#d4edda' : '#ffcccc';
+            const textoLibro = montoLibro > 0 ? `$${montoLibro.toLocaleString()}` : '-';
+            html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${colorLibro}; font-weight: 600; color: #333;">${textoLibro}</td>`;
+            totalAlumno += montoLibro;
+            totalLibros += montoLibro;
             
-            tbody.appendChild(fragment);
-        } else {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">No hay datos de pagos por mes</td></tr>';
+            // Total alumno
+            html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: #e3f2fd; font-weight: 700; color: #0d47a1;">$${totalAlumno.toLocaleString()}</td>`;
+            
+            row.innerHTML = html;
+            fragment.appendChild(row);
+        });
+        
+        tbody.appendChild(fragment);
+        
+        // Fila de totales
+        const rowTotal = document.createElement('tr');
+        rowTotal.style.cssText = 'background: #f5f5f5; font-weight: 700; border-top: 2px solid #333;';
+        
+        let htmlTotal = '<td style="padding: 8px; border: 1px solid #333; text-align: left;">📊 TOTALES</td>';
+        htmlTotal += `<td style="padding: 8px; border: 1px solid #333; text-align: right; background: #fffacd; color: #333;">$${totalMatriculas.toLocaleString()}</td>`;
+        
+        let totalGeneral = 0;
+        for (let mes of mesesMostrar) {
+            const mesKey = mes.toString().padStart(2, '0');
+            const monto = totalPorMes[mesKey] || 0;
+            totalGeneral += monto;
+            htmlTotal += `<td style="padding: 8px; border: 1px solid #333; text-align: right; background: #fffacd; color: #333;">$${monto.toLocaleString()}</td>`;
         }
+        
+        htmlTotal += `<td style="padding: 8px; border: 1px solid #333; text-align: right; background: #fffacd; color: #333;">$${totalLibros.toLocaleString()}</td>`;
+        
+        const totalFinal = totalMatriculas + totalGeneral + totalLibros;
+        htmlTotal += `<td style="padding: 8px; border: 1px solid #333; text-align: right; background: #4caf50; color: white;">$${totalFinal.toLocaleString()}</td>`;
+        
+        rowTotal.innerHTML = htmlTotal;
+        tbody.appendChild(rowTotal);
+        
     } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('tbody-pagos-calendario').innerHTML = '<tr><td colspan="11" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+        console.error('[ERROR] cargarReporteCalendario:', error);
+        document.getElementById('tbody-pagos-mes-nuevo').innerHTML = '<tr><td colspan="13" style="text-align: center; color: #ef4444; padding: 20px;">Error: ' + error.message + '</td></tr>';
     }
+}
+
+async function exportarExcelNuevo() {
+    if (!document.getElementById('tbody-pagos-mes-nuevo').innerHTML || document.getElementById('tbody-pagos-mes-nuevo').innerHTML.includes('Cargando')) {
+        alert('Por favor, espera a que carguen los datos');
+        return;
+    }
+    
+    const soloRegulares = document.getElementById('chk-solo-regulares-tab5')?.checked ?? true;
+    const response = await fetch('/api/reportes/pagos-calendario?solo_regulares=' + soloRegulares);
+    const data = await response.json();
+    
+    if (data.status !== 'success') {
+        alert('Error al generar Excel');
+        return;
+    }
+    
+    const ws_data = [];
+    const mesesNombres = {
+        '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN', '07': 'JUL',
+        '08': 'AGO', '09': 'SEP', '10': 'OCT', '11': 'NOV'
+    };
+    
+    const encabezado = ['Alumno', 'Matrícula', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'Libro', 'TOTAL'];
+    ws_data.push(encabezado);
+    
+    data.reporte.forEach(alumno => {
+        const row = [alumno.nombre, alumno.matricula_monto || 0];
+        let totalAlumno = alumno.matricula_monto || 0;
+        
+        for (let mes = 3; mes <= 11; mes++) {
+            const mesKey = mes.toString().padStart(2, '0');
+            const monto = alumno.meses[mesKey] || 0;
+            totalAlumno += monto;
+            row.push(monto > 0 ? monto : '');
+        }
+        
+        const montoLibro = alumno.libro || 0;
+        totalAlumno += montoLibro;
+        row.push(montoLibro > 0 ? montoLibro : '');
+        row.push(totalAlumno);
+        ws_data.push(row);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!cols'] = [
+        { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, 
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pagos por Mes');
+    XLSX.writeFile(wb, 'Reporte_Pagos_por_Mes_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 async function exportarExcelReporte(tipo) {
@@ -390,6 +485,12 @@ async function exportarExcelReporteCalendario() {
 
 document.addEventListener('DOMContentLoaded', () => {
     mostrarReporte('pagos-mes');
+    
+    // Event listener para el checkbox de Solo Regulares
+    const chkSoloRegulares = document.getElementById('chk-solo-regulares-tab5');
+    if (chkSoloRegulares) {
+        chkSoloRegulares.addEventListener('change', cargarReporteCalendario);
+    }
 });
 </script>
 

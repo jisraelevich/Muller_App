@@ -348,10 +348,12 @@ const RetirosModule = {
                     div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
                     div.onclick = () => RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
                     
+                    const notasHTML = retiro.notas ? ` <span style="color: #8b5cf6; font-size: 11px; font-style: italic; margin-left: 8px; padding-left: 8px; border-left: 2px solid #8b5cf6;">💬 ${retiro.notas}</span>` : '';
+                    
                     div.innerHTML = `
                         <span style="font-weight: 600; color: #374151; font-size: 12px;">${fechaFormato}</span>
                         <span style="color: #f59e0b; font-weight: 700; text-align: left; font-size: 12px;">💰 $${Math.floor(retiro.monto)}</span>
-                        <div style="color: #6b7280; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px;">${retiro.concepto}</div>
+                        <div style="color: #6b7280; text-align: left; overflow: hidden; font-size: 12px; display: flex; align-items: center;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${retiro.concepto}</span>${notasHTML}</div>
                         <button class="btn-touch btn-primary" style="width: 100%; height: 32px; font-size: 11px;">✏️ EDITAR</button>
                     `;
                     

@@ -15,6 +15,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import time
 from functools import wraps
+import unicodedata
 
 # Cargar variables de entorno
 load_dotenv()
@@ -380,38 +381,6 @@ def render_oradores():
     
     except Exception as e:
         print(f"Error al cargar tab oradores: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/tab/7')
-@login_required
-def render_reportes_pagos():
-    """Renderizar tab de Reporte de Pagos por Calendario"""
-    try:
-        current_user = GoogleOAuth.get_session_user()
-        
-        data = {}
-        if db:
-            try:
-                data['miembros'] = db.get_miembros(tipo_asistencia='Regular')
-                data['pagos'] = db.get_pagos()
-            except Exception as e:
-                print(f"Error obteniendo datos de pagos: {e}")
-                data['miembros'] = []
-                data['pagos'] = []
-                data['error'] = f"Error obteniendo datos: {str(e)}"
-        else:
-            data['miembros'] = []
-            data['pagos'] = []
-            data['error'] = "⚠️ Base de datos no disponible"
-        
-        return render_template('tab_7_reportes_pagos.html',
-                             tabs=TABS,
-                             active_tab=7,
-                             current_user=current_user,
-                             **data)
-    
-    except Exception as e:
-        print(f"Error al cargar tab 7 (reportes pagos): {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== API ENDPOINTS - ASISTENCIA ==========
@@ -1554,6 +1523,7 @@ def reportes_pagos_calendario():
                 'miembro_id': miembro_dict.get('id'),
                 'nombre': f"{miembro_dict.get('nombre', '')} {miembro_dict.get('apellido', '')}".strip(),
                 'matricula_monto': 0,  # Monto total pagado por matrícula
+                'libro': 0,  # Monto total pagado por libro
                 'estado': miembro_dict.get('estado', 'Activo'),
                 'meses': {}
             }
@@ -1570,8 +1540,12 @@ def reportes_pagos_calendario():
                     tipo_pago = pago_dict.get('tipo_pago', '')
                     
                     # Si es pago de Matrícula, agregarlo separately
-                    if tipo_pago == 'Matrícula':
+                    # Normalizar comparación sin acentos
+                    tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
+                    if tipo_normalized == 'matricula':
                         row['matricula_monto'] += int(monto)
+                    elif tipo_normalized == 'libro':
+                        row['libro'] += int(monto)
                     else:
                         # Si es cuota mensual, verificar si tiene mes_inicio y mes_fin
                         mes_inicio = pago_dict.get('mes_inicio')
