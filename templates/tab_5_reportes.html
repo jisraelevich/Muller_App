@@ -193,7 +193,7 @@ async function cargarReportePagos() {
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.descripcion || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.tipo_pago || '-'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.metodo_pago || '-'}</td>
                 `;
                 fragment.appendChild(row);
