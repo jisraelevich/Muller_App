@@ -147,6 +147,7 @@
 
 <!-- Librerías para exportación -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+<script src="https://unpkg.com/xlsx@latest/dist/xlsx.full.min.js"></script>
 
 <script>
 async function mostrarReporte(tipo) {
@@ -374,10 +375,18 @@ async function cargarReporteCalendario() {
 }
 
 async function exportarExcelNuevo() {
-    // Verificar que XLSX esté cargado
+    // Verificar que XLSX esté cargado - reintentarsi no
     if (typeof XLSX === 'undefined') {
-        alert('Librería XLSX no está cargada. Por favor, intenta nuevamente.');
-        return;
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Esperar 500ms
+            if (typeof XLSX !== 'undefined') break;
+        }
+        
+        if (typeof XLSX === 'undefined') {
+            alert('Librería XLSX no está disponible. Por favor recarga la página e intenta nuevamente.');
+            return;
+        }
     }
     
     if (!document.getElementById('tbody-pagos-mes-nuevo').innerHTML || document.getElementById('tbody-pagos-mes-nuevo').innerHTML.includes('Cargando')) {
