@@ -429,7 +429,10 @@ async function exportarExcelNuevo() {
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Pagos por Mes');
-    XLSX.writeFile(wb, 'Reporte_Pagos_por_Mes_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    const now = new Date();
+    const fecha = now.toISOString().split('T')[0];
+    const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+    XLSX.writeFile(wb, 'Reporte_Pagos_por_Mes_' + fecha + '_' + hhmm + '.xlsx');
 }
 
 async function exportarExcelReporte(tipo) {
@@ -473,8 +476,11 @@ async function exportarExcelReporteCalendario() {
             const blob = await exportResponse.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
+            const now = new Date();
+            const fecha = now.toISOString().split('T')[0];
+            const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
             a.href = url;
-            a.download = `Pagos_por_Mes_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.download = `Pagos_por_Mes_${fecha}_${hhmm}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
