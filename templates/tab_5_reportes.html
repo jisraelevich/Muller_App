@@ -301,7 +301,7 @@ async function cargarReporteCalendario() {
             
             // Matrícula
             const montoMatricula = alumno.matricula_monto || 0;
-            const colorMatricula = montoMatricula > 0 ? '#d4edda' : '#ffcccc';
+            const colorMatricula = montoMatricula > 0 ? '#e8f5e9' : '#ffffff';
             const textoMatricula = montoMatricula > 0 ? `$${montoMatricula.toLocaleString()}` : '-';
             html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${colorMatricula}; font-weight: 600; color: #333;">${textoMatricula}</td>`;
             totalAlumno += montoMatricula;
@@ -314,11 +314,11 @@ async function cargarReporteCalendario() {
                 totalAlumno += monto;
                 totalPorMes[mesKey] += monto;
                 
-                let bgColor = '#ffcccc';
-                let textColor = '#c82333';
+                let bgColor = '#ffffff';
+                let textColor = '#666';
                 if (monto >= 1000) {
-                    bgColor = '#d4edda';
-                    textColor = '#155724';
+                    bgColor = '#e8f5e9';
+                    textColor = '#1b5e20';
                 } else if (monto > 0) {
                     bgColor = '#fff3cd';
                     textColor = '#856404';
@@ -329,7 +329,7 @@ async function cargarReporteCalendario() {
             
             // Libro
             const montoLibro = alumno.libro || 0;
-            const colorLibro = montoLibro > 0 ? '#d4edda' : '#ffcccc';
+            const colorLibro = montoLibro > 0 ? '#e8f5e9' : '#ffffff';
             const textoLibro = montoLibro > 0 ? `$${montoLibro.toLocaleString()}` : '-';
             html += `<td style="padding: 8px; border: 1px solid #ddd; text-align: right; background: ${colorLibro}; font-weight: 600; color: #333;">${textoLibro}</td>`;
             totalAlumno += montoLibro;
@@ -374,6 +374,12 @@ async function cargarReporteCalendario() {
 }
 
 async function exportarExcelNuevo() {
+    // Verificar que XLSX esté cargado
+    if (typeof XLSX === 'undefined') {
+        alert('Librería XLSX no está cargada. Por favor, intenta nuevamente.');
+        return;
+    }
+    
     if (!document.getElementById('tbody-pagos-mes-nuevo').innerHTML || document.getElementById('tbody-pagos-mes-nuevo').innerHTML.includes('Cargando')) {
         alert('Por favor, espera a que carguen los datos');
         return;
