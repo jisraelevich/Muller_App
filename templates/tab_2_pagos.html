@@ -56,7 +56,7 @@
     </div>
 </div>
 
-<!-- PASO 2: Ingresar Pago -->
+<!-- PASO 2: Ingresar Cobro -->
 <div id="paso-2" class="hidden">
     <!-- ENCABEZADO CON TOTALES COMO LABELS -->
     <div style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);">
@@ -97,7 +97,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
-                    💵 Monto
+                    � Monto
                 </label>
                 <input type="number" 
                        id="monto-pago" 
@@ -113,7 +113,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; min-width: 80px; margin-bottom: 0; flex-shrink: 0;">
-                    📋 Tipo
+                    📋 Tipo de Cobro
                 </label>
                 <select id="tipo-pago" 
                         class="form-select" 
@@ -141,7 +141,7 @@
         <!-- FILA 2.5: Meses con Checkboxes (solo para Cuota Mensual) -->
         <div id="meses-section" style="display: none; margin-bottom: 16px;">
             <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 12px; display: block;">
-                📆 Selecciona los meses que cubre este pago:
+                📆 Selecciona los meses que cubre este cobro:
             </label>
             <div style="display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
                 <!-- Fila 1: Marzo a Julio (5 meses) -->
@@ -194,7 +194,7 @@
         <div style="display: grid; grid-template-columns: 70% 30%; gap: 12px; align-items: flex-end;">
             <div>
                 <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
-                    📝 Notas (Opcional)
+                    📝 Detalles (Opcional)
                 </label>
                 <textarea id="notas-pago" 
                           class="form-input"
@@ -222,22 +222,22 @@
     <!-- HISTORIAL -->
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <h3 style="font-size: 14px; margin-bottom: 16px; font-weight: 700; color: #3498db; display: flex; align-items: center; gap: 8px;">
-            📊 Histórico
+            📊 Histórico de Cobros
         </h3>
         
         <div id="lista-pagos-previos" style="display: grid; gap: 12px;">
             <div style="text-align: center; color: #9ca3af; padding: 20px; font-size: 13px;">
-                Cargando pagos...
+                Cargando cobros...
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL: Editar Pago -->
+<!-- MODAL: Editar Cobro -->
 <div id="modal-editar-pago" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; overflow-y: auto; padding: 20px; backdrop-filter: blur(2px);">
     <div style="background: white; margin: auto; border-radius: 12px; padding: 28px; max-width: 900px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
         <h2 style="font-size: 18px; margin-bottom: 24px; text-align: center; color: #f39c12; font-weight: 700;">
-            ✏️ EDITAR PAGO
+            ✏️ EDITAR COBRO - <span id="modal-cobro-tipo">-</span>
         </h2>
         
         <!-- Grid 2 columnas -->
@@ -251,7 +251,7 @@
             </div>
             
             <div class="form-group">
-                <label class="form-label" style="color: #2c3e50;">💵 Monto:</label>
+                <label class="form-label" style="color: #2c3e50;">� Monto:</label>
                 <input type="number" 
                        id="edit-monto-pago" 
                        class="form-input"
@@ -264,7 +264,7 @@
         <!-- Grid 2 columnas -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
             <div class="form-group">
-                <label class="form-label" style="color: #2c3e50;">📋 Tipo:</label>
+                <label class="form-label" style="color: #2c3e50;">📋 Tipo de Cobro:</label>
                 <select id="edit-tipo-pago" 
                         class="form-select"
                         onchange="PagosModule.actualizarMesesModalEdicion()"
@@ -288,7 +288,7 @@
         </div>
         
         <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="color: #2c3e50;">📝 Notas (Opcional):</label>
+            <label class="form-label" style="color: #2c3e50;">📝 Detalles (Opcional):</label>
             <textarea id="edit-notas-pago" 
                       class="form-input"
                       placeholder="Agregar nota..."
@@ -734,6 +734,18 @@ const PagosModule = {
             textareNotas.value = pago.descripcion || '';
         }
         
+        // Actualizar el tipo de cobro en el título del modal
+        const spanTipo = document.getElementById('modal-cobro-tipo');
+        if (spanTipo) {
+            const tipoLabels = {
+                'Cuota': 'Cuota Mensual',
+                'Matrícula': 'Matrícula',
+                'Libro': 'Libro',
+                'Donación': 'Donación'
+            };
+            spanTipo.textContent = tipoLabels[selectTipo.value] || selectTipo.value;
+        }
+        
         // Mostrar meses seleccionados si es cuota
         this.mostrarMesesEditarPago(pago);
         
@@ -758,6 +770,18 @@ const PagosModule = {
         const seccionMeses = document.getElementById('edit-meses-section');
         
         console.log('[EDIT TYPE CHANGE] Nuevo tipo:', tipo);
+        
+        // Actualizar el tipo en el título del modal
+        const spanTipo = document.getElementById('modal-cobro-tipo');
+        if (spanTipo) {
+            const tipoLabels = {
+                'Cuota': 'Cuota Mensual',
+                'Matrícula': 'Matrícula',
+                'Libro': 'Libro',
+                'Donación': 'Donación'
+            };
+            spanTipo.textContent = tipoLabels[tipo] || tipo;
+        }
         
         if (!seccionMeses) {
             console.error('[EDIT TYPE CHANGE] No se encontró edit-meses-section');
