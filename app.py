@@ -1062,10 +1062,12 @@ def update_pago(pago_id):
         tipo_pago = datos.get('tipo_pago', 'Cuota')
         metodo_pago = datos.get('metodo_pago', 'Efectivo')
         descripcion = datos.get('descripcion', '')  # Notas del pago
+        mes_inicio = datos.get('mes_inicio')  # Para Cuota: mes inicial del rango
+        mes_fin = datos.get('mes_fin')  # Para Cuota: mes final del rango
         
-        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}, notas={descripcion}")
+        print(f"[PAGOS UPDATE] Actualizando pago {pago_id}: monto={monto}, fecha={fecha}, tipo={tipo_pago}, mes_inicio={mes_inicio}, mes_fin={mes_fin}, notas={descripcion}")
         
-        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago)
+        db.update_pago(pago_id, monto, fecha, mes, tipo_pago, descripcion, metodo_pago, mes_inicio, mes_fin)
         
         print(f"[PAGOS UPDATE] Pago {pago_id} actualizado exitosamente")
         return jsonify({"status": "success", "message": "Pago actualizado correctamente"})

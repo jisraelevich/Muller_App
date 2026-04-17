@@ -524,13 +524,13 @@ class Database:
         with self.get_cursor() as cursor:
             cursor.execute("DELETE FROM pagos WHERE id=%s", (pago_id,))
     
-    def update_pago(self, pago_id, monto, fecha, mes, tipo_pago=None, descripcion=None, metodo_pago='Efectivo'):
+    def update_pago(self, pago_id, monto, fecha, mes, tipo_pago=None, descripcion=None, metodo_pago='Efectivo', mes_inicio=None, mes_fin=None):
         """Update payment record"""
         with self.get_cursor() as cursor:
             cursor.execute(
-                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, tipo_pago=%s, descripcion=%s, metodo_pago=%s, updated_at=NOW() "
+                "UPDATE pagos SET monto=%s, fecha=%s, mes=%s, tipo_pago=%s, descripcion=%s, metodo_pago=%s, mes_inicio=%s, mes_fin=%s, updated_at=NOW() "
                 "WHERE id=%s",
-                (monto, fecha, mes, tipo_pago, descripcion, metodo_pago, pago_id)
+                (monto, fecha, mes, tipo_pago, descripcion, metodo_pago, mes_inicio, mes_fin, pago_id)
             )
     
     # ========================================================================

@@ -267,6 +267,7 @@
                 <label class="form-label" style="color: #2c3e50;">📋 Tipo:</label>
                 <select id="edit-tipo-pago" 
                         class="form-select"
+                        onchange="PagosModule.actualizarMesesModalEdicion()"
                         style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
                     <option value="Cuota">Cuota Mensual</option>
                     <option value="Matrícula">Matrícula</option>
@@ -293,6 +294,53 @@
                       placeholder="Agregar nota..."
                       style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; min-height: 80px; resize: vertical; font-family: inherit;">
             </textarea>
+        </div>
+        
+        <!-- Sección de meses para editar cuotas mensuales -->
+        <div id="edit-meses-section" style="display: none; margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 12px; display: block;">📆 Selecciona los meses que cubre este pago:</label>
+            <div style="display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 2px solid #27ae60;">
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="3" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Marzo</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="4" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Abril</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="5" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Mayo</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="6" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Junio</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="7" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Julio</span>
+                    </label>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="8" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Agosto</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="9" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Septiembre</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="10" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Octubre</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" class="edit-mes-checkbox" value="11" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span style="font-size: 13px; font-weight: 500;">Noviembre</span>
+                    </label>
+                </div>
+            </div>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -702,50 +750,67 @@ const PagosModule = {
         console.log('[PAGO EDIT] Modal abierto');
     },
     
+    actualizarMesesModalEdicion() {
+        console.log('[EDIT TYPE CHANGE] Tipo de pago cambió');
+        
+        const selectTipo = document.getElementById('edit-tipo-pago');
+        const tipo = selectTipo.value;
+        const seccionMeses = document.getElementById('edit-meses-section');
+        
+        console.log('[EDIT TYPE CHANGE] Nuevo tipo:', tipo);
+        
+        if (!seccionMeses) {
+            console.error('[EDIT TYPE CHANGE] No se encontró edit-meses-section');
+            return;
+        }
+        
+        if (tipo === 'Cuota') {
+            seccionMeses.style.display = 'block';
+            console.log('[EDIT TYPE CHANGE] Mostrando sección de meses');
+        } else {
+            seccionMeses.style.display = 'none';
+            console.log('[EDIT TYPE CHANGE] Ocultando sección de meses');
+        }
+    },
+    
     mostrarMesesEditarPago(pago) {
+        console.log('[MESES EDIT] Llamada con pago:', pago);
+        
         const mesInicio = pago.mes_inicio;
         const mesFin = pago.mes_fin;
         const tipo = pago.tipo_pago || 'Cuota';
         
-        // Crear sección de meses si no existe
-        let seccionMeses = document.getElementById('edit-meses-section');
+        console.log('[MESES EDIT] tipo_pago:', pago.tipo_pago, '=> tipo final:', tipo);
+        
+        const seccionMeses = document.getElementById('edit-meses-section');
+        console.log('[MESES EDIT] seccionMeses encontrada:', !!seccionMeses);
+        
         if (!seccionMeses) {
-            const modal = document.getElementById('modal-editar-pago');
-            const editNotas = document.getElementById('edit-notas-pago');
-            
-            seccionMeses = document.createElement('div');
-            seccionMeses.id = 'edit-meses-section';
-            seccionMeses.style.cssText = 'margin-bottom: 16px;';
-            
-            editNotas.parentNode.insertBefore(seccionMeses, editNotas.nextSibling);
+            console.error('[MESES EDIT] No se encontró edit-meses-section!');
+            return;
         }
         
-        // Mostrar solo si es cuota
-        if (tipo === 'Cuota' && mesInicio && mesFin) {
+        // Mostrar si es tipo Cuota
+        console.log('[MESES EDIT] Comparando tipo === "Cuota":', tipo === 'Cuota');
+        
+        if (tipo === 'Cuota') {
             seccionMeses.style.display = 'block';
+            console.log('[MESES EDIT] Mostrando sección de meses');
             
-            const meses = ['Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre'];
-            const mesesNumeros = [3, 4, 5, 6, 7, 8, 9, 10, 11];
+            // Desmarcar todos primero
+            document.querySelectorAll('.edit-mes-checkbox').forEach(cb => cb.checked = false);
             
-            let html = '<label class="form-label" style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 12px; display: block;">📆 Meses incluidos (no se puede modificar):</label>';
-            html += '<div style="display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">';
-            html += '<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">';
-            
-            mesesNumeros.forEach((mes, idx) => {
-                const isSelected = mes >= mesInicio && mes <= mesFin;
-                
-                html += `<label style="display: flex; align-items: center; gap: 8px; cursor: not-allowed; padding: 8px; border-radius: 4px; transition: background 0.2s; opacity: ${isSelected ? '1' : '0.5'};">
-                    <input type="checkbox" disabled="disabled" ${isSelected ? 'checked' : ''} style="cursor: not-allowed; width: 18px; height: 18px;">
-                    <span style="font-size: 13px; font-weight: 500;">${meses[idx]}</span>
-                </label>`;
-            });
-            
-            html += '</div>';
-            html += '<div style="font-size: 11px; color: #6b7280; font-style: italic; margin-top: 4px;">⚠️ Para cambiar los meses, elimina este pago y registra uno nuevo.</div>';
-            html += '</div>';
-            seccionMeses.innerHTML = html;
+            // Marcar los que corresponden
+            if (mesInicio && mesFin) {
+                console.log('[MESES EDIT] Marcando meses:', mesInicio, 'a', mesFin);
+                for (let mes = mesInicio; mes <= mesFin; mes++) {
+                    const checkbox = document.querySelector(`.edit-mes-checkbox[value="${mes}"]`);
+                    if (checkbox) checkbox.checked = true;
+                }
+            }
         } else {
             seccionMeses.style.display = 'none';
+            console.log('[MESES EDIT] Ocultando sección de meses (tipo no es Cuota)');
         }
     },
     
@@ -814,6 +879,23 @@ const PagosModule = {
                 metodo_pago: metodo,
                 descripcion: notas
             };
+            
+            // Si es Cuota, recolectar meses seleccionados
+            if (tipo === 'Cuota') {
+                const mesCheckboxes = document.querySelectorAll('.edit-mes-checkbox:checked');
+                if (mesCheckboxes.length === 0) {
+                    mostrarAlerta('Seleccione al menos un mes', 'error');
+                    return;
+                }
+                
+                const mesesSeleccionados = Array.from(mesCheckboxes).map(cb => parseInt(cb.value));
+                mesesSeleccionados.sort((a, b) => a - b);
+                
+                payload.mes_inicio = mesesSeleccionados[0];
+                payload.mes_fin = mesesSeleccionados[mesesSeleccionados.length - 1];
+                
+                console.log('[PAGO EDIT] Meses seleccionados:', mesesSeleccionados, 'Rango:', payload.mes_inicio, '-', payload.mes_fin);
+            }
             
             console.log(`[PAGO EDIT] Actualizando pago ${this.pagoEnEdicion.id}:`, payload);
             console.log(`[PAGO EDIT] URL: /api/pagos/update/${this.pagoEnEdicion.id}`);
