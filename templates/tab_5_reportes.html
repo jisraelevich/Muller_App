@@ -425,17 +425,39 @@ async function exportarExcelNuevo() {
             const mesKey = mes.toString().padStart(2, '0');
             const monto = alumno.meses[mesKey] || 0;
             totalAlumno += monto;
-            row.push(monto > 0 ? monto : '');
+            row.push(monto > 0 ? monto : 0);
         }
         
         const montoLibro = alumno.libro || 0;
         totalAlumno += montoLibro;
-        row.push(montoLibro > 0 ? montoLibro : '');
+        row.push(montoLibro > 0 ? montoLibro : 0);
         row.push(totalAlumno);
         ws_data.push(row);
     });
     
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // Formatear headers: color claro, font grande, bold
+    for (let col = 0; col < encabezado.length; col++) {
+        const cellRef = XLSX.utils.encode_col(col) + '1';
+        if (!ws[cellRef]) ws[cellRef] = {};
+        ws[cellRef].s = {
+            fill: { fgColor: { rgb: 'FFE8F5E9' } },
+            font: { bold: true, sz: 14, color: { rgb: 'FF1B5E20' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+    }
+    
+    // Formatear números sin decimales (pesos) y fechas DD/MM/YYYY
+    for (let row = 2; row <= ws_data.length; row++) {
+        for (let col = 1; col < encabezado.length; col++) {
+            const cellRef = XLSX.utils.encode_col(col) + row;
+            if (ws[cellRef]) {
+                ws[cellRef].z = '#,##0';
+            }
+        }
+    }
+    
     ws['!cols'] = [
         { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, 
         { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }

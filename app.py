@@ -1620,7 +1620,7 @@ def export_pagos_calendario_excel():
         ws['A1'].font = Font(bold=True, size=14)
         ws.merge_cells('A1:N1')
         
-        # Subtítulo con fecha
+        # Subtítulo con fecha (DD/MM/YYYY)
         ws['A2'] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         ws['A2'].font = Font(italic=True, size=10)
         
@@ -1651,7 +1651,7 @@ def export_pagos_calendario_excel():
                 total_alumno += monto
                 totales_mes[mes_key] += monto
                 
-                # Colorear según monto
+                # Colorear según monto y formatear números sin decimales
                 cell = ws.cell(row=row_num, column=col)
                 if monto >= 1000:
                     cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
@@ -1662,7 +1662,7 @@ def export_pagos_calendario_excel():
                 cell.alignment = Alignment(horizontal="right")
                 cell.number_format = '#,##0'
             
-            # Total por alumno
+            # Total por alumno (sin decimales)
             cell = ws.cell(row=row_num, column=14)
             cell.value = total_alumno
             cell.fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
@@ -1672,7 +1672,7 @@ def export_pagos_calendario_excel():
             
             row_num += 1
         
-        # Fila de totales
+        # Fila de totales (sin decimales)
         ws.cell(row=row_num, column=1).value = "📊 TOTALES"
         ws.cell(row=row_num, column=1).font = total_font
         
@@ -1687,7 +1687,7 @@ def export_pagos_calendario_excel():
             cell.alignment = Alignment(horizontal="right")
             cell.number_format = '#,##0'
         
-        # Total general
+        # Total general (sin decimales)
         cell = ws.cell(row=row_num, column=14)
         cell.value = total_general
         cell.fill = PatternFill(start_color="4CAF50", end_color="4CAF50", fill_type="solid")
@@ -1834,7 +1834,7 @@ def export_excel(tipo):
             for r in reporte:
                 ws.append([
                     r['miembro_id'], f"{r['nombre']} {r['apellido']}",
-                    r.get('monto_total', 0), date.today(),
+                    r.get('monto_total', 0), datetime.now().strftime('%d/%m/%Y'),
                     'Múltiples', 'Varios'
                 ])
         
@@ -1856,12 +1856,18 @@ def export_excel(tipo):
                     f"{r.get('porcentaje_asistencia', 0)}%"
                 ])
         
-        # Aplicar estilos
+        # Aplicar estilos a headers
         for cell in ws[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.border = border
+        
+        # Formatear números sin decimales
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+            for col_idx, cell in enumerate(row, 1):
+                if col_idx > 1 and isinstance(cell.value, (int, float)):
+                    cell.number_format = '#,##0'
         
         # Ajustar anchos
         for column in ws.columns:
@@ -1881,7 +1887,7 @@ def export_excel(tipo):
         wb.save(output)
         output.seek(0)
         
-        filename = f"{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"{tipo}_{datetime.now().strftime('%d%m%Y_%H%M%S')}.xlsx"
         
         return send_file(
             output,
