@@ -37,7 +37,6 @@
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Monto</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Fecha</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
-                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Mes</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Método</th>
                     </tr>
                 </thead>
@@ -195,33 +194,39 @@ async function cargarReportePagos() {
             data.pagos.slice(0, 50).forEach(pago => {
                 const row = document.createElement('tr');
                 const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString() : '';
-                let mesDisplay = '-';
+                
+                // Mostrar Tipo: si es Cuota, mostrar "Cuota: Mes", sino solo el tipo
+                let tipoDisplay = pago.tipo_pago || '-';
                 if (pago.tipo_pago === 'Cuota' && pago.mes_inicio) {
                     const mesInicio = parseInt(pago.mes_inicio);
+                    const mesesNombres = {
+                        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+                        7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+                    };
                     if (pago.mes_fin && pago.mes_fin !== pago.mes_inicio) {
                         const mesFin = parseInt(pago.mes_fin);
-                        mesDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
+                        tipoDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
                     } else {
-                        mesDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
+                        tipoDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
                     }
                 }
+                
                 row.innerHTML = `
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.tipo_pago || '-'}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${mesDisplay}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${tipoDisplay}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.metodo_pago || '-'}</td>
                 `;
                 fragment.appendChild(row);
             });
             tbody.appendChild(fragment);
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No hay pagos registrados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No hay pagos registrados</td></tr>';
         }
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('tbody-pagos').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+        document.getElementById('tbody-pagos').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
     }
 }
 
@@ -657,7 +662,7 @@ async function exportarExcelPagosDetalle() {
         
         // Preparar datos para Excel
         const ws_data = [];
-        const encabezado = ['Alumno', 'Monto', 'Fecha', 'Tipo', 'Mes', 'Método'];
+        const encabezado = ['Alumno', 'Monto', 'Fecha', 'Tipo', 'Método'];
         ws_data.push(encabezado);
         
         const mesesNombres = {
@@ -667,14 +672,14 @@ async function exportarExcelPagosDetalle() {
         
         // Agregar datos de pagos
         data.pagos.forEach(pago => {
-            let mesDisplay = '-';
+            let tipoDisplay = pago.tipo_pago || '-';
             if (pago.tipo_pago === 'Cuota' && pago.mes_inicio) {
                 const mesInicio = parseInt(pago.mes_inicio);
                 if (pago.mes_fin && pago.mes_fin !== pago.mes_inicio) {
                     const mesFin = parseInt(pago.mes_fin);
-                    mesDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
+                    tipoDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
                 } else {
-                    mesDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
+                    tipoDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
                 }
             }
             
@@ -683,8 +688,7 @@ async function exportarExcelPagosDetalle() {
                 pago.miembro_nombre || 'N/A',
                 pago.monto || 0,
                 fecha,
-                pago.tipo_pago || '-',
-                mesDisplay,
+                tipoDisplay,
                 pago.metodo_pago || '-'
             ]);
         });
@@ -719,13 +723,12 @@ async function exportarExcelPagosDetalle() {
             }
         }
         
-        // Anturas de columnas
+        // Ancho de columnas
         ws['!cols'] = [
             { wch: 25 },  // Alumno
             { wch: 15 },  // Monto
             { wch: 15 },  // Fecha
-            { wch: 15 },  // Tipo
-            { wch: 25 },  // Mes
+            { wch: 25 },  // Tipo
             { wch: 15 }   // Método
         ];
         
