@@ -2102,6 +2102,7 @@ def export_pagos_calendario_pdf():
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F0F0F0')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#000000')),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 7),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 3),
@@ -2113,6 +2114,7 @@ def export_pagos_calendario_pdf():
             ('FONTSIZE', (0, 1), (-1, -2), 7),
             ('ALIGN', (0, 1), (0, -2), 'LEFT'),
             ('ALIGN', (1, 1), (-1, -2), 'RIGHT'),
+            ('VALIGN', (0, 1), (-1, -2), 'MIDDLE'),
             ('LEFTPADDING', (0, 1), (-1, -2), 1),
             ('RIGHTPADDING', (0, 1), (-1, -2), 1),
             ('TOPPADDING', (0, 1), (-1, -2), 0),
@@ -2127,10 +2129,19 @@ def export_pagos_calendario_pdf():
             ('FONTSIZE', (0, -1), (-1, -1), 7),
             ('ALIGN', (0, -1), (0, -1), 'LEFT'),
             ('ALIGN', (1, -1), (-1, -1), 'RIGHT'),
+            ('VALIGN', (0, -1), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, -1), (-1, -1), 1),
             ('RIGHTPADDING', (0, -1), (-1, -1), 1),
             ('TOPPADDING', (0, -1), (-1, -1), 1),
             ('BOTTOMPADDING', (0, -1), (-1, -1), 1),
+        ])
+        
+        # Última columna (TOTAL) - fondo azul en todas las filas
+        style_commands.extend([
+            ('BACKGROUND', (-1, 0), (-1, -1), colors.HexColor('#E3F2FD')),
+            ('TEXTCOLOR', (-1, 0), (-1, -1), colors.HexColor('#0D47A1')),
+            ('VALIGN', (-1, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (-1, 1), (-1, -1), 'Helvetica-Bold'),
         ])
         
         # Bordes - gris claro
