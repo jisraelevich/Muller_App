@@ -1523,7 +1523,8 @@ def reportes_pagos_calendario():
             miembro_dict = dict(miembro)
             row = {
                 'miembro_id': miembro_dict.get('id'),
-                'nombre': f"{miembro_dict.get('nombre', '')} {miembro_dict.get('apellido', '')}".strip(),
+                'nombre': miembro_dict.get('nombre', ''),
+                'apellido': miembro_dict.get('apellido', ''),
                 'matricula_monto': 0,  # Monto total pagado por matrícula
                 'libro': 0,  # Monto total pagado por libro
                 'estado': miembro_dict.get('estado', 'Activo'),
@@ -1577,8 +1578,8 @@ def reportes_pagos_calendario():
             
             reporte.append(row)
         
-        # Ordenar por nombre
-        reporte.sort(key=lambda x: x['nombre'])
+        # Ordenar por apellido, nombre
+        reporte.sort(key=lambda x: (x['apellido'].lower(), x['nombre'].lower()))
         
         return jsonify({
             "status": "success",
