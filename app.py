@@ -1608,9 +1608,10 @@ def export_pagos_calendario_excel():
         workbook = xlsxwriter.Workbook(output)
         worksheet = workbook.add_worksheet("Pagos por Mes")
         
-        # Colores exactos del web
-        header_bg = '#F0F0F0'  # Gris claro del header
-        border_color = '#DDD'
+        # Colores exactos del web - MEJORADOS PARA VISIBILIDAD
+        header_bg = '#CCCCCC'  # Gris más visible para header
+        header_border = '#666666'  # Borde gris oscuro
+        border_color = '#CCCCCC'
         verde_pagado = '#E8F5E9'  # Verde para pagado >= 1000
         amarillo_parcial = '#FFF3CD'  # Amarillo para parcial > 0
         azul_total = '#E3F2FD'  # Azul claro para total fila
@@ -1619,27 +1620,28 @@ def export_pagos_calendario_excel():
         # Formatos que clonan exactamente el web
         header_fmt = workbook.add_format({
             'bg_color': header_bg,
-            'border': 1,
-            'border_color': border_color,
-            'align': 'left',
+            'border': 2,
+            'border_color': header_border,
+            'align': 'center',
             'valign': 'vcenter',
-            'font_size': 10,
-            'font_color': '#333',
+            'font_size': 11,
+            'font_color': '#000',
             'bold': True,
         })
         
         cell_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'left',
             'valign': 'vcenter',
             'font_size': 10,
             'font_color': '#333',
+            'bg_color': '#FFFFFF',
         })
         
         numero_blanco_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1649,7 +1651,7 @@ def export_pagos_calendario_excel():
         
         numero_verde_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1661,7 +1663,7 @@ def export_pagos_calendario_excel():
         
         numero_amarillo_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1672,7 +1674,7 @@ def export_pagos_calendario_excel():
         
         total_fila_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1687,23 +1689,24 @@ def export_pagos_calendario_excel():
         
         # Encabezados
         worksheet.set_column('A:A', 25)  # Alumno
-        worksheet.write(row, 0, 'Alumno', header_fmt)
+        worksheet.write(row, 0, '👤 Alumno', header_fmt)
         
         worksheet.set_column('B:B', 12)
-        worksheet.write(row, 1, 'Matrícula', header_fmt)
+        worksheet.write(row, 1, '🎓 Matrícula', header_fmt)
         
         meses_mostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11]
         meses_nombres = {
-            3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun', 7: 'Jul',
-            8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov'
+            3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL',
+            8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'
         }
         
         for col_idx, mes in enumerate(meses_mostrar, 2):
             worksheet.set_column(col_idx-1, col_idx-1, 12)
-            worksheet.write(row, col_idx-1, meses_nombres[mes], header_fmt)
+            header_text = f'{mes:02d} {meses_nombres[mes]}'
+            worksheet.write(row, col_idx-1, header_text, header_fmt)
         
         worksheet.set_column(11, 11, 12)
-        worksheet.write(row, 11, 'Libro', header_fmt)
+        worksheet.write(row, 11, '📚 Libro', header_fmt)
         
         worksheet.set_column(12, 12, 14)
         worksheet.write(row, 12, 'TOTAL', header_fmt)
@@ -1760,7 +1763,7 @@ def export_pagos_calendario_excel():
         worksheet.write_number(total_row, 1, total_matriculas, numero_verde_fmt)
         
         for col_idx, mes in enumerate(meses_mostrar, 2):
-            worksheet.write_number(total_row, col_idx-1, totales_por_mes[mes], numero_verde_fmt)
+            worksheet.write_number(total_row, col_idx, totales_por_mes[mes], numero_verde_fmt)
         
         worksheet.write_number(total_row, 11, total_libros, numero_verde_fmt)
         
@@ -1870,23 +1873,23 @@ def export_excel(tipo):
         worksheet = workbook.add_worksheet()
         
         # Colores y estilos que clonan exactamente el web
-        header_bg = '#F0F0F0'
-        border_color = '#DDD'
+        header_bg = '#CCCCCC'
+        header_border = '#666666'
         
         header_fmt = workbook.add_format({
             'bg_color': header_bg,
-            'border': 1,
-            'border_color': border_color,
-            'align': 'left',
+            'border': 2,
+            'border_color': header_border,
+            'align': 'center',
             'valign': 'vcenter',
-            'font_size': 10,
+            'font_size': 11,
+            'font_color': '#000',
             'bold': True,
-            'font_color': '#333',
         })
         
         cell_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'left',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1895,7 +1898,7 @@ def export_excel(tipo):
         
         cell_right_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
@@ -1904,7 +1907,7 @@ def export_excel(tipo):
         
         money_fmt = workbook.add_format({
             'border': 1,
-            'border_color': border_color,
+            'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
