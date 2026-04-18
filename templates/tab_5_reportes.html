@@ -185,14 +185,26 @@ async function cargarReportePagos() {
         const tbody = document.getElementById('tbody-pagos');
         tbody.innerHTML = '';
         
+        const mesesNombres = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+            7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        };
+        
         if (data.pagos && data.pagos.length > 0) {
             const fragment = document.createDocumentFragment();
             data.pagos.slice(0, 50).forEach(pago => {
                 const row = document.createElement('tr');
                 const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString() : '';
-                const mesDisplay = pago.tipo_pago === 'Cuota' && pago.mes_inicio 
-                    ? `Cuota: ${pago.mes_inicio}${pago.mes_fin && pago.mes_fin !== pago.mes_inicio ? '-' + pago.mes_fin : ''}`
-                    : '-';
+                let mesDisplay = '-';
+                if (pago.tipo_pago === 'Cuota' && pago.mes_inicio) {
+                    const mesInicio = parseInt(pago.mes_inicio);
+                    if (pago.mes_fin && pago.mes_fin !== pago.mes_inicio) {
+                        const mesFin = parseInt(pago.mes_fin);
+                        mesDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
+                    } else {
+                        mesDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
+                    }
+                }
                 row.innerHTML = `
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
