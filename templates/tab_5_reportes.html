@@ -26,7 +26,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Pagos</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('pagos')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <button onclick="exportarExcelPagosDetalle()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -483,22 +483,229 @@ async function exportarExcelNuevo() {
     XLSX.writeFile(wb, 'Reporte_Pagos_por_Mes_' + fecha + '_' + hhmm + '.xlsx');
 }
 
-async function exportarExcelReporte(tipo) {
-    const btn = event.target;
-    const textoOriginal = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Generando...';
+async function exportarExcelPagosDetalle() {
+    // Verificar que XLSX esté cargado
+    if (typeof XLSX === 'undefined') {
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (typeof XLSX !== 'undefined') break;
+        }
+        if (typeof XLSX === 'undefined') {
+            alert('Librería XLSX no está disponible. Por favor recarga la página e intenta nuevamente.');
+            return;
+        }
+    }
     
     try {
-        window.location.href = `/api/export/excel/${tipo}`;
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = textoOriginal;
-        }, 2000);
+        const response = await fetch('/api/pagos/todos?t=' + new Date().getTime());
+        const data = await response.json();
+        
+        if (!data.pagos || data.pagos.length === 0) {
+            alert('No hay datos para exportar');
+            return;
+        }
+        
+        // Preparar datos para Excel
+        const ws_data = [];
+        const encabezado = ['Alumno', 'Monto', 'Fecha', 'Tipo', 'Mes', 'Método'];
+        ws_data.push(encabezado);
+        
+        const mesesNombres = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+            7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        };
+        
+        // Agregar datos de pagos
+        data.pagos.forEach(pago => {
+            let mesDisplay = '-';
+            if (pago.tipo_pago === 'Cuota' && pago.mes_inicio) {
+                const mesInicio = parseInt(pago.mes_inicio);
+                if (pago.mes_fin && pago.mes_fin !== pago.mes_inicio) {
+                    const mesFin = parseInt(pago.mes_fin);
+                    mesDisplay = `Cuota: ${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
+                } else {
+                    mesDisplay = `Cuota: ${mesesNombres[mesInicio]}`;
+                }
+            }
+            
+            const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString('es-ES') : '';
+            ws_data.push([
+                pago.miembro_nombre || 'N/A',
+                pago.monto || 0,
+                fecha,
+                pago.tipo_pago || '-',
+                mesDisplay,
+                pago.metodo_pago || '-'
+            ]);
+        });
+        
+        // Crear worksheet
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        
+        // Formatear headers: color profesional, bold, centrado
+        for (let col = 0; col < encabezado.length; col++) {
+            const cellRef = XLSX.utils.encode_col(col) + '1';
+            if (!ws[cellRef]) ws[cellRef] = {};
+            ws[cellRef].s = {
+                fill: { fgColor: { rgb: 'FF1B5E20' } },
+                font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
+                alignment: { horizontal: 'center', vertical: 'center' }
+            };
+        }
+        
+        // Formatear datos: números sin decimales, fechas DD/MM/YYYY
+        for (let row = 2; row <= ws_data.length; row++) {
+            // Monto (columna 1)
+            const montoRef = XLSX.utils.encode_col(1) + row;
+            if (ws[montoRef]) {
+                ws[montoRef].z = '#,##0';
+                ws[montoRef].s = { alignment: { horizontal: 'right' } };
+            }
+            
+            // Fecha (columna 2) - ya está en formato texto DD/MM/YYYY
+            const fechaRef = XLSX.utils.encode_col(2) + row;
+            if (ws[fechaRef]) {
+                ws[fechaRef].s = { alignment: { horizontal: 'center' } };
+            }
+        }
+        
+        // Anturas de columnas
+        ws['!cols'] = [
+            { wch: 25 },  // Alumno
+            { wch: 15 },  // Monto
+            { wch: 15 },  // Fecha
+            { wch: 15 },  // Tipo
+            { wch: 25 },  // Mes
+            { wch: 15 }   // Método
+        ];
+        
+        // Crear workbook y guardar
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Reporte Pagos');
+        
+        const now = new Date();
+        const fecha = now.toISOString().split('T')[0];
+        const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+        XLSX.writeFile(wb, `Reporte_Pagos_${fecha}_${hhmm}.xlsx`);
     } catch (error) {
-        console.error('Error:', error);
-        btn.disabled = false;
-        btn.textContent = textoOriginal;
+        console.error('Error exportando Excel:', error);
+        alert('Error al generar el reporte: ' + error.message);
+    }
+}
+
+
+async function exportarExcelReporte(tipo) {
+    // Verificar que XLSX esté cargado
+    if (typeof XLSX === 'undefined') {
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (typeof XLSX !== 'undefined') break;
+        }
+        if (typeof XLSX === 'undefined') {
+            alert('Librería XLSX no está disponible. Por favor recarga la página e intenta nuevamente.');
+            return;
+        }
+    }
+    
+    try {
+        if (tipo === 'asistencia') {
+            // Exportar tabla de asistencia
+            const tabla = document.getElementById('tabla-asistencia');
+            const rows = tabla.querySelectorAll('tbody tr');
+            
+            if (rows.length === 0 || rows[0].textContent.includes('Cargando')) {
+                alert('Por favor espera a que carguen los datos');
+                return;
+            }
+            
+            const ws_data = [['Alumno', 'Clase', 'Fecha', 'Estado']];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    ws_data.push([
+                        cells[0].textContent.trim(),
+                        cells[1].textContent.trim(),
+                        cells[2].textContent.trim(),
+                        cells[3].textContent.trim()
+                    ]);
+                }
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            
+            // Formatear headers
+            for (let col = 0; col < 4; col++) {
+                const cellRef = XLSX.utils.encode_col(col) + '1';
+                if (!ws[cellRef]) ws[cellRef] = {};
+                ws[cellRef].s = {
+                    fill: { fgColor: { rgb: 'FF1B5E20' } },
+                    font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                };
+            }
+            
+            ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+            
+            const now = new Date();
+            const fecha = now.toISOString().split('T')[0];
+            const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+            XLSX.writeFile(wb, `Reporte_Asistencia_${fecha}_${hhmm}.xlsx`);
+            
+        } else if (tipo === 'miembros') {
+            // Exportar tabla de miembros
+            const tabla = document.getElementById('tabla-miembros');
+            const rows = tabla.querySelectorAll('tbody tr');
+            
+            if (rows.length === 0 || rows[0].textContent.includes('Cargando')) {
+                alert('Por favor espera a que carguen los datos');
+                return;
+            }
+            
+            const ws_data = [['Nombre', 'Email', 'Teléfono', 'Estado', 'Tipo']];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    ws_data.push([
+                        cells[0].textContent.trim(),
+                        cells[1].textContent.trim(),
+                        cells[2].textContent.trim(),
+                        cells[3].textContent.trim(),
+                        cells[4].textContent.trim()
+                    ]);
+                }
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            
+            // Formatear headers
+            for (let col = 0; col < 5; col++) {
+                const cellRef = XLSX.utils.encode_col(col) + '1';
+                if (!ws[cellRef]) ws[cellRef] = {};
+                ws[cellRef].s = {
+                    fill: { fgColor: { rgb: 'FF1B5E20' } },
+                    font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                };
+            }
+            
+            ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, { wch: 15 }];
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Miembros');
+            
+            const now = new Date();
+            const fecha = now.toISOString().split('T')[0];
+            const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+            XLSX.writeFile(wb, `Reporte_Miembros_${fecha}_${hhmm}.xlsx`);
+        }
+    } catch (error) {
+        console.error('Error exportando Excel:', error);
+        alert('Error al generar el reporte: ' + error.message);
     }
 }
 
