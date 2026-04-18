@@ -1941,6 +1941,208 @@ def export_pagos_calendario_excel():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/reportes/pagos-calendario/pdf', methods=['POST'])
+def export_pagos_calendario_pdf():
+    """Exportar reporte de pagos-calendario a PDF - A4 Landscape"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        from reportlab.lib.pagesizes import landscape, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
+        from reportlab.lib.units import cm, inch
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import Paragraph
+        
+        # Obtener parámetro del request (opcional)
+        datos = request.json or {}
+        solo_regulares = datos.get('solo_regulares', True)
+        
+        # Obtener miembros activos
+        miembros = db.get_miembros(estado='Activo')
+        
+        # Filtrar solo regulares si se solicita
+        if solo_regulares:
+            miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
+        
+        pagos = db.get_pagos()
+        
+        # Index pagos by miembro_id for fast O(1) lookup
+        pagos_por_miembro = {}
+        for pago in pagos:
+            pago_dict = dict(pago)
+            miembro_id = pago_dict.get('miembro_id')
+            if miembro_id not in pagos_por_miembro:
+                pagos_por_miembro[miembro_id] = []
+            pagos_por_miembro[miembro_id].append(pago_dict)
+        
+        # Construir datos para tabla
+        meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
+        
+        # Headers
+        headers = ['Alumno', 'Matricula']
+        for mes in meses:
+            headers.append(meses_nombres[mes])
+        headers.extend(['Libro', 'TOTAL'])
+        
+        # Data rows
+        data_rows = []
+        totales_mes = {m: 0 for m in meses}
+        total_mat = 0
+        total_lib = 0
+        
+        for miembro in miembros:
+            md = dict(miembro)
+            nombre_completo = f"{md.get('apellido', '')}, {md.get('nombre', '')}"
+            
+            row = [nombre_completo]
+            
+            # Matricula
+            matricula_monto = 0.0
+            libro = 0.0
+            meses_dict = {m: 0 for m in meses}
+            
+            # Procesar pagos
+            miembro_pagos = pagos_por_miembro.get(md.get('id'), [])
+            for pago_dict in miembro_pagos:
+                monto = float(pago_dict.get('monto', 0))
+                tipo_pago = pago_dict.get('tipo_pago', '')
+                
+                tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
+                if tipo_normalized == 'matricula':
+                    matricula_monto += int(monto)
+                elif tipo_normalized == 'libro':
+                    libro += int(monto)
+                else:
+                    mes_inicio = pago_dict.get('mes_inicio')
+                    mes_fin = pago_dict.get('mes_fin')
+                    
+                    if mes_inicio and mes_fin:
+                        cantidad_meses = mes_fin - mes_inicio + 1
+                        monto_por_mes = int(monto / cantidad_meses) if cantidad_meses > 0 else int(monto)
+                        for mes in range(mes_inicio, mes_fin + 1):
+                            if mes in meses_dict:
+                                meses_dict[mes] += monto_por_mes
+                    else:
+                        if pago_dict.get('fecha'):
+                            fecha = pago_dict['fecha']
+                            if hasattr(fecha, 'month'):
+                                mes_key = fecha.month
+                            else:
+                                try:
+                                    from datetime import datetime as dt
+                                    fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
+                                    mes_key = fecha_obj.month
+                                except:
+                                    mes_key = None
+                            
+                            if mes_key and mes_key in meses_dict:
+                                meses_dict[mes_key] += int(monto)
+            
+            row.append(int(matricula_monto))
+            total_mat += int(matricula_monto)
+            
+            total_alumno = int(matricula_monto)
+            for mes in meses:
+                monto = int(meses_dict[mes])
+                row.append(monto)
+                totales_mes[mes] += monto
+                total_alumno += monto
+            
+            row.append(int(libro))
+            total_lib += int(libro)
+            total_alumno += int(libro)
+            
+            row.append(int(total_alumno))
+            
+            data_rows.append(row)
+        
+        # Fila TOTALES
+        totales_row = ['TOTALES', int(total_mat)]
+        for mes in meses:
+            totales_row.append(int(totales_mes[mes]))
+        totales_row.append(int(total_lib))
+        total_general = int(total_mat) + sum(int(totales_mes[m]) for m in meses) + int(total_lib)
+        totales_row.append(int(total_general))
+        
+        # Construir tabla
+        table_data = [headers] + data_rows + [totales_row]
+        
+        # Crear PDF
+        output = io.BytesIO()
+        doc = SimpleDocTemplate(output, pagesize=landscape(A4), 
+                                topMargin=0.5*cm, bottomMargin=0.5*cm,
+                                leftMargin=0.8*cm, rightMargin=0.8*cm)
+        
+        # Crear tabla
+        table = Table(table_data, repeatRows=1)
+        
+        # Estilos
+        style_commands = []
+        
+        # Headers con fondo gris
+        style_commands.extend([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F0F0F0')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#000000')),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+        ])
+        
+        # Datos - fuente pequeña
+        style_commands.extend([
+            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -2), 8),
+            ('ALIGN', (0, 1), (0, -2), 'LEFT'),
+            ('ALIGN', (1, 1), (-1, -2), 'RIGHT'),
+            ('LEFTPADDING', (0, 1), (-1, -2), 2),
+            ('RIGHTPADDING', (0, 1), (-1, -2), 2),
+            ('TOPPADDING', (0, 1), (-1, -2), 1),
+            ('BOTTOMPADDING', (0, 1), (-1, -2), 1),
+        ])
+        
+        # Fila TOTALES - fondo gris + texto negro
+        style_commands.extend([
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#333333')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -1), (-1, -1), 8),
+            ('ALIGN', (0, -1), (0, -1), 'LEFT'),
+            ('ALIGN', (1, -1), (-1, -1), 'RIGHT'),
+            ('LEFTPADDING', (0, -1), (-1, -1), 2),
+            ('RIGHTPADDING', (0, -1), (-1, -1), 2),
+            ('TOPPADDING', (0, -1), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, -1), (-1, -1), 2),
+        ])
+        
+        # Bordes - gris claro
+        style_commands.extend([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ])
+        
+        # Aplicar estilos
+        table.setStyle(TableStyle(style_commands))
+        
+        # Build PDF
+        doc.build([table])
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='report.pdf'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/reportes/asistencia/excel', methods=['POST'])
 def export_asistencia_excel():
     """Exportar reporte de asistencia a Excel - igual que en pantalla"""

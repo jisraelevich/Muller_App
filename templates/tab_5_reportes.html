@@ -108,6 +108,7 @@
                     Solo Regulares
                 </label>
                 <button onclick="descargarReporte('/api/reportes/pagos-calendario/excel', 'Pagos_Mes')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
+                <button onclick="descargarPDF('/api/reportes/pagos-calendario/pdf')" class="btn-touch btn-export" style="font-size: 12px;">Exportar PDF</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -1044,6 +1045,33 @@ function descargarReporte(url, nombreArchivo) {
         .catch(error => {
             console.error('Error descargando reporte:', error);
             alert('Error al descargar el reporte');
+        });
+}
+
+// Función para descargar PDF
+function descargarPDF(url) {
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+        .then(response => response.blob())
+        .then(blob => {
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            const now = new Date();
+            const fecha = now.toISOString().split('T')[0];
+            const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+            a.download = 'Pagos_Mes_' + fecha + '-' + hhmm + '.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(urlBlob);
+            a.remove();
+        })
+        .catch(error => {
+            console.error('Error descargando PDF:', error);
+            alert('Error al descargar el PDF');
         });
 }
 
