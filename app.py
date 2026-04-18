@@ -1967,6 +1967,9 @@ def export_pagos_calendario_pdf():
         if solo_regulares:
             miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
         
+        # ORDENAR por apellido, nombre
+        miembros = sorted(miembros, key=lambda x: (dict(x).get('apellido', '').lower() or '', dict(x).get('nombre', '').lower() or ''))
+        
         pagos = db.get_pagos()
         
         # Index pagos by miembro_id for fast O(1) lookup
@@ -1977,6 +1980,13 @@ def export_pagos_calendario_pdf():
             if miembro_id not in pagos_por_miembro:
                 pagos_por_miembro[miembro_id] = []
             pagos_por_miembro[miembro_id].append(pago_dict)
+        
+        # Función para formatear montos con separador de miles
+        def formatear_monto(monto):
+            """Convierte 5000 → '5.000' o retorna '' si es 0"""
+            if monto == 0:
+                return ''
+            return f"{int(monto):,.0f}".replace(',', '.')
         
         # Construir datos para tabla
         meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
@@ -2042,40 +2052,40 @@ def export_pagos_calendario_pdf():
                             if mes_key and mes_key in meses_dict:
                                 meses_dict[mes_key] += int(monto)
             
-            row.append(int(matricula_monto))
+            row.append(formatear_monto(matricula_monto))
             total_mat += int(matricula_monto)
             
             total_alumno = int(matricula_monto)
             for mes in meses:
                 monto = int(meses_dict[mes])
-                row.append(monto)
+                row.append(formatear_monto(monto))
                 totales_mes[mes] += monto
                 total_alumno += monto
             
-            row.append(int(libro))
+            row.append(formatear_monto(libro))
             total_lib += int(libro)
             total_alumno += int(libro)
             
-            row.append(int(total_alumno))
+            row.append(formatear_monto(total_alumno))
             
             data_rows.append(row)
         
         # Fila TOTALES
-        totales_row = ['TOTALES', int(total_mat)]
+        totales_row = ['TOTALES', formatear_monto(total_mat)]
         for mes in meses:
-            totales_row.append(int(totales_mes[mes]))
-        totales_row.append(int(total_lib))
+            totales_row.append(formatear_monto(totales_mes[mes]))
+        totales_row.append(formatear_monto(total_lib))
         total_general = int(total_mat) + sum(int(totales_mes[m]) for m in meses) + int(total_lib)
-        totales_row.append(int(total_general))
+        totales_row.append(formatear_monto(total_general))
         
         # Construir tabla
         table_data = [headers] + data_rows + [totales_row]
         
-        # Crear PDF
+        # Crear PDF - márgenes reducidos para más ancho
         output = io.BytesIO()
         doc = SimpleDocTemplate(output, pagesize=landscape(A4), 
-                                topMargin=0.5*cm, bottomMargin=0.5*cm,
-                                leftMargin=0.8*cm, rightMargin=0.8*cm)
+                                topMargin=0.3*cm, bottomMargin=0.3*cm,
+                                leftMargin=0.3*cm, rightMargin=0.3*cm)
         
         # Crear tabla
         table = Table(table_data, repeatRows=1)
@@ -2089,20 +2099,20 @@ def export_pagos_calendario_pdf():
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#000000')),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 3),
         ])
         
         # Datos - fuente pequeña
         style_commands.extend([
             ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -2), 8),
+            ('FONTSIZE', (0, 1), (-1, -2), 7),
             ('ALIGN', (0, 1), (0, -2), 'LEFT'),
             ('ALIGN', (1, 1), (-1, -2), 'RIGHT'),
-            ('LEFTPADDING', (0, 1), (-1, -2), 2),
-            ('RIGHTPADDING', (0, 1), (-1, -2), 2),
-            ('TOPPADDING', (0, 1), (-1, -2), 1),
-            ('BOTTOMPADDING', (0, 1), (-1, -2), 1),
+            ('LEFTPADDING', (0, 1), (-1, -2), 1),
+            ('RIGHTPADDING', (0, 1), (-1, -2), 1),
+            ('TOPPADDING', (0, 1), (-1, -2), 0),
+            ('BOTTOMPADDING', (0, 1), (-1, -2), 0),
         ])
         
         # Fila TOTALES - fondo gris + texto negro
@@ -2110,13 +2120,13 @@ def export_pagos_calendario_pdf():
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F5F5F5')),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#333333')),
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, -1), (-1, -1), 8),
+            ('FONTSIZE', (0, -1), (-1, -1), 7),
             ('ALIGN', (0, -1), (0, -1), 'LEFT'),
             ('ALIGN', (1, -1), (-1, -1), 'RIGHT'),
-            ('LEFTPADDING', (0, -1), (-1, -1), 2),
-            ('RIGHTPADDING', (0, -1), (-1, -1), 2),
-            ('TOPPADDING', (0, -1), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, -1), (-1, -1), 2),
+            ('LEFTPADDING', (0, -1), (-1, -1), 1),
+            ('RIGHTPADDING', (0, -1), (-1, -1), 1),
+            ('TOPPADDING', (0, -1), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, -1), (-1, -1), 1),
         ])
         
         # Bordes - gris claro
