@@ -37,6 +37,7 @@
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Monto</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Fecha</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Mes</th>
                         <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Método</th>
                     </tr>
                 </thead>
@@ -189,22 +190,26 @@ async function cargarReportePagos() {
             data.pagos.slice(0, 50).forEach(pago => {
                 const row = document.createElement('tr');
                 const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString() : '';
+                const mesDisplay = pago.tipo_pago === 'Cuota' && pago.mes_inicio 
+                    ? `Cuota: ${pago.mes_inicio}${pago.mes_fin && pago.mes_fin !== pago.mes_inicio ? '-' + pago.mes_fin : ''}`
+                    : '-';
                 row.innerHTML = `
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.tipo_pago || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${mesDisplay}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${pago.metodo_pago || '-'}</td>
                 `;
                 fragment.appendChild(row);
             });
             tbody.appendChild(fragment);
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No hay pagos registrados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No hay pagos registrados</td></tr>';
         }
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('tbody-pagos').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
+        document.getElementById('tbody-pagos').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error cargando datos</td></tr>';
     }
 }
 
