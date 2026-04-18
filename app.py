@@ -1594,7 +1594,7 @@ def reportes_pagos_calendario():
 
 @app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
 def export_pagos_calendario_excel():
-    """Exportar reporte de pagos - Excel con xlsxwriter"""
+    """Exportar reporte de pagos - Excel SIN COLORES - COMO EN LA APP"""
     db_check, error, code = check_db()
     if error:
         return error, code
@@ -1642,14 +1642,14 @@ def export_pagos_calendario_excel():
         workbook = Workbook(output)
         worksheet = workbook.add_worksheet("Pagos por Mes")
         
-        # Formatos
+        # Formatos - TODO BLANCO, SIN COLORES
         header_fmt = workbook.add_format({
-            'bg_color': '#E8E8E8',
-            'font_color': '#333333',
+            'bg_color': '#FFFFFF',
+            'font_color': '#000000',
             'bold': True,
             'border': 1,
             'border_color': '#CCCCCC',
-            'align': 'center',
+            'align': 'left',
             'valign': 'vcenter',
             'font_size': 10,
             'font_name': 'Calibri'
@@ -1664,43 +1664,38 @@ def export_pagos_calendario_excel():
             'font_name': 'Calibri'
         })
         
-        verde_fmt = workbook.add_format({
-            'bg_color': '#E8F5E9',
-            'font_color': '#1B5E20',
+        number_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        total_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'left',
+            'valign': 'vcenter',
             'bold': True,
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        total_number_fmt = workbook.add_format({
             'border': 1,
             'border_color': '#CCCCCC',
             'align': 'right',
-            'num_format': '#,##0'
-        })
-        
-        amarillo_fmt = workbook.add_format({
-            'bg_color': '#FFF3CD',
-            'font_color': '#856404',
-            'border': 1,
-            'border_color': '#CCCCCC',
-            'align': 'right',
-            'num_format': '#,##0'
-        })
-        
-        blanco_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': '#CCCCCC',
-            'align': 'right',
-            'num_format': '#,##0'
-        })
-        
-        azul_fmt = workbook.add_format({
-            'bg_color': '#E3F2FD',
-            'font_color': '#0D47A1',
+            'valign': 'vcenter',
             'bold': True,
-            'border': 1,
-            'border_color': '#CCCCCC',
-            'align': 'right',
-            'num_format': '#,##0'
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
         })
         
-        # Headers
+        # Headers - SIN EMOJIS, COMO EN LA APP
         meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
         meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
         
@@ -1709,13 +1704,14 @@ def export_pagos_calendario_excel():
         for col, h in enumerate(headers):
             worksheet.write(0, col, h, header_fmt)
         
+        # Ancho de columnas
         worksheet.set_column(0, 0, 22)
         worksheet.set_column(1, 1, 13)
         for i in range(2, 12):
             worksheet.set_column(i, i, 11)
         worksheet.set_column(12, 12, 14)
         
-        # Datos
+        # Datos de alumnos
         totales_mes = {m: 0.0 for m in meses}
         total_mat = 0.0
         total_lib = 0.0
@@ -1724,8 +1720,7 @@ def export_pagos_calendario_excel():
             worksheet.write(idx, 0, alumno['nombre'], cell_fmt)
             
             mat = alumno['matricula_monto']
-            fmt_mat = verde_fmt if mat > 0 else blanco_fmt
-            worksheet.write_number(idx, 1, mat, fmt_mat)
+            worksheet.write_number(idx, 1, mat, number_fmt)
             total_mat += mat
             
             total_row = mat
@@ -1734,35 +1729,26 @@ def export_pagos_calendario_excel():
                 monto = alumno['meses'][f'{m:02d}']
                 total_row += monto
                 totales_mes[m] += monto
-                
-                if monto >= 1000:
-                    fmt = verde_fmt
-                elif monto > 0:
-                    fmt = amarillo_fmt
-                else:
-                    fmt = blanco_fmt
-                
-                worksheet.write_number(idx, col, monto, fmt)
+                worksheet.write_number(idx, col, monto, number_fmt)
             
             lib = alumno['libro']
-            fmt_lib = verde_fmt if lib > 0 else blanco_fmt
-            worksheet.write_number(idx, 11, lib, fmt_lib)
+            worksheet.write_number(idx, 11, lib, number_fmt)
             total_row += lib
             total_lib += lib
             
-            worksheet.write_number(idx, 12, total_row, azul_fmt)
+            worksheet.write_number(idx, 12, total_row, number_fmt)
         
-        # Totales
+        # Fila TOTALES al final
         total_row_num = len(reporte) + 1
-        worksheet.write(total_row_num, 0, 'TOTALES', header_fmt)
-        worksheet.write_number(total_row_num, 1, total_mat, verde_fmt)
+        worksheet.write(total_row_num, 0, 'TOTALES', total_fmt)
+        worksheet.write_number(total_row_num, 1, total_mat, total_number_fmt)
         
         for i, m in enumerate(meses):
-            worksheet.write_number(total_row_num, 2 + i, totales_mes[m], verde_fmt)
+            worksheet.write_number(total_row_num, 2 + i, totales_mes[m], total_number_fmt)
         
-        worksheet.write_number(total_row_num, 11, total_lib, verde_fmt)
+        worksheet.write_number(total_row_num, 11, total_lib, total_number_fmt)
         total_general = total_mat + sum(totales_mes.values()) + total_lib
-        worksheet.write_number(total_row_num, 12, total_general, verde_fmt)
+        worksheet.write_number(total_row_num, 12, total_general, total_number_fmt)
         
         worksheet.freeze_panes(1, 0)
         workbook.close()
