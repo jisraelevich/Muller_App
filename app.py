@@ -1594,7 +1594,7 @@ def reportes_pagos_calendario():
 
 @app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
 def export_pagos_calendario_excel():
-    """Exportar reporte de pagos por calendario a Excel - CLON EXACTO DEL DISEÑO WEB"""
+    """Exportar reporte de pagos por calendario a Excel - ESPEJO EXACTO DEL WEB"""
     db_check, error, code = check_db()
     if error:
         return error, code
@@ -1608,92 +1608,116 @@ def export_pagos_calendario_excel():
         workbook = xlsxwriter.Workbook(output)
         worksheet = workbook.add_worksheet("Pagos por Mes")
         
-        # Colores exactos del web - MEJORADOS PARA VISIBILIDAD
-        header_bg = '#CCCCCC'  # Gris más visible para header
-        header_border = '#666666'  # Borde gris oscuro
-        border_color = '#CCCCCC'
-        verde_pagado = '#E8F5E9'  # Verde para pagado >= 1000
-        amarillo_parcial = '#FFF3CD'  # Amarillo para parcial > 0
-        azul_total = '#E3F2FD'  # Azul claro para total fila
-        blanco = '#FFFFFF'
+        # Colores EXACTOS del web (copiados del HTML)
+        header_bg = '#E8E8E8'  # Gris claro pero visible como en web
+        border_color = '#CCCCCC'  # Bordes grises suaves
         
-        # Formatos que clonan exactamente el web
+        # Formatos profesionales que clonan el web
         header_fmt = workbook.add_format({
             'bg_color': header_bg,
-            'border': 2,
-            'border_color': header_border,
+            'border': 1,
+            'border_color': border_color,
             'align': 'center',
             'valign': 'vcenter',
-            'font_size': 11,
-            'font_color': '#000',
+            'font_size': 10,
+            'font_name': 'Calibri',
+            'font_color': '#333333',
             'bold': True,
         })
         
         cell_fmt = workbook.add_format({
             'border': 1,
-            'border_color': '#CCCCCC',
+            'border_color': border_color,
             'align': 'left',
             'valign': 'vcenter',
             'font_size': 10,
-            'font_color': '#333',
+            'font_name': 'Calibri',
+            'font_color': '#333333',
             'bg_color': '#FFFFFF',
         })
         
+        # Números blanco (sin pago)
         numero_blanco_fmt = workbook.add_format({
             'border': 1,
-            'border_color': '#CCCCCC',
+            'border_color': border_color,
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
-            'bg_color': blanco,
+            'font_name': 'Calibri',
+            'bg_color': '#FFFFFF',
             'num_format': '#,##0',
         })
         
+        # Verde para pagado >= 1000
         numero_verde_fmt = workbook.add_format({
             'border': 1,
-            'border_color': '#CCCCCC',
+            'border_color': border_color,
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
-            'bg_color': verde_pagado,
+            'font_name': 'Calibri',
+            'bg_color': '#E8F5E9',
             'font_color': '#1B5E20',
             'bold': True,
             'num_format': '#,##0',
         })
         
+        # Amarillo para parcial > 0
         numero_amarillo_fmt = workbook.add_format({
             'border': 1,
-            'border_color': '#CCCCCC',
+            'border_color': border_color,
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
-            'bg_color': amarillo_parcial,
+            'font_name': 'Calibri',
+            'bg_color': '#FFF3CD',
             'font_color': '#856404',
             'num_format': '#,##0',
         })
         
+        # Azul para total fila
         total_fila_fmt = workbook.add_format({
             'border': 1,
-            'border_color': '#CCCCCC',
+            'border_color': border_color,
             'align': 'right',
             'valign': 'vcenter',
             'font_size': 10,
-            'bg_color': azul_total,
+            'font_name': 'Calibri',
+            'bg_color': '#E3F2FD',
             'font_color': '#0D47A1',
             'bold': True,
             'num_format': '#,##0',
         })
         
-        # Headers: Alumno | Matrícula | Mar | Abr | May | Jun | Jul | Ago | Sep | Oct | Nov | Libro | TOTAL
+        # Verde oscuro para totales TOTALES
+        total_general_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri',
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
+            'num_format': '#,##0',
+        })
+        
+        # Headers: Alumno | Matrícula | 03 MAR | 04 ABR | ... | 11 NOV | Libro | TOTAL
         row = 0
         
-        # Encabezados
-        worksheet.set_column('A:A', 25)  # Alumno
+        # Establecer altura de header
+        worksheet.set_row(0, 20)
+        
+        # Columna A: Alumno
+        worksheet.set_column('A:A', 22)
         worksheet.write(row, 0, '👤 Alumno', header_fmt)
         
-        worksheet.set_column('B:B', 12)
+        # Columna B: Matrícula
+        worksheet.set_column('B:B', 13)
         worksheet.write(row, 1, '🎓 Matrícula', header_fmt)
         
+        # Meses Marzo-Noviembre
         meses_mostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11]
         meses_nombres = {
             3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL',
@@ -1701,15 +1725,19 @@ def export_pagos_calendario_excel():
         }
         
         for col_idx, mes in enumerate(meses_mostrar, 2):
-            worksheet.set_column(col_idx-1, col_idx-1, 12)
+            worksheet.set_column(col_idx, col_idx, 11)
             header_text = f'{mes:02d} {meses_nombres[mes]}'
-            worksheet.write(row, col_idx-1, header_text, header_fmt)
+            worksheet.write(row, col_idx, header_text, header_fmt)
         
-        worksheet.set_column(11, 11, 12)
-        worksheet.write(row, 11, '📚 Libro', header_fmt)
+        # Columna Libro (después de NOV)
+        libro_col = len(meses_mostrar) + 2
+        worksheet.set_column(libro_col, libro_col, 11)
+        worksheet.write(row, libro_col, '📚 Libro', header_fmt)
         
-        worksheet.set_column(12, 12, 14)
-        worksheet.write(row, 12, 'TOTAL', header_fmt)
+        # Columna TOTAL (última)
+        total_col = libro_col + 1
+        worksheet.set_column(total_col, total_col, 14)
+        worksheet.write(row, total_col, 'TOTAL', header_fmt)
         
         # Datos de alumnos
         row = 1
@@ -1718,6 +1746,9 @@ def export_pagos_calendario_excel():
         total_libros = 0
         
         for alumno in reporte:
+            # Altura de fila similar al web
+            worksheet.set_row(row, 18)
+            
             nombre = f"{alumno['apellido']}, {alumno['nombre']}"
             worksheet.write(row, 0, nombre, cell_fmt)
             
@@ -1735,7 +1766,7 @@ def export_pagos_calendario_excel():
                 total_alumno += monto
                 totales_por_mes[mes] += monto
                 
-                # Colorear según monto
+                # Colorear según monto (EXACTO al web)
                 if monto >= 1000:
                     fmt = numero_verde_fmt
                 elif monto > 0:
@@ -1743,33 +1774,40 @@ def export_pagos_calendario_excel():
                 else:
                     fmt = numero_blanco_fmt
                 
-                worksheet.write_number(row, col_idx-1, monto, fmt)
+                worksheet.write_number(row, col_idx, monto, fmt)
             
             # Libro
             libro = alumno.get('libro', 0)
             libro_fmt = numero_verde_fmt if libro > 0 else numero_blanco_fmt
-            worksheet.write_number(row, 11, libro, libro_fmt)
+            worksheet.write_number(row, libro_col, libro, libro_fmt)
             total_alumno += libro
             total_libros += libro
             
             # Total alumno
-            worksheet.write_number(row, 12, total_alumno, total_fila_fmt)
+            worksheet.write_number(row, total_col, total_alumno, total_fila_fmt)
             
             row += 1
         
         # Fila de totales
         total_row = row
+        worksheet.set_row(total_row, 20)
+        
         worksheet.write(total_row, 0, 'TOTALES', header_fmt)
-        worksheet.write_number(total_row, 1, total_matriculas, numero_verde_fmt)
+        worksheet.write_number(total_row, 1, total_matriculas, total_general_fmt)
         
+        # Totales por mes
         for col_idx, mes in enumerate(meses_mostrar, 2):
-            worksheet.write_number(total_row, col_idx, totales_por_mes[mes], numero_verde_fmt)
+            worksheet.write_number(total_row, col_idx, totales_por_mes[mes], total_general_fmt)
         
-        worksheet.write_number(total_row, 11, total_libros, numero_verde_fmt)
+        # Total libros
+        worksheet.write_number(total_row, libro_col, total_libros, total_general_fmt)
         
         # Total general
         total_general = total_matriculas + sum(totales_por_mes.values()) + total_libros
-        worksheet.write_number(total_row, 12, total_general, numero_verde_fmt)
+        worksheet.write_number(total_row, total_col, total_general, total_general_fmt)
+        
+        # Congelar encabezado
+        worksheet.freeze_panes(1, 0)
         
         workbook.close()
         output.seek(0)
