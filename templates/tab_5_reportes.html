@@ -191,9 +191,16 @@ async function cargarReportePagos() {
         
         if (data.pagos && data.pagos.length > 0) {
             const fragment = document.createDocumentFragment();
-            data.pagos.slice(0, 50).forEach(pago => {
+            // Ordenar por nombre
+            const pagosOrdenados = data.pagos.slice(0, 50).sort((a, b) => {
+                const nombreA = (a.miembro_nombre || '').toLowerCase();
+                const nombreB = (b.miembro_nombre || '').toLowerCase();
+                return nombreA.localeCompare(nombreB);
+            });
+            pagosOrdenados.forEach(pago => {
                 const row = document.createElement('tr');
                 const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString() : '';
+                const nombreDisplay = `${pago.apellido || ''}, ${pago.nombre || ''}`;
                 
                 // Mostrar Tipo: si es Cuota, mostrar "Cuota: Mes", sino solo el tipo
                 let tipoDisplay = pago.tipo_pago || '-';
@@ -212,7 +219,7 @@ async function cargarReportePagos() {
                 }
                 
                 row.innerHTML = `
-                    <td style="padding: 8px; border: 1px solid #ddd;">${pago.miembro_nombre || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${nombreDisplay}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$${pago.monto.toLocaleString()}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${tipoDisplay}</td>
@@ -239,11 +246,18 @@ async function cargarReporteAsistencia() {
         
         if (data.asistencias && data.asistencias.length > 0) {
             const fragment = document.createDocumentFragment();
-            data.asistencias.slice(0, 50).forEach(asist => {
+            // Ordenar por nombre
+            const asistenciasOrdenadas = data.asistencias.slice(0, 50).sort((a, b) => {
+                const nombreA = (a.miembro_nombre || '').toLowerCase();
+                const nombreB = (b.miembro_nombre || '').toLowerCase();
+                return nombreA.localeCompare(nombreB);
+            });
+            asistenciasOrdenadas.forEach(asist => {
                 const row = document.createElement('tr');
                 const fecha = asist.fecha ? new Date(asist.fecha).toLocaleDateString() : '';
+                const nombreDisplay = `${asist.apellido || ''}, ${asist.nombre || ''}`;
                 row.innerHTML = `
-                    <td style="padding: 8px; border: 1px solid #ddd;">${asist.miembro_nombre || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${nombreDisplay}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${asist.clase_nombre || '-'}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${fecha}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${asist.estado || 'Presente'}</td>
@@ -269,9 +283,20 @@ async function cargarReporteMiembros() {
         
         if (data.miembros && data.miembros.length > 0) {
             const fragment = document.createDocumentFragment();
-            data.miembros.forEach(miembro => {
+            // Ordenar por apellido, nombre
+            const miembrosOrdenados = data.miembros.sort((a, b) => {
+                const apellidoA = (a.apellido || '').toLowerCase();
+                const apellidoB = (b.apellido || '').toLowerCase();
+                if (apellidoA !== apellidoB) {
+                    return apellidoA.localeCompare(apellidoB);
+                }
+                const nombreA = (a.nombre || '').toLowerCase();
+                const nombreB = (b.nombre || '').toLowerCase();
+                return nombreA.localeCompare(nombreB);
+            });
+            miembrosOrdenados.forEach(miembro => {
                 const row = document.createElement('tr');
-                const nombre = `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim();
+                const nombre = `${miembro.apellido || ''}, ${miembro.nombre || ''}`.trim();
                 row.innerHTML = `
                     <td style="padding: 8px; border: 1px solid #ddd;">${nombre}</td>
                     <td style="padding: 8px; border: 1px solid #ddd;">${miembro.email || '-'}</td>
@@ -315,12 +340,25 @@ async function cargarReporteCalendario() {
         
         const mesesMostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11];
         
-        data.reporte.forEach(alumno => {
+        // Ordenar por apellido, nombre
+        const reporteOrdenado = data.reporte.sort((a, b) => {
+            const apellidoA = (a.apellido || '').toLowerCase();
+            const apellidoB = (b.apellido || '').toLowerCase();
+            if (apellidoA !== apellidoB) {
+                return apellidoA.localeCompare(apellidoB);
+            }
+            const nombreA = (a.nombre || '').toLowerCase();
+            const nombreB = (b.nombre || '').toLowerCase();
+            return nombreA.localeCompare(nombreB);
+        });
+        
+        reporteOrdenado.forEach(alumno => {
             const row = document.createElement('tr');
             row.style.cssText = 'border-bottom: 1px solid #e5e7eb;';
             
             let totalAlumno = 0;
-            let html = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: 600; text-align: left;">${alumno.nombre}</td>`;
+            const nombreDisplay = `${alumno.apellido || ''}, ${alumno.nombre || ''}`;
+            let html = `<td style="padding: 8px; border: 1px solid #ddd; font-weight: 600; text-align: left;">${nombreDisplay}</td>`;
             
             // Matrícula
             const montoMatricula = alumno.matricula_monto || 0;
@@ -438,8 +476,21 @@ async function exportarExcelNuevo() {
     let totalMatriculas = 0;
     let totalLibros = 0;
     
-    data.reporte.forEach(alumno => {
-        const row = [alumno.nombre];
+    // Ordenar por apellido, nombre
+    const reporteOrdenado = data.reporte.sort((a, b) => {
+        const apellidoA = (a.apellido || '').toLowerCase();
+        const apellidoB = (b.apellido || '').toLowerCase();
+        if (apellidoA !== apellidoB) {
+            return apellidoA.localeCompare(apellidoB);
+        }
+        const nombreA = (a.nombre || '').toLowerCase();
+        const nombreB = (b.nombre || '').toLowerCase();
+        return nombreA.localeCompare(nombreB);
+    });
+    
+    reporteOrdenado.forEach(alumno => {
+        const nombreDisplay = `${alumno.apellido || ''}, ${alumno.nombre || ''}`;
+        const row = [nombreDisplay];
         let totalAlumno = alumno.matricula_monto || 0;
         
         // Matrícula
@@ -671,7 +722,13 @@ async function exportarExcelPagosDetalle() {
         };
         
         // Agregar datos de pagos
-        data.pagos.forEach(pago => {
+        // Ordenar por nombre
+        const pagosOrdenados = data.pagos.sort((a, b) => {
+            const nombreA = (a.miembro_nombre || '').toLowerCase();
+            const nombreB = (b.miembro_nombre || '').toLowerCase();
+            return nombreA.localeCompare(nombreB);
+        });
+        pagosOrdenados.forEach(pago => {
             let tipoDisplay = pago.tipo_pago || '-';
             if (pago.tipo_pago === 'Cuota' && pago.mes_inicio) {
                 const mesInicio = parseInt(pago.mes_inicio);
@@ -684,8 +741,9 @@ async function exportarExcelPagosDetalle() {
             }
             
             const fecha = pago.fecha ? new Date(pago.fecha).toLocaleDateString('es-ES') : '';
+            const nombreDisplay = `${pago.apellido || ''}, ${pago.nombre || ''}`;
             ws_data.push([
-                pago.miembro_nombre || 'N/A',
+                nombreDisplay,
                 pago.monto || 0,
                 fecha,
                 tipoDisplay,
@@ -696,34 +754,66 @@ async function exportarExcelPagosDetalle() {
         // Crear worksheet
         const ws = XLSX.utils.aoa_to_sheet(ws_data);
         
-        // Formatear headers: color profesional, bold, centrado
+        // Función helper para aplicar estilos
+        const styleCellDetail = (cellRef, bgColor, textColor = '#333', alignment = 'left', isBold = false, fontSize = 11) => {
+            if (!ws[cellRef]) ws[cellRef] = {};
+            ws[cellRef].s = {
+                fill: { fgColor: { rgb: 'FF' + bgColor.replace('#', '') } },
+                font: { bold: isBold, sz: fontSize, color: { rgb: 'FF' + textColor.replace('#', '') } },
+                alignment: { horizontal: alignment, vertical: 'center' },
+                border: {
+                    left: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    right: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    top: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    bottom: { style: 'thin', color: { rgb: 'FFDDDDD' } }
+                }
+            };
+        };
+        
+        // Formatear headers: color verde oscuro, texto blanco, bold, con bordes
         for (let col = 0; col < encabezado.length; col++) {
             const cellRef = XLSX.utils.encode_col(col) + '1';
             if (!ws[cellRef]) ws[cellRef] = {};
             ws[cellRef].s = {
-                fill: { fgColor: { rgb: 'FF1B5E20' } },
-                font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
-                alignment: { horizontal: 'center', vertical: 'center' }
+                fill: { fgColor: { rgb: 'FFF0F0F0' } },
+                font: { bold: true, sz: 11, color: { rgb: 'FF333333' } },
+                alignment: { horizontal: 'left', vertical: 'center' },
+                border: {
+                    left: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    right: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    top: { style: 'thin', color: { rgb: 'FFDDDDD' } },
+                    bottom: { style: 'thin', color: { rgb: 'FFDDDDD' } }
+                }
             };
         }
         
-        // Formatear datos: números sin decimales, fechas DD/MM/YYYY
+        // Formatear datos con estilos de la tabla
         for (let row = 2; row <= ws_data.length; row++) {
-            // Monto (columna 1)
-            const montoRef = XLSX.utils.encode_col(1) + row;
-            if (ws[montoRef]) {
-                ws[montoRef].z = '#,##0';
-                ws[montoRef].s = { alignment: { horizontal: 'right' } };
-            }
-            
-            // Fecha (columna 2) - ya está en formato texto DD/MM/YYYY
-            const fechaRef = XLSX.utils.encode_col(2) + row;
-            if (ws[fechaRef]) {
-                ws[fechaRef].s = { alignment: { horizontal: 'center' } };
+            for (let col = 0; col < encabezado.length; col++) {
+                const cellRef = XLSX.utils.encode_col(col) + row;
+                const cellValue = ws_data[row - 1][col];
+                
+                if (col === 0) {
+                    // Alumno: izquierda, normal
+                    styleCellDetail(cellRef, 'ffffff', '#333', 'left', false, 11);
+                } else if (col === 1) {
+                    // Monto: derecha, números sin decimales
+                    styleCellDetail(cellRef, 'ffffff', '#333', 'right', false, 11);
+                    if (cellValue > 0) ws[cellRef].z = '#,##0';
+                } else if (col === 2) {
+                    // Fecha: centro
+                    styleCellDetail(cellRef, 'ffffff', '#333', 'center', false, 11);
+                } else if (col === 3) {
+                    // Tipo: izquierda
+                    styleCellDetail(cellRef, 'ffffff', '#333', 'left', false, 11);
+                } else if (col === 4) {
+                    // Método: izquierda
+                    styleCellDetail(cellRef, 'ffffff', '#333', 'left', false, 11);
+                }
             }
         }
         
-        // Ancho de columnas
+        // Ancho de columnas (igual a la tabla en pantalla)
         ws['!cols'] = [
             { wch: 25 },  // Alumno
             { wch: 15 },  // Monto

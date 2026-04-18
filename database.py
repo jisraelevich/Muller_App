@@ -462,12 +462,12 @@ class Database:
         with self.get_cursor() as cursor:
             cursor.execute(
                 "SELECT a.id, a.miembro_id, a.clase_id, a.fecha, a.asistio, "
-                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre, "
+                "m.nombre, m.apellido, "
                 "c.nombre as clase_nombre "
                 "FROM asistencia a "
                 "JOIN miembros m ON a.miembro_id = m.id "
                 "LEFT JOIN clases c ON a.clase_id = c.id "
-                "ORDER BY a.fecha DESC, m.nombre LIMIT 500"
+                "ORDER BY m.apellido, m.nombre, a.fecha DESC LIMIT 500"
             )
             return cursor.fetchall()
     
@@ -499,10 +499,10 @@ class Database:
         with self.get_cursor() as cursor:
             cursor.execute(
                 "SELECT p.id, p.miembro_id, p.monto, p.fecha, p.mes, p.descripcion, p.metodo_pago, p.tipo_pago, p.mes_inicio, p.mes_fin, "
-                "CONCAT(m.nombre, ' ', m.apellido) as miembro_nombre "
+                "m.nombre, m.apellido "
                 "FROM pagos p "
                 "LEFT JOIN miembros m ON p.miembro_id = m.id "
-                "ORDER BY p.fecha DESC LIMIT 300"
+                "ORDER BY m.apellido, m.nombre, p.fecha DESC LIMIT 300"
             )
             return cursor.fetchall()
     
