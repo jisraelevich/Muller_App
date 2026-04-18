@@ -438,7 +438,7 @@ async function exportarExcelNuevo() {
         let totalAlumno = alumno.matricula_monto || 0;
         
         // Matrícula
-        row.push(alumno.matricula_monto || 0);
+        row.push(alumno.matricula_monto > 0 ? alumno.matricula_monto : '');
         totalMatriculas += alumno.matricula_monto || 0;
         
         // Meses
@@ -447,14 +447,14 @@ async function exportarExcelNuevo() {
             const monto = alumno.meses[mesKey] || 0;
             totalAlumno += monto;
             totalPorMes[mesKey] = (totalPorMes[mesKey] || 0) + monto;
-            row.push(monto > 0 ? monto : 0);
+            row.push(monto > 0 ? monto : '');
         }
         
         // Libro
         const montoLibro = alumno.libro || 0;
         totalAlumno += montoLibro;
         totalLibros += montoLibro;
-        row.push(montoLibro > 0 ? montoLibro : 0);
+        row.push(montoLibro > 0 ? montoLibro : '');
         
         // Total alumno
         row.push(totalAlumno);
@@ -462,15 +462,15 @@ async function exportarExcelNuevo() {
     });
     
     // Fila de totales
-    const rowTotales = ['📊 TOTALES', totalMatriculas];
+    const rowTotales = ['📊 TOTALES', totalMatriculas > 0 ? totalMatriculas : ''];
     let totalGeneral = 0;
     for (let mes = 3; mes <= 11; mes++) {
         const mesKey = mes.toString().padStart(2, '0');
         const monto = totalPorMes[mesKey] || 0;
         totalGeneral += monto;
-        rowTotales.push(monto);
+        rowTotales.push(monto > 0 ? monto : '');
     }
-    rowTotales.push(totalLibros);
+    rowTotales.push(totalLibros > 0 ? totalLibros : '');
     rowTotales.push(totalGeneral);
     ws_data.push(rowTotales);
     
@@ -535,7 +535,7 @@ async function exportarExcelNuevo() {
                     // Total alumno: azul pálido
                     bgColor = '#e3f2fd';
                     textColor = '#0d47a1';
-                } else if (monto >= 1000) {
+                } else if (monto > 0 && monto >= 1000) {
                     bgColor = '#e8f5e9';
                     textColor = '#1b5e20';
                 } else if (monto > 0) {
@@ -543,14 +543,14 @@ async function exportarExcelNuevo() {
                 }
                 
                 styleCell(cellRef, bgColor, textColor, isBold);
-                ws[cellRef].z = '#,##0';
+                if (monto > 0) ws[cellRef].z = '#,##0';
             } else if (mesesCols[col]) {
                 // Meses: colorear según el monto
                 const monto = cellValue || 0;
                 let bgColor = '#ffffff';
                 let textColor = '#666';
                 
-                if (monto >= 1000) {
+                if (monto > 0 && monto >= 1000) {
                     bgColor = '#e8f5e9';
                     textColor = '#1b5e20';
                 } else if (monto > 0) {
@@ -559,7 +559,7 @@ async function exportarExcelNuevo() {
                 }
                 
                 styleCell(cellRef, bgColor, textColor, true);
-                ws[cellRef].z = '#,##0';
+                if (monto > 0) ws[cellRef].z = '#,##0';
             }
         }
     }
@@ -568,6 +568,8 @@ async function exportarExcelNuevo() {
     const rowTotalIdx = ws_data.length;
     for (let col = 0; col < encabezado.length; col++) {
         const cellRef = XLSX.utils.encode_col(col) + rowTotalIdx;
+        const cellValue = ws_data[rowTotalIdx - 1][col];
+        const monto = cellValue || 0;
         
         if (col === 0) {
             // Texto "TOTALES"
@@ -597,7 +599,7 @@ async function exportarExcelNuevo() {
                     bottom: { style: 'medium', color: { rgb: 'FF333333' } }
                 }
             };
-            ws[cellRef].z = '#,##0';
+            if (monto > 0) ws[cellRef].z = '#,##0';
         } else {
             // Otros totales: fondo amarillo pálido
             if (!ws[cellRef]) ws[cellRef] = {};
@@ -612,7 +614,7 @@ async function exportarExcelNuevo() {
                     bottom: { style: 'medium', color: { rgb: 'FF333333' } }
                 }
             };
-            ws[cellRef].z = '#,##0';
+            if (monto > 0) ws[cellRef].z = '#,##0';
         }
     }
     
