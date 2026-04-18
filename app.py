@@ -1894,8 +1894,7 @@ def export_pagos_calendario_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=f'Reporte_Pagos_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+            as_attachment=True
         )
     except Exception as e:
         print(f"[ERROR] Error exportando: {e}")
@@ -1982,8 +1981,7 @@ def export_asistencia_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=f'Reporte_Asistencia_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+            as_attachment=True
         )
     except Exception as e:
         print(f"[ERROR] Error exportando asistencia: {e}")
@@ -2056,8 +2054,7 @@ def export_miembros_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=f'Reporte_Miembros_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+            as_attachment=True
         )
     except Exception as e:
         print(f"[ERROR] Error exportando miembros: {e}")
@@ -2149,8 +2146,7 @@ def export_pagos_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=f'Reporte_Pagos_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+            as_attachment=True
         )
     except Exception as e:
         print(f"[ERROR] Error exportando pagos: {e}")
