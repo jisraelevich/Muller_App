@@ -1642,9 +1642,9 @@ def export_pagos_calendario_excel():
         workbook = Workbook(output)
         worksheet = workbook.add_worksheet("Pagos por Mes")
         
-        # Formatos - TODO BLANCO, SIN COLORES
+        # Formatos - CON COLORES Y ESTILOS
         header_fmt = workbook.add_format({
-            'bg_color': '#FFFFFF',
+            'bg_color': '#F0F0F0',
             'font_color': '#000000',
             'bold': True,
             'border': 1,
@@ -1664,7 +1664,49 @@ def export_pagos_calendario_excel():
             'font_name': 'Calibri'
         })
         
-        number_fmt = workbook.add_format({
+        # Verde para valores >= 1000
+        verde_fmt = workbook.add_format({
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Amarillo para valores 1-999
+        amarillo_fmt = workbook.add_format({
+            'bg_color': '#FFF3CD',
+            'font_color': '#856404',
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Blanco para 0
+        blanco_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Azul claro para totales por alumno
+        azul_fmt = workbook.add_format({
+            'bg_color': '#E3F2FD',
+            'font_color': '#0D47A1',
+            'bold': True,
             'border': 1,
             'border_color': '#CCCCCC',
             'align': 'right',
@@ -1685,11 +1727,13 @@ def export_pagos_calendario_excel():
         })
         
         total_number_fmt = workbook.add_format({
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
             'border': 1,
             'border_color': '#CCCCCC',
             'align': 'right',
             'valign': 'vcenter',
-            'bold': True,
             'num_format': '#,##0',
             'font_size': 10,
             'font_name': 'Calibri'
@@ -1720,7 +1764,8 @@ def export_pagos_calendario_excel():
             worksheet.write(idx, 0, alumno['nombre'], cell_fmt)
             
             mat = alumno['matricula_monto']
-            worksheet.write_number(idx, 1, mat, number_fmt)
+            fmt_mat = verde_fmt if mat > 0 else blanco_fmt
+            worksheet.write_number(idx, 1, mat, fmt_mat)
             total_mat += mat
             
             total_row = mat
@@ -1729,14 +1774,23 @@ def export_pagos_calendario_excel():
                 monto = alumno['meses'][f'{m:02d}']
                 total_row += monto
                 totales_mes[m] += monto
-                worksheet.write_number(idx, col, monto, number_fmt)
+                
+                if monto >= 1000:
+                    fmt = verde_fmt
+                elif monto > 0:
+                    fmt = amarillo_fmt
+                else:
+                    fmt = blanco_fmt
+                
+                worksheet.write_number(idx, col, monto, fmt)
             
             lib = alumno['libro']
-            worksheet.write_number(idx, 11, lib, number_fmt)
+            fmt_lib = verde_fmt if lib > 0 else blanco_fmt
+            worksheet.write_number(idx, 11, lib, fmt_lib)
             total_row += lib
             total_lib += lib
             
-            worksheet.write_number(idx, 12, total_row, number_fmt)
+            worksheet.write_number(idx, 12, total_row, azul_fmt)
         
         # Fila TOTALES al final
         total_row_num = len(reporte) + 1
