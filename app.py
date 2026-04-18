@@ -11,9 +11,7 @@ import os
 from datetime import datetime, date, timedelta
 import io
 from dotenv import load_dotenv
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+from xlsxwriter import Workbook
 import time
 from functools import wraps
 import unicodedata
@@ -1596,6 +1594,191 @@ def reportes_pagos_calendario():
 
 @app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
 def export_pagos_calendario_excel():
+    """Exportar reporte de pagos - Excel con xlsxwriter"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        datos = request.json or {}
+        solo_regulares = datos.get('solo_regulares', True)
+        miembros = db.get_miembros_fresh(estado='Activo')
+        
+        if solo_regulares:
+            miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
+        
+        pagos = db.get_pagos()
+        
+        # Construir reporte
+        reporte = []
+        for miembro in miembros:
+            md = dict(miembro)
+            row = {
+                'nombre': md.get('nombre', ''),
+                'matricula_monto': 0.0,
+                'libro': 0.0,
+                'meses': {f'{i:02d}': 0.0 for i in range(1, 13)}
+            }
+            
+            for pago in pagos:
+                if dict(pago).get('miembro_id') == md.get('id'):
+                    pd = dict(pago)
+                    monto = float(pd.get('monto', 0))
+                    tipo = unicodedata.normalize('NFD', pd.get('tipo_pago', '').lower()).encode('ascii', 'ignore').decode() if pd.get('tipo_pago') else ''
+                    
+                    if tipo == 'matricula':
+                        row['matricula_monto'] += monto
+                    elif tipo == 'libro':
+                        row['libro'] += monto
+                    else:
+                        mes_key = f"{int(pd.get('mes', 0)):02d}" if pd.get('mes') else ''
+                        if mes_key in row['meses']:
+                            row['meses'][mes_key] += monto
+            
+            reporte.append(row)
+        
+        # Crear Excel con xlsxwriter
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Pagos por Mes")
+        
+        # Formatos
+        header_fmt = workbook.add_format({
+            'bg_color': '#E8E8E8',
+            'font_color': '#333333',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        verde_fmt = workbook.add_format({
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'num_format': '#,##0'
+        })
+        
+        amarillo_fmt = workbook.add_format({
+            'bg_color': '#FFF3CD',
+            'font_color': '#856404',
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'num_format': '#,##0'
+        })
+        
+        blanco_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'num_format': '#,##0'
+        })
+        
+        azul_fmt = workbook.add_format({
+            'bg_color': '#E3F2FD',
+            'font_color': '#0D47A1',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'num_format': '#,##0'
+        })
+        
+        # Headers
+        meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
+        
+        headers = ['Alumno', 'Matricula'] + [f'{m:02d} {meses_nombres[m]}' for m in meses] + ['Libro', 'TOTAL']
+        
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        worksheet.set_column(0, 0, 22)
+        worksheet.set_column(1, 1, 13)
+        for i in range(2, 12):
+            worksheet.set_column(i, i, 11)
+        worksheet.set_column(12, 12, 14)
+        
+        # Datos
+        totales_mes = {m: 0.0 for m in meses}
+        total_mat = 0.0
+        total_lib = 0.0
+        
+        for idx, alumno in enumerate(reporte, 1):
+            worksheet.write(idx, 0, alumno['nombre'], cell_fmt)
+            
+            mat = alumno['matricula_monto']
+            fmt_mat = verde_fmt if mat > 0 else blanco_fmt
+            worksheet.write_number(idx, 1, mat, fmt_mat)
+            total_mat += mat
+            
+            total_row = mat
+            for i, m in enumerate(meses):
+                col = 2 + i
+                monto = alumno['meses'][f'{m:02d}']
+                total_row += monto
+                totales_mes[m] += monto
+                
+                if monto >= 1000:
+                    fmt = verde_fmt
+                elif monto > 0:
+                    fmt = amarillo_fmt
+                else:
+                    fmt = blanco_fmt
+                
+                worksheet.write_number(idx, col, monto, fmt)
+            
+            lib = alumno['libro']
+            fmt_lib = verde_fmt if lib > 0 else blanco_fmt
+            worksheet.write_number(idx, 11, lib, fmt_lib)
+            total_row += lib
+            total_lib += lib
+            
+            worksheet.write_number(idx, 12, total_row, azul_fmt)
+        
+        # Totales
+        total_row_num = len(reporte) + 1
+        worksheet.write(total_row_num, 0, 'TOTALES', header_fmt)
+        worksheet.write_number(total_row_num, 1, total_mat, verde_fmt)
+        
+        for i, m in enumerate(meses):
+            worksheet.write_number(total_row_num, 2 + i, totales_mes[m], verde_fmt)
+        
+        worksheet.write_number(total_row_num, 11, total_lib, verde_fmt)
+        total_general = total_mat + sum(totales_mes.values()) + total_lib
+        worksheet.write_number(total_row_num, 12, total_general, verde_fmt)
+        
+        worksheet.freeze_panes(1, 0)
+        workbook.close()
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Reporte_Pagos_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
     """Exportar reporte de pagos por calendario a Excel con openpyxl"""
     db_check, error, code = check_db()
     if error:
