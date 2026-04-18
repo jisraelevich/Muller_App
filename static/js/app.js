@@ -556,12 +556,63 @@ async function exportarExcel(tipo) {
         setTimeout(() => {
             btnExportar.disabled = false;
             btnExportar.textContent = textoOriginal;
-            mostrarAlerta('✅ Archivo Excel descargado', 'success');
+            mostrarAlerta('Archivo Excel descargado', 'success');
         }, 2000);
     } catch (error) {
         console.error('Error exportando:', error);
         btnExportar.disabled = false;
         btnExportar.textContent = textoOriginal;
+    }
+}
+
+/**
+ * Exportar reportes en Excel desde tab Reportes
+ */
+async function exportarExcelPagosDetalle() {
+    await descargarReporte('/api/reportes/pagos-calendario/excel', 'Pagos_Detalle');
+}
+
+async function exportarExcelAsistencia() {
+    await descargarReporte('/api/reportes/asistencia/excel', 'Asistencia');
+}
+
+async function exportarExcelMiembros() {
+    await descargarReporte('/api/reportes/miembros/excel', 'Miembros');
+}
+
+async function exportarExcelPagosCalendario() {
+    await descargarReporte('/api/reportes/pagos-calendario/excel', 'Pagos_Calendario');
+}
+
+/**
+ * Función auxiliar para descargar reportes
+ */
+async function descargarReporte(url, nombre) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({solo_regulares: true})
+        });
+        
+        if (!response.ok) throw new Error('Error descargando reporte');
+        
+        const blob = await response.blob();
+        const urlBlob = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlBlob;
+        a.download = `${nombre}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(urlBlob);
+        a.remove();
+        
+        mostrarAlerta('Archivo Excel descargado exitosamente', 'success');
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error descargando reporte', 'error');
     }
 }
 

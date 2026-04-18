@@ -104,8 +104,7 @@ TABS = {
     3: {"id": "tab_3", "label": "Miembros", "icon": "Users", "route": "miembros"},
     4: {"id": "tab_4", "label": "Clases", "icon": "Book", "route": "clases"},
     5: {"id": "tab_5", "label": "Reportes", "icon": "BarChart", "route": "reportes"},
-    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"},
-    7: {"id": "tab_7", "label": "Pagos (Calendario)", "icon": "Calendar", "route": "reportes_pagos"}
+    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"}
 }
 
 # ========== FUNCIONES AUXILIARES ==========
@@ -1502,8 +1501,8 @@ def reportes_pagos_calendario():
         # Parámetro para filtrar solo regulares
         solo_regulares = request.args.get('solo_regulares', 'true').lower() == 'true'
         
-        # Obtener miembros SIN CACHE para asegurar datos frescos
-        miembros = db.get_miembros_fresh(estado='Activo')
+        # Obtener miembros - use cached version for performance
+        miembros = db.get_miembros(estado='Activo')
         
         # Filtrar solo regulares si se solicita
         if solo_regulares:
@@ -1512,8 +1511,14 @@ def reportes_pagos_calendario():
         # Obtener todos los pagos
         pagos = db.get_pagos()
         
-        # Obtener todos los pagos
-        pagos = db.get_pagos()
+        # Index pagos by miembro_id for fast lookup
+        pagos_por_miembro = {}
+        for pago in pagos:
+            pago_dict = dict(pago)
+            miembro_id = pago_dict.get('miembro_id')
+            if miembro_id not in pagos_por_miembro:
+                pagos_por_miembro[miembro_id] = []
+            pagos_por_miembro[miembro_id].append(pago_dict)
         
         # Crear reporte pivot
         reporte = []
@@ -1534,45 +1539,49 @@ def reportes_pagos_calendario():
             for mes in range(1, 13):
                 row['meses'][f'{mes:02d}'] = 0
             
-            # Llenar con pagos del miembro
-            for pago in pagos:
-                pago_dict = dict(pago)
-                if pago_dict.get('miembro_id') == miembro_dict.get('id'):
-                    monto = float(pago_dict.get('monto', 0))
-                    tipo_pago = pago_dict.get('tipo_pago', '')
+            # Llenar con pagos del miembro - use indexed lookup
+            miembro_pagos = pagos_por_miembro.get(miembro_dict.get('id'), [])
+            for pago_dict in miembro_pagos:
+                monto = float(pago_dict.get('monto', 0))
+                tipo_pago = pago_dict.get('tipo_pago', '')
+                
+                # Si es pago de Matrícula, agregarlo separately
+                # Normalizar comparación sin acentos
+                tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
+                if tipo_normalized == 'matricula':
+                    row['matricula_monto'] += int(monto)
+                elif tipo_normalized == 'libro':
+                    row['libro'] += int(monto)
+                else:
+                    # Si es cuota mensual, verificar si tiene mes_inicio y mes_fin
+                    mes_inicio = pago_dict.get('mes_inicio')
+                    mes_fin = pago_dict.get('mes_fin')
                     
-                    # Si es pago de Matrícula, agregarlo separately
-                    # Normalizar comparación sin acentos
-                    tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
-                    if tipo_normalized == 'matricula':
-                        row['matricula_monto'] += int(monto)
-                    elif tipo_normalized == 'libro':
-                        row['libro'] += int(monto)
-                    else:
-                        # Si es cuota mensual, verificar si tiene mes_inicio y mes_fin
-                        mes_inicio = pago_dict.get('mes_inicio')
-                        mes_fin = pago_dict.get('mes_fin')
+                    if mes_inicio and mes_fin:
+                        # Distribuir el monto entre los meses del rango
+                        cantidad_meses = mes_fin - mes_inicio + 1
+                        monto_por_mes = int(monto / cantidad_meses) if cantidad_meses > 0 else int(monto)
                         
-                        if mes_inicio and mes_fin:
-                            # Distribuir el monto entre los meses del rango
-                            cantidad_meses = mes_fin - mes_inicio + 1
-                            monto_por_mes = int(monto / cantidad_meses) if cantidad_meses > 0 else int(monto)
-                            
-                            for mes in range(mes_inicio, mes_fin + 1):
-                                mes_key = f'{mes:02d}'
-                                row['meses'][mes_key] += monto_por_mes
-                        else:
-                            # Usar el mes de la fecha (comportamiento anterior)
-                            if pago_dict.get('fecha'):
-                                fecha = pago_dict['fecha']
-                                if hasattr(fecha, 'month'):
-                                    mes_key = f"{fecha.month:02d}"
-                                else:
-                                    # Parsear string
-                                    from datetime import datetime as dt
+                        for mes in range(mes_inicio, mes_fin + 1):
+                            mes_key = f'{mes:02d}'
+                            row['meses'][mes_key] += monto_por_mes
+                    else:
+                        # Usar el mes de la fecha (comportamiento anterior)
+                        if pago_dict.get('fecha'):
+                            fecha = pago_dict['fecha']
+                            mes_key = None
+                            if hasattr(fecha, 'month'):
+                                mes_key = f"{fecha.month:02d}"
+                            else:
+                                # Parsear string
+                                from datetime import datetime as dt
+                                try:
                                     fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
                                     mes_key = f"{fecha_obj.month:02d}"
-                                
+                                except:
+                                    mes_key = None
+                            
+                            if mes_key:
                                 row['meses'][mes_key] += int(monto)
             
             reporte.append(row)
@@ -1613,8 +1622,10 @@ def export_pagos_calendario_excel():
         reporte = []
         for miembro in miembros:
             md = dict(miembro)
+            # Nombre completo: Apellido, Nombre
+            nombre_completo = f"{md.get('apellido', '')}, {md.get('nombre', '')}"
             row = {
-                'nombre': md.get('nombre', ''),
+                'nombre': nombre_completo,
                 'matricula_monto': 0.0,
                 'libro': 0.0,
                 'meses': {f'{i:02d}': 0.0 for i in range(1, 13)}
@@ -1636,6 +1647,9 @@ def export_pagos_calendario_excel():
                             row['meses'][mes_key] += monto
             
             reporte.append(row)
+        
+        # Ordenar por apellido y nombre
+        reporte.sort(key=lambda x: x['nombre'])
         
         # Crear Excel con xlsxwriter
         output = io.BytesIO()
@@ -1739,6 +1753,47 @@ def export_pagos_calendario_excel():
             'font_name': 'Calibri'
         })
         
+        # Formato para fila de totales con fondo gris (como en app)
+        totales_label_fmt = workbook.add_format({
+            'bg_color': '#F5F5F5',
+            'font_color': '#333333',
+            'bold': True,
+            'border': 1,
+            'border_color': '#333333',
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Amarillo pálido para totales por mes (como en app)
+        totales_mes_fmt = workbook.add_format({
+            'bg_color': '#FFFACD',
+            'font_color': '#333333',
+            'bold': True,
+            'border': 1,
+            'border_color': '#333333',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Verde para total general (como en app)
+        totales_final_fmt = workbook.add_format({
+            'bg_color': '#4CAF50',
+            'font_color': '#FFFFFF',
+            'bold': True,
+            'border': 1,
+            'border_color': '#333333',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
         # Headers - SIN EMOJIS, COMO EN LA APP
         meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
         meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
@@ -1749,7 +1804,7 @@ def export_pagos_calendario_excel():
             worksheet.write(0, col, h, header_fmt)
         
         # Ancho de columnas
-        worksheet.set_column(0, 0, 22)
+        worksheet.set_column(0, 0, 35)  # Nombre completo (Apellido, Nombre)
         worksheet.set_column(1, 1, 13)
         for i in range(2, 12):
             worksheet.set_column(i, i, 11)
@@ -1765,7 +1820,11 @@ def export_pagos_calendario_excel():
             
             mat = alumno['matricula_monto']
             fmt_mat = verde_fmt if mat > 0 else blanco_fmt
-            worksheet.write_number(idx, 1, mat, fmt_mat)
+            # Mostrar vacío si es 0
+            if mat > 0:
+                worksheet.write_number(idx, 1, mat, fmt_mat)
+            else:
+                worksheet.write(idx, 1, '', fmt_mat)
             total_mat += mat
             
             total_row = mat
@@ -1782,27 +1841,51 @@ def export_pagos_calendario_excel():
                 else:
                     fmt = blanco_fmt
                 
-                worksheet.write_number(idx, col, monto, fmt)
+                # Mostrar vacío si es 0
+                if monto > 0:
+                    worksheet.write_number(idx, col, monto, fmt)
+                else:
+                    worksheet.write(idx, col, '', fmt)
             
             lib = alumno['libro']
             fmt_lib = verde_fmt if lib > 0 else blanco_fmt
-            worksheet.write_number(idx, 11, lib, fmt_lib)
+            # Mostrar vacío si es 0
+            if lib > 0:
+                worksheet.write_number(idx, 11, lib, fmt_lib)
+            else:
+                worksheet.write(idx, 11, '', fmt_lib)
             total_row += lib
             total_lib += lib
             
             worksheet.write_number(idx, 12, total_row, azul_fmt)
         
-        # Fila TOTALES al final
+        # Fila TOTALES al final - CON COLORES COMO EN LA APP
         total_row_num = len(reporte) + 1
-        worksheet.write(total_row_num, 0, 'TOTALES', total_fmt)
-        worksheet.write_number(total_row_num, 1, total_mat, total_number_fmt)
+        worksheet.write(total_row_num, 0, 'TOTALES', totales_label_fmt)
         
+        # Matricula total - mostrar vacío si es 0
+        if total_mat > 0:
+            worksheet.write_number(total_row_num, 1, total_mat, totales_mes_fmt)
+        else:
+            worksheet.write(total_row_num, 1, '', totales_mes_fmt)
+        
+        # Meses totales - mostrar vacío si es 0
         for i, m in enumerate(meses):
-            worksheet.write_number(total_row_num, 2 + i, totales_mes[m], total_number_fmt)
+            monto = totales_mes[m]
+            if monto > 0:
+                worksheet.write_number(total_row_num, 2 + i, monto, totales_mes_fmt)
+            else:
+                worksheet.write(total_row_num, 2 + i, '', totales_mes_fmt)
         
-        worksheet.write_number(total_row_num, 11, total_lib, total_number_fmt)
+        # Libro total - mostrar vacío si es 0
+        if total_lib > 0:
+            worksheet.write_number(total_row_num, 11, total_lib, totales_mes_fmt)
+        else:
+            worksheet.write(total_row_num, 11, '', totales_mes_fmt)
+        
+        # Total general - GREEN (siempre se muestra)
         total_general = total_mat + sum(totales_mes.values()) + total_lib
-        worksheet.write_number(total_row_num, 12, total_general, total_number_fmt)
+        worksheet.write_number(total_row_num, 12, total_general, totales_final_fmt)
         
         worksheet.freeze_panes(1, 0)
         workbook.close()
@@ -1819,253 +1902,248 @@ def export_pagos_calendario_excel():
         import traceback
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
-    """Exportar reporte de pagos por calendario a Excel con openpyxl"""
+
+@app.route('/api/reportes/asistencia/excel', methods=['POST'])
+def export_asistencia_excel():
+    """Exportar reporte de asistencia a Excel - igual que en pantalla"""
     db_check, error, code = check_db()
     if error:
         return error, code
     
     try:
-        # Obtener parámetro del request
-        datos = request.json or {}
-        solo_regulares = datos.get('solo_regulares', True)
+        # Obtener todas las asistencias (no filtradas)
+        asistencias = db.get_asistencia()
         
-        # Obtener miembros activos
-        miembros = db.get_miembros_fresh(estado='Activo')
+        # Cache miembros - TODOS (activos + inactivos) - clave es 'id'
+        miembros_activos = db.get_miembros(estado='Activo')
+        miembros_inactivos = db.get_miembros_inactivos()
+        miembros_all = list(miembros_activos) + list(miembros_inactivos)
+        miembros = {dict(m).get('id'): dict(m) for m in miembros_all}
         
-        # Filtrar solo regulares si se solicita
-        if solo_regulares:
-            miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
+        # Cache clases - clave es 'id'
+        clases = {dict(c).get('id'): dict(c) for c in db.get_clases()}
         
-        # Obtener todos los pagos
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Asistencia")
+        
+        header_fmt = workbook.add_format({
+            'bg_color': '#F0F0F0',
+            'font_color': '#000000',
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        # Headers - Como en pantalla
+        headers = ['Alumno', 'Clase', 'Fecha', 'Estado']
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        worksheet.set_column(0, 0, 25)
+        worksheet.set_column(1, 1, 20)
+        worksheet.set_column(2, 2, 15)
+        worksheet.set_column(3, 3, 15)
+        
+        # Data - Ordenado por apellido, nombre de miembro
+        asistencias_sorted = sorted(asistencias, 
+            key=lambda x: (
+                (miembros.get(dict(x).get('miembro_id'), {}).get('apellido', '').lower() or ''),
+                (miembros.get(dict(x).get('miembro_id'), {}).get('nombre', '').lower() or '')
+            ))
+        
+        for idx, asist in enumerate(asistencias_sorted, 1):
+            a = dict(asist)
+            miembro_id = a.get('miembro_id')
+            miembro = miembros.get(miembro_id, {})
+            clase_id = a.get('clase_id')
+            clase = clases.get(clase_id, {})
+            
+            # Nombre completo: Apellido, Nombre
+            nombre_completo = f"{miembro.get('apellido', '')}, {miembro.get('nombre', '')}"
+            
+            worksheet.write(idx, 0, nombre_completo, cell_fmt)
+            worksheet.write(idx, 1, clase.get('nombre', 'N/A'), cell_fmt)
+            worksheet.write(idx, 2, str(a.get('fecha', '')), cell_fmt)
+            worksheet.write(idx, 3, a.get('estado', 'Presente'), cell_fmt)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Reporte_Asistencia_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando asistencia: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/reportes/miembros/excel', methods=['POST'])
+def export_miembros_excel():
+    """Exportar reporte de miembros a Excel - igual que en pantalla"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener TODOS los miembros (no solo activos)
+        miembros = db.get_miembros()
+        
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Miembros")
+        
+        header_fmt = workbook.add_format({
+            'bg_color': '#F0F0F0',
+            'font_color': '#000000',
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        # Headers - Como en pantalla
+        headers = ['Nombre', 'Email', 'Teléfono', 'Estado', 'Tipo']
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        worksheet.set_column(0, 0, 30)  # Nombre (Apellido, Nombre)
+        worksheet.set_column(1, 1, 20)  # Email
+        worksheet.set_column(2, 2, 15)  # Teléfono
+        worksheet.set_column(3, 3, 15)  # Estado
+        worksheet.set_column(4, 4, 15)  # Tipo
+        
+        # Ordenar por apellido, nombre - igual que en pantalla
+        miembros_sorted = sorted(miembros,
+            key=lambda x: (dict(x).get('apellido', '').lower() or '', dict(x).get('nombre', '').lower() or ''))
+        
+        # Data
+        for idx, miembro in enumerate(miembros_sorted, 1):
+            m = dict(miembro)
+            # Nombre completo: Apellido, Nombre - como en pantalla
+            nombre_completo = f"{m.get('apellido', '')}, {m.get('nombre', '')}"
+            
+            worksheet.write(idx, 0, nombre_completo, cell_fmt)
+            worksheet.write(idx, 1, m.get('email', ''), cell_fmt)
+            worksheet.write(idx, 2, m.get('telefono', ''), cell_fmt)
+            worksheet.write(idx, 3, m.get('estado', ''), cell_fmt)
+            worksheet.write(idx, 4, m.get('tipo_asistencia', ''), cell_fmt)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Reporte_Miembros_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando miembros: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/reportes/pagos/excel', methods=['POST'])
+def export_pagos_excel():
+    """Exportar reporte de pagos a Excel - RP1"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener pagos - máximo 50 como en pantalla
         pagos = db.get_pagos()
         
-        # Crear reporte pivot
-        reporte = []
-        for miembro in miembros:
-            miembro_dict = dict(miembro)
-            row = {
-                'miembro_id': miembro_dict.get('id'),
-                'nombre': miembro_dict.get('nombre', ''),
-                'apellido': miembro_dict.get('apellido', ''),
-                'matricula_monto': 0.0,
-                'libro': 0.0,
-                'estado': miembro_dict.get('estado', 'Activo'),
-                'meses': {}
-            }
-            
-            # Inicializar 12 meses con 0
-            for mes in range(1, 13):
-                row['meses'][f'{mes:02d}'] = 0.0
-            
-            # Llenar con pagos del miembro
-            for pago in pagos:
-                pago_dict = dict(pago)
-                if pago_dict.get('miembro_id') == miembro_dict.get('id'):
-                    monto = float(pago_dict.get('monto', 0))
-                    tipo_pago = pago_dict.get('tipo_pago', '')
-                    
-                    tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
-                    if tipo_normalized == 'matricula':
-                        row['matricula_monto'] += monto
-                    elif tipo_normalized == 'libro':
-                        row['libro'] += monto
-                    else:
-                        mes_pago = pago_dict.get('mes', '')
-                        if mes_pago:
-                            # Asegurar formato '03' no '3'
-                            mes_pago_padded = f'{int(mes_pago):02d}' if mes_pago else ''
-                            if mes_pago_padded in row['meses']:
-                                row['meses'][mes_pago_padded] += monto
-            
-            reporte.append(row)
-        
-        # Crear workbook openpyxl
-        workbook = Workbook()
-        worksheet = workbook.active
-        worksheet.title = "Pagos por Mes"
-        
-        # Estilos
-        border = Border(
-            left=Side(style='thin', color='CCCCCC'),
-            right=Side(style='thin', color='CCCCCC'),
-            top=Side(style='thin', color='CCCCCC'),
-            bottom=Side(style='thin', color='CCCCCC')
-        )
-        
-        header_fill = PatternFill(start_color='E8E8E8', end_color='E8E8E8', fill_type='solid')
-        header_font = Font(name='Calibri', size=10, bold=True, color='333333')
-        
-        cell_font = Font(name='Calibri', size=10, color='333333')
-        
-        # Formato de dinero SIN centavos
-        dinero_format = '#,##0'
-        
-        verde_fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
-        verde_font = Font(name='Calibri', size=10, color='1B5E20', bold=True)
-        
-        amarillo_fill = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
-        amarillo_font = Font(name='Calibri', size=10, color='856404')
-        
-        azul_fill = PatternFill(start_color='E3F2FD', end_color='E3F2FD', fill_type='solid')
-        azul_font = Font(name='Calibri', size=10, color='0D47A1', bold=True)
-        
-        center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=False)
-        right_alignment = Alignment(horizontal='right', vertical='center')
-        left_alignment = Alignment(horizontal='left', vertical='center')
-        
-        # Headers
-        meses_mostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11]
-        meses_nombres = {
-            3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL',
-            8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'
-        }
-        
-        # Escribir headers SIN emojis
-        headers = ['Alumno', 'Matricula']
-        for mes in meses_mostrar:
-            headers.append(f'{mes:02d} {meses_nombres[mes]}')
-        headers.extend(['Libro', 'TOTAL'])
-        
-        for col_num, header in enumerate(headers, 1):
-            cell = worksheet.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.border = border
-            cell.alignment = center_alignment
-        
-        # Anchos de columnas
-        worksheet.column_dimensions['A'].width = 22
-        worksheet.column_dimensions['B'].width = 13
-        for i in range(len(meses_mostrar)):
-            col_letter = get_column_letter(3 + i)
-            worksheet.column_dimensions[col_letter].width = 11
-        worksheet.column_dimensions['L'].width = 11
-        worksheet.column_dimensions['M'].width = 14
-        
-        # Datos
-        totales_por_mes = {mes: 0.0 for mes in meses_mostrar}
-        total_matriculas = 0.0
-        total_libros = 0.0
-        
-        for idx, alumno in enumerate(reporte, 2):
-            # Nombre
-            cell = worksheet.cell(row=idx, column=1)
-            cell.value = alumno['nombre']
-            cell.font = cell_font
-            cell.border = border
-            cell.alignment = left_alignment
-            
-            # Matrícula
-            matricula = alumno['matricula_monto']
-            cell = worksheet.cell(row=idx, column=2)
-            cell.value = matricula
-            cell.number_format = dinero_format
-            cell.border = border
-            cell.alignment = right_alignment
-            if matricula > 0:
-                cell.fill = verde_fill
-                cell.font = verde_font
-            else:
-                cell.font = cell_font
-            total_matriculas += matricula
-            
-            # Meses
-            total_alumno = matricula
-            for col_idx, mes in enumerate(meses_mostrar, 3):
-                mes_key = f'{mes:02d}'
-                monto = alumno['meses'].get(mes_key, 0.0)
-                total_alumno += monto
-                totales_por_mes[mes] += monto
-                
-                cell = worksheet.cell(row=idx, column=col_idx)
-                cell.value = monto if monto > 0 else None
-                cell.number_format = dinero_format
-                cell.border = border
-                cell.alignment = right_alignment
-                
-                if monto >= 1000:
-                    cell.fill = verde_fill
-                    cell.font = verde_font
-                elif monto > 0:
-                    cell.fill = amarillo_fill
-                    cell.font = amarillo_font
-                else:
-                    cell.font = cell_font
-            
-            # Libro
-            libro = alumno['libro']
-            cell = worksheet.cell(row=idx, column=12)  # L
-            cell.value = libro if libro > 0 else None
-            cell.number_format = dinero_format
-            cell.border = border
-            cell.alignment = right_alignment
-            if libro > 0:
-                cell.fill = verde_fill
-                cell.font = verde_font
-            else:
-                cell.font = cell_font
-            total_alumno += libro
-            total_libros += libro
-            
-            # Total
-            cell = worksheet.cell(row=idx, column=13)  # M
-            cell.value = total_alumno
-            cell.number_format = dinero_format
-            cell.fill = azul_fill
-            cell.font = azul_font
-            cell.border = border
-            cell.alignment = right_alignment
-        
-        # Fila de totales
-        total_row = len(reporte) + 2
-        cell = worksheet.cell(row=total_row, column=1)
-        cell.value = 'TOTALES'
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.border = border
-        cell.alignment = center_alignment
-        
-        cell = worksheet.cell(row=total_row, column=2)
-        cell.value = total_matriculas
-        cell.number_format = dinero_format
-        cell.fill = verde_fill
-        cell.font = verde_font
-        cell.border = border
-        cell.alignment = right_alignment
-        
-        for col_idx, mes in enumerate(meses_mostrar, 3):
-            cell = worksheet.cell(row=total_row, column=col_idx)
-            cell.value = totales_por_mes[mes]
-            cell.number_format = dinero_format
-            cell.fill = verde_fill
-            cell.font = verde_font
-            cell.border = border
-            cell.alignment = right_alignment
-        
-        cell = worksheet.cell(row=total_row, column=12)
-        cell.value = total_libros
-        cell.number_format = dinero_format
-        cell.fill = verde_fill
-        cell.font = verde_font
-        cell.border = border
-        cell.alignment = right_alignment
-        
-        total_general = total_matriculas + sum(totales_por_mes.values()) + total_libros
-        cell = worksheet.cell(row=total_row, column=13)
-        cell.value = total_general
-        cell.number_format = dinero_format
-        cell.fill = verde_fill
-        cell.font = verde_font
-        cell.border = border
-        cell.alignment = right_alignment
-        
-        # Congelar primera fila
-        worksheet.freeze_panes = 'A2'
-        
-        # Enviar archivo
         output = io.BytesIO()
-        workbook.save(output)
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Pagos")
+        
+        header_fmt = workbook.add_format({
+            'bg_color': '#F0F0F0',
+            'font_color': '#000000',
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        monto_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'num_format': '#,##0.00'
+        })
+        
+        # Headers - Como en pantalla (Alumno, Monto, Fecha, Tipo, Método)
+        headers = ['Alumno', 'Monto', 'Fecha', 'Tipo', 'Método']
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        worksheet.set_column(0, 0, 30)  # Alumno (Apellido, Nombre)
+        worksheet.set_column(1, 1, 12)  # Monto
+        worksheet.set_column(2, 2, 12)  # Fecha
+        worksheet.set_column(3, 3, 15)  # Tipo
+        worksheet.set_column(4, 4, 15)  # Método
+        
+        # Limitar a 50 como en pantalla - ya viene ordenado por apellido, nombre del query
+        pagos_list = list(pagos)[:50]
+        
+        # Data
+        for idx, pago in enumerate(pagos_list, 1):
+            p = dict(pago)
+            # Nombre completo: Apellido, Nombre - ya viene del JOIN
+            nombre_completo = f"{p.get('apellido', '')}, {p.get('nombre', '')}"
+            
+            worksheet.write(idx, 0, nombre_completo, cell_fmt)
+            worksheet.write(idx, 1, float(p.get('monto', 0)), monto_fmt)
+            
+            # Formato fecha
+            fecha = p.get('fecha', '')
+            if fecha:
+                try:
+                    fecha_obj = datetime.strptime(str(fecha), '%Y-%m-%d')
+                    fecha_str = fecha_obj.strftime('%d/%m/%Y')
+                except:
+                    fecha_str = str(fecha)
+            else:
+                fecha_str = ''
+            
+            worksheet.write(idx, 2, fecha_str, cell_fmt)
+            worksheet.write(idx, 3, p.get('tipo_pago', ''), cell_fmt)
+            worksheet.write(idx, 4, p.get('metodo_pago', ''), cell_fmt)
+        
+        workbook.close()
         output.seek(0)
         
         return send_file(
@@ -2075,7 +2153,75 @@ def export_pagos_calendario_excel():
             download_name=f'Reporte_Pagos_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
         )
     except Exception as e:
-        print(f"[ERROR] Error exportando Excel: {e}")
+        print(f"[ERROR] Error exportando pagos: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/reportes/retiros/excel', methods=['POST'])
+def export_retiros_excel():
+    """Exportar reporte de retiros a Excel"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        retiros = db.get_retiros()
+        
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Retiros")
+        
+        header_fmt = workbook.add_format({
+            'bg_color': '#F0F0F0',
+            'font_color': '#000000',
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10
+        })
+        
+        # Headers
+        headers = ['Miembro', 'Fecha Retiro', 'Motivo', 'Notas']
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        worksheet.set_column(0, 0, 25)
+        worksheet.set_column(1, 1, 15)
+        worksheet.set_column(2, 2, 20)
+        worksheet.set_column(3, 3, 30)
+        
+        # Data
+        for idx, retiro in enumerate(retiros, 1):
+            r = dict(retiro)
+            miembro_id = r.get('miembro_id')
+            miembro = next((m for m in db.get_miembros() if dict(m).get('id') == miembro_id), None)
+            nombre = dict(miembro).get('nombre', '') if miembro else 'N/A'
+            
+            worksheet.write(idx, 0, nombre, cell_fmt)
+            worksheet.write(idx, 1, str(r.get('fecha_retiro', '')), cell_fmt)
+            worksheet.write(idx, 2, r.get('motivo', ''), cell_fmt)
+            worksheet.write(idx, 3, r.get('notas', ''), cell_fmt)
+        
+        workbook.close()
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Reporte_Retiros_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando retiros: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -2342,13 +2488,13 @@ if __name__ == '__main__':
     puerto = 5000
     
     if db:
-        print(f"\n✅ Base de datos conectada")
+        print(f"\n[OK] Base de datos conectada")
     else:
-        print(f"\n⚠️  Base de datos NO disponible - Modo testing (solo autenticación)")
+        print(f"\n[WARN] Base de datos NO disponible - Modo testing (solo autenticacion)")
     
-    print(f"✅ Servidor iniciado en: http://localhost:{puerto}")
-    print(f"   Google OAuth: {'✓' if GOOGLE_CLIENT_ID else '❌'}")
-    print(f"\n📌 Para cerrar: Ctrl+C o cerrar esta ventana")
+    print(f"[OK] Servidor iniciado en: http://localhost:{puerto}")
+    print(f"   Google OAuth: {'OK' if GOOGLE_CLIENT_ID else 'ERROR'}")
+    print(f"\n[INFO] Para cerrar: Ctrl+C o cerrar esta ventana")
     print("=" * 70 + "\n")
     
     app.run(host='0.0.0.0', port=puerto, debug=True)

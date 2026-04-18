@@ -26,7 +26,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Pagos</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelPagosDetalle()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/pagos/excel', 'Pagos')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -52,7 +52,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Asistencia</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('asistencia')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/asistencia/excel', 'Asistencia')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -77,7 +77,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Miembros</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="exportarExcelReporte('miembros')" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/miembros/excel', 'Miembros')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -107,7 +107,7 @@
                     <input type="checkbox" id="chk-solo-regulares-tab5" checked style="width: 18px; height: 18px; cursor: pointer;">
                     Solo Regulares
                 </label>
-                <button onclick="exportarExcelNuevo()" class="btn-touch btn-export" style="font-size: 12px;">📥 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/pagos-calendario/excel', 'Pagos_Mes')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -145,35 +145,50 @@
     
 </div>
 
-<!-- Librerías para exportación -->
+<!-- Librería para exportación a Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
-<script src="https://unpkg.com/xlsx@latest/dist/xlsx.full.min.js"></script>
 
 <script>
-async function mostrarReporte(tipo) {
-    // Cambiar tabs activos
-    document.querySelectorAll('[id^="tab-"]').forEach(btn => {
-        btn.style.background = 'var(--color-secondary)';
-        btn.style.color = 'var(--color-text)';
-    });
-    document.getElementById('tab-' + tipo).style.background = 'var(--color-primary)';
-    document.getElementById('tab-' + tipo).style.color = 'white';
-    
-    // Mostrar/ocultar reportes
-    document.querySelectorAll('[id^="reporte-"]').forEach(div => {
-        div.style.display = 'none';
-    });
-    document.getElementById('reporte-' + tipo).style.display = 'block';
-    
-    // Cargar datos si no están cargados
-    if (tipo === 'pagos') {
-        await cargarReportePagos();
-    } else if (tipo === 'asistencia') {
-        await cargarReporteAsistencia();
-    } else if (tipo === 'miembros') {
-        await cargarReporteMiembros();
-    } else if (tipo === 'pagos-mes') {
-        await cargarReporteCalendario();
+function mostrarReporte(tipo) {
+    console.log('[REPORT] Showing report type:', tipo);
+    try {
+        // Cambiar tabs activos
+        document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+            btn.style.background = 'var(--color-secondary)';
+            btn.style.color = 'var(--color-text)';
+        });
+        const activeBtn = document.getElementById('tab-' + tipo);
+        if (activeBtn) {
+            activeBtn.style.background = 'var(--color-primary)';
+            activeBtn.style.color = 'white';
+        } else {
+            console.warn('[REPORT] Button not found:', 'tab-' + tipo);
+        }
+        
+        // Mostrar/ocultar reportes
+        document.querySelectorAll('[id^="reporte-"]').forEach(div => {
+            div.style.display = 'none';
+        });
+        const reportDiv = document.getElementById('reporte-' + tipo);
+        if (reportDiv) {
+            reportDiv.style.display = 'block';
+        } else {
+            console.warn('[REPORT] Report div not found:', 'reporte-' + tipo);
+        }
+        
+        // Cargar datos si no están cargados
+        console.log('[REPORT] Loading data for type:', tipo);
+        if (tipo === 'pagos') {
+            cargarReportePagos();
+        } else if (tipo === 'asistencia') {
+            cargarReporteAsistencia();
+        } else if (tipo === 'miembros') {
+            cargarReporteMiembros();
+        } else if (tipo === 'pagos-mes') {
+            cargarReporteCalendario();
+        }
+    } catch(e) {
+        console.error('[REPORT] Error in mostrarReporte:', e);
     }
 }
 
@@ -318,13 +333,24 @@ async function cargarReporteMiembros() {
 
 async function cargarReporteCalendario() {
     try {
+        console.log('[CALENDAR] Starting calendar report load...');
         const soloRegulares = document.getElementById('chk-solo-regulares-tab5')?.checked ?? true;
-        const response = await fetch('/api/reportes/pagos-calendario?t=' + new Date().getTime() + '&solo_regulares=' + soloRegulares);
+        console.log('[CALENDAR] Solo regulares:', soloRegulares);
+        
+        const url = '/api/reportes/pagos-calendario?t=' + new Date().getTime() + '&solo_regulares=' + soloRegulares;
+        console.log('[CALENDAR] Fetching:', url);
+        
+        const response = await fetch(url);
+        console.log('[CALENDAR] Response status:', response.status);
+        
         const data = await response.json();
+        console.log('[CALENDAR] Response data:', data);
+        
         const tbody = document.getElementById('tbody-pagos-mes-nuevo');
         tbody.innerHTML = '';
         
         if (data.status !== 'success' || !data.reporte || data.reporte.length === 0) {
+            console.warn('[CALENDAR] No data in response');
             tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #999;">No hay datos</td></tr>';
             return;
         }
@@ -433,6 +459,8 @@ async function cargarReporteCalendario() {
         document.getElementById('tbody-pagos-mes-nuevo').innerHTML = '<tr><td colspan="13" style="text-align: center; color: #ef4444; padding: 20px;">Error: ' + error.message + '</td></tr>';
     }
 }
+
+
 
 async function exportarExcelNuevo() {
     // Verificar que XLSX esté cargado - reintentar si no
@@ -660,7 +688,7 @@ async function exportarExcelNuevo() {
             // Otros totales: fondo amarillo pálido
             if (!ws[cellRef]) ws[cellRef] = {};
             ws[cellRef].s = {
-                fill: { fgColor: { rgb: 'FFFFFFACD' } },
+                fill: { fgColor: { rgb: 'FFFFAACD' } },
                 font: { bold: true, sz: 11, color: { rgb: 'FF333333' } },
                 alignment: { horizontal: 'right', vertical: 'center' },
                 border: {
@@ -676,7 +704,7 @@ async function exportarExcelNuevo() {
     
     // Ancho de columnas
     ws['!cols'] = [
-        { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, 
+        { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, 
         { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
     ];
     
@@ -992,15 +1020,51 @@ async function exportarExcelReporteCalendario() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Función para descargar reportes
+function descargarReporte(url, nombreArchivo) {
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+        .then(response => response.blob())
+        .then(blob => {
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            const now = new Date();
+            const fecha = now.toISOString().split('T')[0];
+            const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+            a.download = nombreArchivo + '_' + fecha + '-' + hhmm + '.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(urlBlob);
+            a.remove();
+        })
+        .catch(error => {
+            console.error('Error descargando reporte:', error);
+            alert('Error al descargar el reporte');
+        });
+}
+
+// Initialize reports on page load
+console.log('[INIT] Initializing Tab 5 Reports');
+try {
     mostrarReporte('pagos-mes');
-    
-    // Event listener para el checkbox de Solo Regulares
+} catch(e) {
+    console.error('[INIT] Error initializing reports:', e);
+}
+
+// Event listener para el checkbox de Solo Regulares
+setTimeout(() => {
     const chkSoloRegulares = document.getElementById('chk-solo-regulares-tab5');
     if (chkSoloRegulares) {
+        console.log('[INIT] Checkbox found, adding event listener');
         chkSoloRegulares.addEventListener('change', cargarReporteCalendario);
+    } else {
+        console.warn('[INIT] Checkbox not found:', 'chk-solo-regulares-tab5');
     }
-});
+}, 100);
 </script>
 
 {% endblock %}
