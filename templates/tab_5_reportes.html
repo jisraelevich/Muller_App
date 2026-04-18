@@ -392,7 +392,7 @@ async function cargarReporteCalendario() {
 }
 
 async function exportarExcelNuevo() {
-    // Verificar que XLSX esté cargado - reintentarsi no
+    // Verificar que XLSX esté cargado - reintentar si no
     if (typeof XLSX === 'undefined') {
         const maxRetries = 3;
         for (let i = 0; i < maxRetries; i++) {
@@ -429,50 +429,197 @@ async function exportarExcelNuevo() {
     const encabezado = ['Alumno', 'Matrícula', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'Libro', 'TOTAL'];
     ws_data.push(encabezado);
     
+    let totalPorMes = {};
+    let totalMatriculas = 0;
+    let totalLibros = 0;
+    
     data.reporte.forEach(alumno => {
-        const row = [alumno.nombre, alumno.matricula_monto || 0];
+        const row = [alumno.nombre];
         let totalAlumno = alumno.matricula_monto || 0;
         
+        // Matrícula
+        row.push(alumno.matricula_monto || 0);
+        totalMatriculas += alumno.matricula_monto || 0;
+        
+        // Meses
         for (let mes = 3; mes <= 11; mes++) {
             const mesKey = mes.toString().padStart(2, '0');
             const monto = alumno.meses[mesKey] || 0;
             totalAlumno += monto;
+            totalPorMes[mesKey] = (totalPorMes[mesKey] || 0) + monto;
             row.push(monto > 0 ? monto : 0);
         }
         
+        // Libro
         const montoLibro = alumno.libro || 0;
         totalAlumno += montoLibro;
+        totalLibros += montoLibro;
         row.push(montoLibro > 0 ? montoLibro : 0);
+        
+        // Total alumno
         row.push(totalAlumno);
         ws_data.push(row);
     });
     
+    // Fila de totales
+    const rowTotales = ['📊 TOTALES', totalMatriculas];
+    let totalGeneral = 0;
+    for (let mes = 3; mes <= 11; mes++) {
+        const mesKey = mes.toString().padStart(2, '0');
+        const monto = totalPorMes[mesKey] || 0;
+        totalGeneral += monto;
+        rowTotales.push(monto);
+    }
+    rowTotales.push(totalLibros);
+    rowTotales.push(totalGeneral);
+    ws_data.push(rowTotales);
+    
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
-    // Formatear headers: color claro, font grande, bold
+    // Función para aplicar colores
+    const styleCell = (cellRef, bgColor, textColor = '#333', isBold = false, fontSize = 11) => {
+        if (!ws[cellRef]) ws[cellRef] = {};
+        ws[cellRef].s = {
+            fill: { fgColor: { rgb: 'FF' + bgColor.replace('#', '') } },
+            font: { bold: isBold, sz: fontSize, color: { rgb: 'FF' + textColor.replace('#', '') } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            border: {
+                left: { style: 'thin', color: { rgb: 'FFDDDDDD' } },
+                right: { style: 'thin', color: { rgb: 'FFDDDDDD' } },
+                top: { style: 'thin', color: { rgb: 'FFDDDDDD' } },
+                bottom: { style: 'thin', color: { rgb: 'FFDDDDDD' } }
+            }
+        };
+    };
+    
+    // Headers: fondo verde oscuro, texto blanco
     for (let col = 0; col < encabezado.length; col++) {
         const cellRef = XLSX.utils.encode_col(col) + '1';
         if (!ws[cellRef]) ws[cellRef] = {};
         ws[cellRef].s = {
-            fill: { fgColor: { rgb: 'FFE8F5E9' } },
-            font: { bold: true, sz: 14, color: { rgb: 'FF1B5E20' } },
-            alignment: { horizontal: 'center', vertical: 'center' }
+            fill: { fgColor: { rgb: 'FF1B5E20' } },
+            font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+                left: { style: 'thin', color: { rgb: 'FF1B5E20' } },
+                right: { style: 'thin', color: { rgb: 'FF1B5E20' } },
+                top: { style: 'thin', color: { rgb: 'FF1B5E20' } },
+                bottom: { style: 'thin', color: { rgb: 'FF1B5E20' } }
+            }
         };
     }
     
-    // Formatear números sin decimales (pesos) y fechas DD/MM/YYYY
-    for (let row = 2; row <= ws_data.length; row++) {
-        for (let col = 1; col < encabezado.length; col++) {
+    // Datos: colorear según valores (igual que en pantalla)
+    const mesesCols = { 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: true }; // Columnas de meses
+    
+    for (let row = 2; row <= ws_data.length - 1; row++) {
+        for (let col = 0; col < encabezado.length; col++) {
             const cellRef = XLSX.utils.encode_col(col) + row;
-            if (ws[cellRef]) {
+            const cellValue = ws_data[row - 1][col];
+            
+            if (col === 0) {
+                // Nombre: alineado a la izquierda, bold
+                if (!ws[cellRef]) ws[cellRef] = {};
+                ws[cellRef].s = {
+                    alignment: { horizontal: 'left', vertical: 'center' },
+                    font: { bold: true, sz: 11, color: { rgb: 'FF333333' } }
+                };
+            } else if (col === 1 || col === 11 || col === 12) {
+                // Matrícula, Libro, Total
+                const monto = cellValue || 0;
+                let bgColor = '#ffffff';
+                let textColor = '#333';
+                let isBold = col === 12 ? true : true;
+                
+                if (col === 12) {
+                    // Total alumno: azul pálido
+                    bgColor = '#e3f2fd';
+                    textColor = '#0d47a1';
+                } else if (monto >= 1000) {
+                    bgColor = '#e8f5e9';
+                    textColor = '#1b5e20';
+                } else if (monto > 0) {
+                    bgColor = '#ffffff';
+                }
+                
+                styleCell(cellRef, bgColor, textColor, isBold);
+                ws[cellRef].z = '#,##0';
+            } else if (mesesCols[col]) {
+                // Meses: colorear según el monto
+                const monto = cellValue || 0;
+                let bgColor = '#ffffff';
+                let textColor = '#666';
+                
+                if (monto >= 1000) {
+                    bgColor = '#e8f5e9';
+                    textColor = '#1b5e20';
+                } else if (monto > 0) {
+                    bgColor = '#fff3cd';
+                    textColor = '#856404';
+                }
+                
+                styleCell(cellRef, bgColor, textColor, true);
                 ws[cellRef].z = '#,##0';
             }
         }
     }
     
+    // Fila de totales (últimas dos filas): fondo amarillo pálido, últimas columna verde
+    const rowTotalIdx = ws_data.length;
+    for (let col = 0; col < encabezado.length; col++) {
+        const cellRef = XLSX.utils.encode_col(col) + rowTotalIdx;
+        
+        if (col === 0) {
+            // Texto "TOTALES"
+            if (!ws[cellRef]) ws[cellRef] = {};
+            ws[cellRef].s = {
+                fill: { fgColor: { rgb: 'FFF5F5F5' } },
+                font: { bold: true, sz: 12, color: { rgb: 'FF333333' } },
+                alignment: { horizontal: 'left', vertical: 'center' },
+                border: {
+                    left: { style: 'medium', color: { rgb: 'FF333333' } },
+                    right: { style: 'medium', color: { rgb: 'FF333333' } },
+                    top: { style: 'medium', color: { rgb: 'FF333333' } },
+                    bottom: { style: 'medium', color: { rgb: 'FF333333' } }
+                }
+            };
+        } else if (col === encabezado.length - 1) {
+            // Total general: fondo verde
+            if (!ws[cellRef]) ws[cellRef] = {};
+            ws[cellRef].s = {
+                fill: { fgColor: { rgb: 'FF4CAF50' } },
+                font: { bold: true, sz: 12, color: { rgb: 'FFFFFFFF' } },
+                alignment: { horizontal: 'right', vertical: 'center' },
+                border: {
+                    left: { style: 'medium', color: { rgb: 'FF333333' } },
+                    right: { style: 'medium', color: { rgb: 'FF333333' } },
+                    top: { style: 'medium', color: { rgb: 'FF333333' } },
+                    bottom: { style: 'medium', color: { rgb: 'FF333333' } }
+                }
+            };
+            ws[cellRef].z = '#,##0';
+        } else {
+            // Otros totales: fondo amarillo pálido
+            if (!ws[cellRef]) ws[cellRef] = {};
+            ws[cellRef].s = {
+                fill: { fgColor: { rgb: 'FFFFFFACD' } },
+                font: { bold: true, sz: 11, color: { rgb: 'FF333333' } },
+                alignment: { horizontal: 'right', vertical: 'center' },
+                border: {
+                    left: { style: 'medium', color: { rgb: 'FF333333' } },
+                    right: { style: 'medium', color: { rgb: 'FF333333' } },
+                    top: { style: 'medium', color: { rgb: 'FF333333' } },
+                    bottom: { style: 'medium', color: { rgb: 'FF333333' } }
+                }
+            };
+            ws[cellRef].z = '#,##0';
+        }
+    }
+    
+    // Ancho de columnas
     ws['!cols'] = [
         { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, 
-        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
     ];
     
     const wb = XLSX.utils.book_new();
