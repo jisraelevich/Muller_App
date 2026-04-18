@@ -1618,6 +1618,15 @@ def export_pagos_calendario_excel():
         
         pagos = db.get_pagos()
         
+        # Index pagos by miembro_id for fast O(1) lookup (not O(n²))
+        pagos_por_miembro = {}
+        for pago in pagos:
+            pago_dict = dict(pago)
+            miembro_id = pago_dict.get('miembro_id')
+            if miembro_id not in pagos_por_miembro:
+                pagos_por_miembro[miembro_id] = []
+            pagos_por_miembro[miembro_id].append(pago_dict)
+        
         # Construir reporte
         reporte = []
         for miembro in miembros:
@@ -1631,20 +1640,49 @@ def export_pagos_calendario_excel():
                 'meses': {f'{i:02d}': 0.0 for i in range(1, 13)}
             }
             
-            for pago in pagos:
-                if dict(pago).get('miembro_id') == md.get('id'):
-                    pd = dict(pago)
-                    monto = float(pd.get('monto', 0))
-                    tipo = unicodedata.normalize('NFD', pd.get('tipo_pago', '').lower()).encode('ascii', 'ignore').decode() if pd.get('tipo_pago') else ''
+            # Usar lookup indexado O(1) en lugar de O(n)
+            miembro_pagos = pagos_por_miembro.get(md.get('id'), [])
+            for pago_dict in miembro_pagos:
+                monto = float(pago_dict.get('monto', 0))
+                tipo_pago = pago_dict.get('tipo_pago', '')
+                
+                # Si es pago de Matrícula, agregarlo separately
+                tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
+                if tipo_normalized == 'matricula':
+                    row['matricula_monto'] += int(monto)
+                elif tipo_normalized == 'libro':
+                    row['libro'] += int(monto)
+                else:
+                    # Si es cuota mensual, verificar si tiene mes_inicio y mes_fin
+                    mes_inicio = pago_dict.get('mes_inicio')
+                    mes_fin = pago_dict.get('mes_fin')
                     
-                    if tipo == 'matricula':
-                        row['matricula_monto'] += monto
-                    elif tipo == 'libro':
-                        row['libro'] += monto
+                    if mes_inicio and mes_fin:
+                        # Distribuir el monto entre los meses del rango
+                        cantidad_meses = mes_fin - mes_inicio + 1
+                        monto_por_mes = int(monto / cantidad_meses) if cantidad_meses > 0 else int(monto)
+                        
+                        for mes in range(mes_inicio, mes_fin + 1):
+                            mes_key = f'{mes:02d}'
+                            row['meses'][mes_key] += monto_por_mes
                     else:
-                        mes_key = f"{int(pd.get('mes', 0)):02d}" if pd.get('mes') else ''
-                        if mes_key in row['meses']:
-                            row['meses'][mes_key] += monto
+                        # Usar el mes de la fecha
+                        if pago_dict.get('fecha'):
+                            fecha = pago_dict['fecha']
+                            mes_key = None
+                            if hasattr(fecha, 'month'):
+                                mes_key = f"{fecha.month:02d}"
+                            else:
+                                # Parsear string
+                                from datetime import datetime as dt
+                                try:
+                                    fecha_obj = dt.strptime(str(fecha), '%Y-%m-%d')
+                                    mes_key = f"{fecha_obj.month:02d}"
+                                except:
+                                    mes_key = None
+                            
+                            if mes_key:
+                                row['meses'][mes_key] += int(monto)
             
             reporte.append(row)
         
@@ -1894,7 +1932,8 @@ def export_pagos_calendario_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True
+            as_attachment=True,
+            download_name='report.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando: {e}")
@@ -1981,7 +2020,8 @@ def export_asistencia_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True
+            as_attachment=True,
+            download_name='report.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando asistencia: {e}")
@@ -2054,7 +2094,8 @@ def export_miembros_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True
+            as_attachment=True,
+            download_name='report.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando miembros: {e}")
@@ -2146,7 +2187,8 @@ def export_pagos_excel():
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True
+            as_attachment=True,
+            download_name='report.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando pagos: {e}")
@@ -2214,7 +2256,7 @@ def export_retiros_excel():
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Reporte_Retiros_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
+            download_name='report.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando retiros: {e}")
@@ -2446,13 +2488,11 @@ def export_excel(tipo):
         workbook.close()
         output.seek(0)
         
-        filename = f"{tipo}_{datetime.now().strftime('%d%m%Y_%H%M%S')}.xlsx"
-        
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=filename
+            download_name='report.xlsx'
         )
     
     except Exception as e:
