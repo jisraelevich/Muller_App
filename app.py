@@ -11,7 +11,9 @@ import os
 from datetime import datetime, date, timedelta
 import io
 from dotenv import load_dotenv
-import xlsxwriter
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 import time
 from functools import wraps
 import unicodedata
@@ -1594,222 +1596,253 @@ def reportes_pagos_calendario():
 
 @app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
 def export_pagos_calendario_excel():
-    """Exportar reporte de pagos por calendario a Excel - ESPEJO EXACTO DEL WEB"""
+    """Exportar reporte de pagos por calendario a Excel con openpyxl"""
     db_check, error, code = check_db()
     if error:
         return error, code
     
     try:
-        datos = request.json
-        reporte = datos.get('reporte', [])
+        # Obtener parámetro del request
+        datos = request.json or {}
+        solo_regulares = datos.get('solo_regulares', True)
         
-        # Crear workbook en memoria
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        worksheet = workbook.add_worksheet("Pagos por Mes")
+        # Obtener miembros activos
+        miembros = db.get_miembros_fresh(estado='Activo')
         
-        # Colores EXACTOS del web (copiados del HTML)
-        header_bg = '#E8E8E8'  # Gris claro pero visible como en web
-        border_color = '#CCCCCC'  # Bordes grises suaves
+        # Filtrar solo regulares si se solicita
+        if solo_regulares:
+            miembros = [m for m in miembros if dict(m).get('tipo_asistencia') == 'Regular']
         
-        # Formatos profesionales que clonan el web
-        header_fmt = workbook.add_format({
-            'bg_color': header_bg,
-            'border': 1,
-            'border_color': border_color,
-            'align': 'center',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'font_color': '#333333',
-            'bold': True,
-        })
+        # Obtener todos los pagos
+        pagos = db.get_pagos()
         
-        cell_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'left',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'font_color': '#333333',
-            'bg_color': '#FFFFFF',
-        })
+        # Crear reporte pivot
+        reporte = []
+        for miembro in miembros:
+            miembro_dict = dict(miembro)
+            row = {
+                'miembro_id': miembro_dict.get('id'),
+                'nombre': miembro_dict.get('nombre', ''),
+                'apellido': miembro_dict.get('apellido', ''),
+                'matricula_monto': 0.0,
+                'libro': 0.0,
+                'estado': miembro_dict.get('estado', 'Activo'),
+                'meses': {}
+            }
+            
+            # Inicializar 12 meses con 0
+            for mes in range(1, 13):
+                row['meses'][f'{mes:02d}'] = 0.0
+            
+            # Llenar con pagos del miembro
+            for pago in pagos:
+                pago_dict = dict(pago)
+                if pago_dict.get('miembro_id') == miembro_dict.get('id'):
+                    monto = float(pago_dict.get('monto', 0))
+                    tipo_pago = pago_dict.get('tipo_pago', '')
+                    
+                    tipo_normalized = unicodedata.normalize('NFD', tipo_pago.lower()).encode('ascii', 'ignore').decode() if tipo_pago else ''
+                    if tipo_normalized == 'matricula':
+                        row['matricula_monto'] += monto
+                    elif tipo_normalized == 'libro':
+                        row['libro'] += monto
+                    else:
+                        mes_pago = pago_dict.get('mes', '')
+                        if mes_pago:
+                            # Asegurar formato '03' no '3'
+                            mes_pago_padded = f'{int(mes_pago):02d}' if mes_pago else ''
+                            if mes_pago_padded in row['meses']:
+                                row['meses'][mes_pago_padded] += monto
+            
+            reporte.append(row)
         
-        # Números blanco (sin pago)
-        numero_blanco_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'right',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'bg_color': '#FFFFFF',
-            'num_format': '#,##0',
-        })
+        # Crear workbook openpyxl
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Pagos por Mes"
         
-        # Verde para pagado >= 1000
-        numero_verde_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'right',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'bg_color': '#E8F5E9',
-            'font_color': '#1B5E20',
-            'bold': True,
-            'num_format': '#,##0',
-        })
+        # Estilos
+        border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
         
-        # Amarillo para parcial > 0
-        numero_amarillo_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'right',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'bg_color': '#FFF3CD',
-            'font_color': '#856404',
-            'num_format': '#,##0',
-        })
+        header_fill = PatternFill(start_color='E8E8E8', end_color='E8E8E8', fill_type='solid')
+        header_font = Font(name='Calibri', size=10, bold=True, color='333333')
         
-        # Azul para total fila
-        total_fila_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'right',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'bg_color': '#E3F2FD',
-            'font_color': '#0D47A1',
-            'bold': True,
-            'num_format': '#,##0',
-        })
+        cell_font = Font(name='Calibri', size=10, color='333333')
         
-        # Verde oscuro para totales TOTALES
-        total_general_fmt = workbook.add_format({
-            'border': 1,
-            'border_color': border_color,
-            'align': 'right',
-            'valign': 'vcenter',
-            'font_size': 10,
-            'font_name': 'Calibri',
-            'bg_color': '#E8F5E9',
-            'font_color': '#1B5E20',
-            'bold': True,
-            'num_format': '#,##0',
-        })
+        # Formato de dinero SIN centavos
+        dinero_format = '#,##0'
         
-        # Headers: Alumno | Matrícula | 03 MAR | 04 ABR | ... | 11 NOV | Libro | TOTAL
-        row = 0
+        verde_fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
+        verde_font = Font(name='Calibri', size=10, color='1B5E20', bold=True)
         
-        # Establecer altura de header
-        worksheet.set_row(0, 20)
+        amarillo_fill = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
+        amarillo_font = Font(name='Calibri', size=10, color='856404')
         
-        # Columna A: Alumno
-        worksheet.set_column('A:A', 22)
-        worksheet.write(row, 0, '👤 Alumno', header_fmt)
+        azul_fill = PatternFill(start_color='E3F2FD', end_color='E3F2FD', fill_type='solid')
+        azul_font = Font(name='Calibri', size=10, color='0D47A1', bold=True)
         
-        # Columna B: Matrícula
-        worksheet.set_column('B:B', 13)
-        worksheet.write(row, 1, '🎓 Matrícula', header_fmt)
+        center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=False)
+        right_alignment = Alignment(horizontal='right', vertical='center')
+        left_alignment = Alignment(horizontal='left', vertical='center')
         
-        # Meses Marzo-Noviembre
+        # Headers
         meses_mostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11]
         meses_nombres = {
             3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL',
             8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'
         }
         
-        for col_idx, mes in enumerate(meses_mostrar, 2):
-            worksheet.set_column(col_idx, col_idx, 11)
-            header_text = f'{mes:02d} {meses_nombres[mes]}'
-            worksheet.write(row, col_idx, header_text, header_fmt)
+        # Escribir headers SIN emojis
+        headers = ['Alumno', 'Matricula']
+        for mes in meses_mostrar:
+            headers.append(f'{mes:02d} {meses_nombres[mes]}')
+        headers.extend(['Libro', 'TOTAL'])
         
-        # Columna Libro (después de NOV)
-        libro_col = len(meses_mostrar) + 2
-        worksheet.set_column(libro_col, libro_col, 11)
-        worksheet.write(row, libro_col, '📚 Libro', header_fmt)
+        for col_num, header in enumerate(headers, 1):
+            cell = worksheet.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = border
+            cell.alignment = center_alignment
         
-        # Columna TOTAL (última)
-        total_col = libro_col + 1
-        worksheet.set_column(total_col, total_col, 14)
-        worksheet.write(row, total_col, 'TOTAL', header_fmt)
+        # Anchos de columnas
+        worksheet.column_dimensions['A'].width = 22
+        worksheet.column_dimensions['B'].width = 13
+        for i in range(len(meses_mostrar)):
+            col_letter = get_column_letter(3 + i)
+            worksheet.column_dimensions[col_letter].width = 11
+        worksheet.column_dimensions['L'].width = 11
+        worksheet.column_dimensions['M'].width = 14
         
-        # Datos de alumnos
-        row = 1
-        totales_por_mes = {mes: 0 for mes in meses_mostrar}
-        total_matriculas = 0
-        total_libros = 0
+        # Datos
+        totales_por_mes = {mes: 0.0 for mes in meses_mostrar}
+        total_matriculas = 0.0
+        total_libros = 0.0
         
-        for alumno in reporte:
-            # Altura de fila similar al web
-            worksheet.set_row(row, 18)
-            
-            nombre = f"{alumno['apellido']}, {alumno['nombre']}"
-            worksheet.write(row, 0, nombre, cell_fmt)
+        for idx, alumno in enumerate(reporte, 2):
+            # Nombre
+            cell = worksheet.cell(row=idx, column=1)
+            cell.value = alumno['nombre']
+            cell.font = cell_font
+            cell.border = border
+            cell.alignment = left_alignment
             
             # Matrícula
-            matricula = alumno.get('matricula_monto', 0)
-            mat_fmt = numero_verde_fmt if matricula > 0 else numero_blanco_fmt
-            worksheet.write_number(row, 1, matricula, mat_fmt)
+            matricula = alumno['matricula_monto']
+            cell = worksheet.cell(row=idx, column=2)
+            cell.value = matricula
+            cell.number_format = dinero_format
+            cell.border = border
+            cell.alignment = right_alignment
+            if matricula > 0:
+                cell.fill = verde_fill
+                cell.font = verde_font
+            else:
+                cell.font = cell_font
             total_matriculas += matricula
             
             # Meses
             total_alumno = matricula
-            for col_idx, mes in enumerate(meses_mostrar, 2):
+            for col_idx, mes in enumerate(meses_mostrar, 3):
                 mes_key = f'{mes:02d}'
-                monto = alumno.get('meses', {}).get(mes_key, 0)
+                monto = alumno['meses'].get(mes_key, 0.0)
                 total_alumno += monto
                 totales_por_mes[mes] += monto
                 
-                # Colorear según monto (EXACTO al web)
-                if monto >= 1000:
-                    fmt = numero_verde_fmt
-                elif monto > 0:
-                    fmt = numero_amarillo_fmt
-                else:
-                    fmt = numero_blanco_fmt
+                cell = worksheet.cell(row=idx, column=col_idx)
+                cell.value = monto if monto > 0 else None
+                cell.number_format = dinero_format
+                cell.border = border
+                cell.alignment = right_alignment
                 
-                worksheet.write_number(row, col_idx, monto, fmt)
+                if monto >= 1000:
+                    cell.fill = verde_fill
+                    cell.font = verde_font
+                elif monto > 0:
+                    cell.fill = amarillo_fill
+                    cell.font = amarillo_font
+                else:
+                    cell.font = cell_font
             
             # Libro
-            libro = alumno.get('libro', 0)
-            libro_fmt = numero_verde_fmt if libro > 0 else numero_blanco_fmt
-            worksheet.write_number(row, libro_col, libro, libro_fmt)
+            libro = alumno['libro']
+            cell = worksheet.cell(row=idx, column=12)  # L
+            cell.value = libro if libro > 0 else None
+            cell.number_format = dinero_format
+            cell.border = border
+            cell.alignment = right_alignment
+            if libro > 0:
+                cell.fill = verde_fill
+                cell.font = verde_font
+            else:
+                cell.font = cell_font
             total_alumno += libro
             total_libros += libro
             
-            # Total alumno
-            worksheet.write_number(row, total_col, total_alumno, total_fila_fmt)
-            
-            row += 1
+            # Total
+            cell = worksheet.cell(row=idx, column=13)  # M
+            cell.value = total_alumno
+            cell.number_format = dinero_format
+            cell.fill = azul_fill
+            cell.font = azul_font
+            cell.border = border
+            cell.alignment = right_alignment
         
         # Fila de totales
-        total_row = row
-        worksheet.set_row(total_row, 20)
+        total_row = len(reporte) + 2
+        cell = worksheet.cell(row=total_row, column=1)
+        cell.value = 'TOTALES'
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = border
+        cell.alignment = center_alignment
         
-        worksheet.write(total_row, 0, 'TOTALES', header_fmt)
-        worksheet.write_number(total_row, 1, total_matriculas, total_general_fmt)
+        cell = worksheet.cell(row=total_row, column=2)
+        cell.value = total_matriculas
+        cell.number_format = dinero_format
+        cell.fill = verde_fill
+        cell.font = verde_font
+        cell.border = border
+        cell.alignment = right_alignment
         
-        # Totales por mes
-        for col_idx, mes in enumerate(meses_mostrar, 2):
-            worksheet.write_number(total_row, col_idx, totales_por_mes[mes], total_general_fmt)
+        for col_idx, mes in enumerate(meses_mostrar, 3):
+            cell = worksheet.cell(row=total_row, column=col_idx)
+            cell.value = totales_por_mes[mes]
+            cell.number_format = dinero_format
+            cell.fill = verde_fill
+            cell.font = verde_font
+            cell.border = border
+            cell.alignment = right_alignment
         
-        # Total libros
-        worksheet.write_number(total_row, libro_col, total_libros, total_general_fmt)
+        cell = worksheet.cell(row=total_row, column=12)
+        cell.value = total_libros
+        cell.number_format = dinero_format
+        cell.fill = verde_fill
+        cell.font = verde_font
+        cell.border = border
+        cell.alignment = right_alignment
         
-        # Total general
         total_general = total_matriculas + sum(totales_por_mes.values()) + total_libros
-        worksheet.write_number(total_row, total_col, total_general, total_general_fmt)
+        cell = worksheet.cell(row=total_row, column=13)
+        cell.value = total_general
+        cell.number_format = dinero_format
+        cell.fill = verde_fill
+        cell.font = verde_font
+        cell.border = border
+        cell.alignment = right_alignment
         
-        # Congelar encabezado
-        worksheet.freeze_panes(1, 0)
+        # Congelar primera fila
+        worksheet.freeze_panes = 'A2'
         
-        workbook.close()
+        # Enviar archivo
+        output = io.BytesIO()
+        workbook.save(output)
         output.seek(0)
         
         return send_file(
