@@ -2087,8 +2087,12 @@ def export_pagos_calendario_pdf():
                                 topMargin=0.3*cm, bottomMargin=0.3*cm,
                                 leftMargin=0.3*cm, rightMargin=0.3*cm)
         
-        # Crear tabla
-        table = Table(table_data, repeatRows=1)
+        # Crear tabla con anchos de columna distribuidos
+        # Columna Alumno más ancha (5cm), resto 1.7cm cada una
+        num_cols = len(headers)
+        col_widths = [5*cm] + [1.7*cm] * (num_cols - 1)
+        
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
         
         # Estilos
         style_commands = []
