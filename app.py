@@ -2137,8 +2137,19 @@ def export_pagos_calendario_pdf():
         # Aplicar estilos
         table.setStyle(TableStyle(style_commands))
         
-        # Build PDF
-        doc.build([table])
+        # Crear título
+        titulo_style = ParagraphStyle(
+            'titulo',
+            fontName='Helvetica-Bold',
+            fontSize=11,
+            textColor=colors.HexColor('#333333'),
+            alignment=1,  # 1 = CENTER
+            spaceAfter=8
+        )
+        titulo = Paragraph('Reporte de Pagos - Instituto Jorge Müller - 2026', titulo_style)
+        
+        # Build PDF con título + tabla
+        doc.build([titulo, table])
         output.seek(0)
         
         return send_file(
