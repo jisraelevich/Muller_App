@@ -11,8 +11,7 @@ import os
 from datetime import datetime, date, timedelta
 import io
 from dotenv import load_dotenv
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import xlsxwriter
 import time
 from functools import wraps
 import unicodedata
@@ -1595,7 +1594,7 @@ def reportes_pagos_calendario():
 
 @app.route('/api/reportes/pagos-calendario/excel', methods=['POST'])
 def export_pagos_calendario_excel():
-    """Exportar reporte de pagos por calendario a Excel"""
+    """Exportar reporte de pagos por calendario a Excel - CLON EXACTO DEL DISEÑO WEB"""
     db_check, error, code = check_db()
     if error:
         return error, code
@@ -1603,114 +1602,180 @@ def export_pagos_calendario_excel():
     try:
         datos = request.json
         reporte = datos.get('reporte', [])
-        meses = datos.get('meses', [])
         
-        # Crear workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Pagos por Mes"
+        # Crear workbook en memoria
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet("Pagos por Mes")
         
-        # Estilos
-        header_fill = PatternFill(start_color="0071C5", end_color="0071C5", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=11)
-        total_fill = PatternFill(start_color="FFEB3B", end_color="FFEB3B", fill_type="solid")
-        total_font = Font(bold=True, size=11)
+        # Colores exactos del web
+        header_bg = '#F0F0F0'  # Gris claro del header
+        border_color = '#DDD'
+        verde_pagado = '#E8F5E9'  # Verde para pagado >= 1000
+        amarillo_parcial = '#FFF3CD'  # Amarillo para parcial > 0
+        azul_total = '#E3F2FD'  # Azul claro para total fila
+        blanco = '#FFFFFF'
         
-        # Título
-        ws['A1'] = "REPORTE DE PAGOS POR MES"
-        ws['A1'].font = Font(bold=True, size=14)
-        ws.merge_cells('A1:N1')
+        # Formatos que clonan exactamente el web
+        header_fmt = workbook.add_format({
+            'bg_color': header_bg,
+            'border': 1,
+            'border_color': border_color,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_color': '#333',
+            'bold': True,
+        })
         
-        # Subtítulo con fecha (DD/MM/YYYY)
-        ws['A2'] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        ws['A2'].font = Font(italic=True, size=10)
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_color': '#333',
+        })
         
-        # Encabezado de tabla
-        ws['A4'] = "👤 Alumno"
-        for col, mes in enumerate(meses, 2):
-            ws.cell(row=4, column=col).value = f"{mes[:3]}"
-        ws.cell(row=4, column=14).value = "💰 TOTAL"
+        numero_blanco_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'bg_color': blanco,
+            'num_format': '#,##0',
+        })
         
-        # Aplicar estilos al encabezado
-        for col in range(1, 15):
-            cell = ws.cell(row=4, column=col)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+        numero_verde_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'bg_color': verde_pagado,
+            'font_color': '#1B5E20',
+            'bold': True,
+            'num_format': '#,##0',
+        })
         
-        # Datos
-        row_num = 5
-        totales_mes = {f"{i:02d}": 0 for i in range(1, 13)}
+        numero_amarillo_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'bg_color': amarillo_parcial,
+            'font_color': '#856404',
+            'num_format': '#,##0',
+        })
+        
+        total_fila_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'bg_color': azul_total,
+            'font_color': '#0D47A1',
+            'bold': True,
+            'num_format': '#,##0',
+        })
+        
+        # Headers: Alumno | Matrícula | Mar | Abr | May | Jun | Jul | Ago | Sep | Oct | Nov | Libro | TOTAL
+        row = 0
+        
+        # Encabezados
+        worksheet.set_column('A:A', 25)  # Alumno
+        worksheet.write(row, 0, 'Alumno', header_fmt)
+        
+        worksheet.set_column('B:B', 12)
+        worksheet.write(row, 1, 'Matrícula', header_fmt)
+        
+        meses_mostrar = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        meses_nombres = {
+            3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun', 7: 'Jul',
+            8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov'
+        }
+        
+        for col_idx, mes in enumerate(meses_mostrar, 2):
+            worksheet.set_column(col_idx-1, col_idx-1, 12)
+            worksheet.write(row, col_idx-1, meses_nombres[mes], header_fmt)
+        
+        worksheet.set_column(11, 11, 12)
+        worksheet.write(row, 11, 'Libro', header_fmt)
+        
+        worksheet.set_column(12, 12, 14)
+        worksheet.write(row, 12, 'TOTAL', header_fmt)
+        
+        # Datos de alumnos
+        row = 1
+        totales_por_mes = {mes: 0 for mes in meses_mostrar}
+        total_matriculas = 0
+        total_libros = 0
         
         for alumno in reporte:
-            ws.cell(row=row_num, column=1).value = alumno['nombre']
-            total_alumno = 0
+            nombre = f"{alumno['apellido']}, {alumno['nombre']}"
+            worksheet.write(row, 0, nombre, cell_fmt)
             
-            for col, mes_key in enumerate([f"{i:02d}" for i in range(1, 13)], 2):
-                monto = alumno['meses'].get(mes_key, 0)
-                ws.cell(row=row_num, column=col).value = monto if monto > 0 else 0
+            # Matrícula
+            matricula = alumno.get('matricula_monto', 0)
+            mat_fmt = numero_verde_fmt if matricula > 0 else numero_blanco_fmt
+            worksheet.write_number(row, 1, matricula, mat_fmt)
+            total_matriculas += matricula
+            
+            # Meses
+            total_alumno = matricula
+            for col_idx, mes in enumerate(meses_mostrar, 2):
+                mes_key = f'{mes:02d}'
+                monto = alumno.get('meses', {}).get(mes_key, 0)
                 total_alumno += monto
-                totales_mes[mes_key] += monto
+                totales_por_mes[mes] += monto
                 
-                # Colorear según monto y formatear números sin decimales
-                cell = ws.cell(row=row_num, column=col)
+                # Colorear según monto
                 if monto >= 1000:
-                    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+                    fmt = numero_verde_fmt
                 elif monto > 0:
-                    cell.fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+                    fmt = numero_amarillo_fmt
                 else:
-                    cell.fill = PatternFill(start_color="FFB6C6", end_color="FFB6C6", fill_type="solid")
-                cell.alignment = Alignment(horizontal="right")
-                cell.number_format = '#,##0'
+                    fmt = numero_blanco_fmt
+                
+                worksheet.write_number(row, col_idx-1, monto, fmt)
             
-            # Total por alumno (sin decimales)
-            cell = ws.cell(row=row_num, column=14)
-            cell.value = total_alumno
-            cell.fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
-            cell.font = Font(bold=True)
-            cell.alignment = Alignment(horizontal="right")
-            cell.number_format = '#,##0'
+            # Libro
+            libro = alumno.get('libro', 0)
+            libro_fmt = numero_verde_fmt if libro > 0 else numero_blanco_fmt
+            worksheet.write_number(row, 11, libro, libro_fmt)
+            total_alumno += libro
+            total_libros += libro
             
-            row_num += 1
+            # Total alumno
+            worksheet.write_number(row, 12, total_alumno, total_fila_fmt)
+            
+            row += 1
         
-        # Fila de totales (sin decimales)
-        ws.cell(row=row_num, column=1).value = "📊 TOTALES"
-        ws.cell(row=row_num, column=1).font = total_font
+        # Fila de totales
+        total_row = row
+        worksheet.write(total_row, 0, 'TOTALES', header_fmt)
+        worksheet.write_number(total_row, 1, total_matriculas, numero_verde_fmt)
         
-        total_general = 0
-        for col, mes_key in enumerate([f"{i:02d}" for i in range(1, 13)], 2):
-            monto = totales_mes[mes_key]
-            total_general += monto
-            cell = ws.cell(row=row_num, column=col)
-            cell.value = monto
-            cell.fill = total_fill
-            cell.font = total_font
-            cell.alignment = Alignment(horizontal="right")
-            cell.number_format = '#,##0'
+        for col_idx, mes in enumerate(meses_mostrar, 2):
+            worksheet.write_number(total_row, col_idx-1, totales_por_mes[mes], numero_verde_fmt)
         
-        # Total general (sin decimales)
-        cell = ws.cell(row=row_num, column=14)
-        cell.value = total_general
-        cell.fill = PatternFill(start_color="4CAF50", end_color="4CAF50", fill_type="solid")
-        cell.font = Font(bold=True, color="FFFFFF", size=12)
-        cell.alignment = Alignment(horizontal="right")
-        cell.number_format = '#,##0'
+        worksheet.write_number(total_row, 11, total_libros, numero_verde_fmt)
         
-        # Ancho de columnas
-        ws.column_dimensions['A'].width = 25
-        for col in range(2, 15):
-            ws.column_dimensions[chr(64 + col)].width = 12
+        # Total general
+        total_general = total_matriculas + sum(totales_por_mes.values()) + total_libros
+        worksheet.write_number(total_row, 12, total_general, numero_verde_fmt)
         
-        # Guardar en memoria
-        output = io.BytesIO()
-        wb.save(output)
+        workbook.close()
         output.seek(0)
         
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Reporte_Pagos_{date.today().isoformat()}.xlsx'
+            download_name=f'Reporte_Pagos_{datetime.now().strftime("%d%m%Y_%H%M%S")}.xlsx'
         )
     except Exception as e:
         print(f"[ERROR] Error exportando Excel: {e}")
@@ -1794,98 +1859,152 @@ def get_todos_miembros():
 
 @app.route('/api/export/excel/<tipo>', methods=['GET'])
 def export_excel(tipo):
-    """Exportar datos a Excel desde base de datos"""
+    """Exportar datos a Excel - CLON EXACTO DEL DISEÑO WEB"""
     db_check, error, code = check_db()
     if error:
         return error, code
     
     try:
-        wb = Workbook()
-        ws = wb.active
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
         
-        # Estilos
-        header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=12)
-        border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
-        )
+        # Colores y estilos que clonan exactamente el web
+        header_bg = '#F0F0F0'
+        border_color = '#DDD'
+        
+        header_fmt = workbook.add_format({
+            'bg_color': header_bg,
+            'border': 1,
+            'border_color': border_color,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'bold': True,
+            'font_color': '#333',
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_color': '#333',
+        })
+        
+        cell_right_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_color': '#333',
+        })
+        
+        money_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': border_color,
+            'align': 'right',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'num_format': '$#,##0',
+        })
         
         if tipo == 'miembros':
-            ws.title = "Miembros"
-            headers = ['ID', 'Nombre', 'Apellido', 'Email', 'Teléfono', 'Tipo', 'Matricula']
-            ws.append(headers)
+            worksheet.name = 'Miembros'
+            headers = ['Nombre', 'Email', 'Teléfono', 'Estado', 'Tipo']
             
+            # Escribir headers
+            for col, header in enumerate(headers):
+                worksheet.set_column(col, col, 20)
+                worksheet.write(0, col, header, header_fmt)
+            
+            # Ordenar y escribir datos
             miembros = db.get_miembros()
-            for m in miembros:
-                ws.append([
-                    m['id'], m['nombre'], m['apellido'],
-                    m.get('email', ''), m.get('telefono', ''),
-                    m['tipo_asistencia'], m.get('matricula', '')
-                ])
+            miembros_list = [dict(m) for m in miembros]
+            miembros_list.sort(key=lambda x: (x.get('apellido', '').lower(), x.get('nombre', '').lower()))
+            
+            for row, m in enumerate(miembros_list, 1):
+                nombre = f"{m['apellido']}, {m['nombre']}"
+                worksheet.write(row, 0, nombre, cell_fmt)
+                worksheet.write(row, 1, m.get('email', '-'), cell_fmt)
+                worksheet.write(row, 2, m.get('telefono', '-'), cell_fmt)
+                worksheet.write(row, 3, m.get('estado', 'Activo'), cell_fmt)
+                worksheet.write(row, 4, m.get('tipo_asistencia', '-'), cell_fmt)
         
         elif tipo == 'pagos':
-            ws.title = "Pagos"
-            headers = ['ID', 'Miembro', 'Monto', 'Fecha', 'Mes', 'Método']
-            ws.append(headers)
+            worksheet.name = 'Pagos'
+            headers = ['Alumno', 'Monto', 'Fecha', 'Tipo', 'Método']
             
-            reporte = db.get_reporte_pagos_por_mes()
-            for r in reporte:
-                ws.append([
-                    r['miembro_id'], f"{r['nombre']} {r['apellido']}",
-                    r.get('monto_total', 0), datetime.now().strftime('%d/%m/%Y'),
-                    'Múltiples', 'Varios'
-                ])
+            for col, header in enumerate(headers):
+                worksheet.set_column(col, col, 20)
+                worksheet.write(0, col, header, header_fmt)
+            
+            pagos = db.get_pagos()
+            pagos_list = [dict(p) for p in pagos]
+            
+            # Ordenar por apellido, nombre
+            pagos_list.sort(key=lambda x: (x.get('apellido', '').lower(), x.get('nombre', '').lower()))
+            
+            meses_nombres = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+                7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+            
+            for row, p in enumerate(pagos_list, 1):
+                nombre = f"{p.get('apellido', '')}, {p.get('nombre', '')}"
+                worksheet.write(row, 0, nombre, cell_fmt)
+                worksheet.write_number(row, 1, p['monto'], money_fmt)
+                
+                # Fecha formateada
+                fecha = p.get('fecha', '')
+                if hasattr(fecha, 'strftime'):
+                    fecha = fecha.strftime('%d/%m/%Y')
+                worksheet.write(row, 2, fecha, cell_fmt)
+                
+                # Tipo: si es Cuota, mostrar "Cuota: Mes"
+                tipo_display = p.get('tipo_pago', '-')
+                if p.get('tipo_pago') == 'Cuota' and p.get('mes_inicio'):
+                    mes_inicio = int(p['mes_inicio'])
+                    if p.get('mes_fin') and p['mes_fin'] != p['mes_inicio']:
+                        mes_fin = int(p['mes_fin'])
+                        tipo_display = f"Cuota: {meses_nombres.get(mes_inicio, '')}-{meses_nombres.get(mes_fin, '')}"
+                    else:
+                        tipo_display = f"Cuota: {meses_nombres.get(mes_inicio, '')}"
+                
+                worksheet.write(row, 3, tipo_display, cell_fmt)
+                worksheet.write(row, 4, p.get('metodo_pago', '-'), cell_fmt)
         
         elif tipo == 'asistencia':
-            ws.title = "Asistencia"
-            headers = ['Miembro', 'Clases', 'Asistidas', 'No Asistidas', 'Porcentaje']
-            ws.append(headers)
+            worksheet.name = 'Asistencia'
+            headers = ['Alumno', 'Clase', 'Fecha', 'Estado']
             
-            fecha_inicio = request.args.get('inicio', '2025-03-01')
-            fecha_fin = request.args.get('fin', str(date.today()))
-            reporte = db.get_reporte_asistencia(fecha_inicio, fecha_fin)
+            for col, header in enumerate(headers):
+                worksheet.set_column(col, col, 20)
+                worksheet.write(0, col, header, header_fmt)
             
-            for r in reporte:
-                ws.append([
-                    f"{r['nombre']} {r['apellido']}",
-                    r['total_clases'],
-                    r['clases_asistidas'],
-                    r['clases_no_asistidas'],
-                    f"{r.get('porcentaje_asistencia', 0)}%"
-                ])
+            asistencias = db.get_asistencia()
+            asist_list = [dict(a) for a in asistencias]
+            
+            # Ordenar por apellido, nombre
+            asist_list.sort(key=lambda x: (x.get('apellido', '').lower(), x.get('nombre', '').lower()))
+            
+            for row, a in enumerate(asist_list, 1):
+                nombre = f"{a.get('apellido', '')}, {a.get('nombre', '')}"
+                worksheet.write(row, 0, nombre, cell_fmt)
+                worksheet.write(row, 1, a.get('clase_nombre', '-'), cell_fmt)
+                
+                # Fecha formateada
+                fecha = a.get('fecha', '')
+                if hasattr(fecha, 'strftime'):
+                    fecha = fecha.strftime('%d/%m/%Y')
+                worksheet.write(row, 2, fecha, cell_fmt)
+                
+                estado = 'Presente' if a.get('asistio') else 'Ausente'
+                worksheet.write(row, 3, estado, cell_fmt)
         
-        # Aplicar estilos a headers
-        for cell in ws[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = border
-        
-        # Formatear números sin decimales
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-            for col_idx, cell in enumerate(row, 1):
-                if col_idx > 1 and isinstance(cell.value, (int, float)):
-                    cell.number_format = '#,##0'
-        
-        # Ajustar anchos
-        for column in ws.columns:
-            max_length = 0
-            column = list(column)
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column[0].column_letter].width = adjusted_width
-        
-        # Guardar en memoria
-        output = io.BytesIO()
-        wb.save(output)
+        workbook.close()
         output.seek(0)
         
         filename = f"{tipo}_{datetime.now().strftime('%d%m%Y_%H%M%S')}.xlsx"
@@ -1898,7 +2017,9 @@ def export_excel(tipo):
         )
     
     except Exception as e:
-        print(f"Error al exportar: {e}")
+        print(f"[ERROR] Error exportando Excel: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ========== ERROR HANDLERS ==========
