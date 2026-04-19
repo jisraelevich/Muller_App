@@ -1759,6 +1759,13 @@ def export_gastos_calendario_pdf():
         return error, code
     
     try:
+        from reportlab.lib.pagesizes import landscape, letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
+        from reportlab.lib.units import cm, inch
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import Paragraph
+        
         # Obtener todos los retiros (gastos)
         retiros = db.get_retiros()
         
