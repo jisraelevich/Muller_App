@@ -104,7 +104,7 @@ TABS = {
     3: {"id": "tab_3", "label": "Miembros", "icon": "Users", "route": "miembros"},
     4: {"id": "tab_4", "label": "Clases", "icon": "Book", "route": "clases"},
     5: {"id": "tab_5", "label": "Reportes", "icon": "BarChart", "route": "reportes"},
-    6: {"id": "tab_6", "label": "Retiros", "icon": "TrendingUp", "route": "retiros"}
+    6: {"id": "tab_6", "label": "Gastos", "icon": "TrendingUp", "route": "retiros"}
 }
 
 # ========== FUNCIONES AUXILIARES ==========

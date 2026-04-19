@@ -251,6 +251,7 @@ const RetirosModule = {
     retiroEnEdicion: null,
     conceptoSeleccionado: null,
     totalesPorConcepto: { 'Gastos': 0, 'Pago Instituto': 0, 'Pago Extra': 0 },
+    todosLosRetiros: [],
     
     init() {
         console.log('RetirosModule iniciado');
@@ -272,6 +273,146 @@ const RetirosModule = {
                 span.textContent = this.totalesPorConcepto[concepto];
             }
         });
+    },
+    
+    renderizarRetiros(conceptoFiltro) {
+        const lista = document.getElementById('lista-retiros');
+        
+        if (!this.todosLosRetiros || this.todosLosRetiros.length === 0) {
+            lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin registros de retiros</div>';
+            return;
+        }
+        
+        // Filtrar retiros por concepto si se especifica
+        const retirosFiltrados = conceptoFiltro 
+            ? this.todosLosRetiros.filter(r => r.concepto === conceptoFiltro)
+            : this.todosLosRetiros;
+        
+        if (retirosFiltrados.length === 0) {
+            lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin registros para este concepto</div>';
+            return;
+        }
+        
+        // Agrupar por mes
+        const retirosPorMes = this.agruparPorMes(retirosFiltrados);
+        
+        lista.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        
+        // Procesar cada mes (orden descendente - más recientes primero)
+        const meses = Object.keys(retirosPorMes).sort().reverse();
+        
+        meses.forEach((mes, index) => {
+            const retirosMes = retirosPorMes[mes];
+            const totalMes = retirosMes.reduce((sum, r) => sum + r.monto, 0);
+            
+            // Extraer el nombre del mes de la clave (después del guión bajo)
+            const mesNombre = mes.split('_')[1];
+            
+            // Encabezado del acordeón
+            const header = document.createElement('div');
+            header.style.cssText = 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 12px 16px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; user-select: none; transition: all 0.2s;';
+            header.className = 'accordion-header';
+            header.setAttribute('data-mes', mes);
+            header.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <span style="color: white; font-weight: 700; font-size: 14px;">📅 ${mesNombre}</span>
+                    <span style="color: rgba(255,255,255,0.8); font-size: 12px;">(${retirosMes.length} registros)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="color: white; font-weight: 700;">💰 $${totalMes}</span>
+                    <span style="color: white; font-weight: 700; font-size: 18px;" class="toggle-icon">▼</span>
+                </div>
+            `;
+            
+            // Contenido del acordeón (items del mes)
+            const content = document.createElement('div');
+            content.style.cssText = 'background: white; border-left: 3px solid #f59e0b; border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 12px; margin-bottom: 16px; max-height: 500px; overflow-y: auto; display: block;';
+            content.className = 'accordion-content';
+            content.setAttribute('data-mes', mes);
+            
+            const contentFragment = document.createDocumentFragment();
+            
+            retirosMes.forEach(retiro => {
+                let fechaFormato = retiro.fecha;
+                if (retiro.fecha && typeof retiro.fecha === 'string' && retiro.fecha.includes('-')) {
+                    const fechaParts = retiro.fecha.split('T')[0].split('-');
+                    fechaFormato = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+                }
+                
+                const div = document.createElement('div');
+                div.style.cssText = 'display: grid; grid-template-columns: 70px 100px 1fr 80px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s; margin-bottom: 8px;';
+                div.onmouseover = function() { this.style.background='#fffbeb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
+                div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
+                
+                const notasHTML = retiro.notas ? ` <span style="color: #8b5cf6; font-size: 11px; font-style: italic; margin-left: 8px; padding-left: 8px; border-left: 2px solid #8b5cf6;">💬 ${retiro.notas}</span>` : '';
+                
+                div.innerHTML = `
+                    <span style="font-weight: 600; color: #374151; font-size: 12px;">${fechaFormato}</span>
+                    <span style="color: #f59e0b; font-weight: 700; text-align: left; font-size: 12px;">💰 $${Math.floor(retiro.monto)}</span>
+                    <div style="color: #6b7280; text-align: left; overflow: hidden; font-size: 12px; display: flex; align-items: center;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${retiro.concepto}</span>${notasHTML}</div>
+                    <button class="btn-touch btn-primary" style="width: 100%; height: 32px; font-size: 11px;">✏️ EDITAR</button>
+                `;
+                
+                const btnEditar = div.querySelector('button');
+                btnEditar.onclick = (e) => {
+                    e.stopPropagation();
+                    this.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
+                };
+                contentFragment.appendChild(div);
+            });
+            
+            content.appendChild(contentFragment);
+            
+            // Evento para expandir/contraer
+            header.onclick = (e) => {
+                e.stopPropagation();
+                const isVisible = content.style.display !== 'none';
+                content.style.display = isVisible ? 'none' : 'block';
+                const icon = header.querySelector('.toggle-icon');
+                if (icon) {
+                    icon.textContent = isVisible ? '▶' : '▼';
+                }
+            };
+            
+            fragment.appendChild(header);
+            fragment.appendChild(content);
+        });
+        
+        lista.appendChild(fragment);
+    },
+    
+    agruparPorMes(retiros) {
+        const meses = {};
+        const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        retiros.forEach(retiro => {
+            let fecha = retiro.fecha;
+            if (fecha && typeof fecha === 'string' && fecha.includes('-')) {
+                const fechaParts = fecha.split('T')[0].split('-');
+                const año = fechaParts[0];
+                const mes = parseInt(fechaParts[1]) - 1;
+                const mesNombre = mesesNombres[mes];
+                // Usar clave con año y mes para ordenamiento correcto
+                const clave = `${año}-${fechaParts[1]}_${mesNombre} ${año}`;
+                
+                if (!meses[clave]) {
+                    meses[clave] = [];
+                }
+                meses[clave].push(retiro);
+            }
+        });
+        
+        // Ordenar retiros dentro de cada mes por fecha (descendente)
+        Object.keys(meses).forEach(mes => {
+            meses[mes].sort((a, b) => {
+                const fechaA = new Date(a.fecha || '');
+                const fechaB = new Date(b.fecha || '');
+                return fechaB - fechaA;
+            });
+        });
+        
+        return meses;
     },
     
     filtrar(termino) {
@@ -300,12 +441,18 @@ const RetirosModule = {
         document.getElementById('notas-retiro').value = '';
         const hoy = new Date().toISOString().split('T')[0];
         document.getElementById('fecha-retiro').value = hoy;
+        
+        // Renderizar grilla solo con retiros de este concepto
+        this.renderizarRetiros(concepto);
     },
     
     volverPaso1() {
         this.conceptoSeleccionado = null;
         document.getElementById('paso-1').classList.remove('hidden');
         document.getElementById('paso-2').classList.add('hidden');
+        
+        // Renderizar todos los retiros
+        this.renderizarRetiros(null);
     },
     
     calcularTotalesPorConcepto(retiros) {
@@ -327,50 +474,16 @@ const RetirosModule = {
             });
             const data = await response.json();
             
-            const lista = document.getElementById('lista-retiros');
-            
             if (data.status === 'success' && data.retiros && data.retiros.length > 0) {
+                this.todosLosRetiros = data.retiros;
                 this.calcularTotalesPorConcepto(data.retiros);
                 this.actualizarTotalesEnTarjetas();
-                lista.innerHTML = '';
-                const fragment = document.createDocumentFragment();
-                
-                data.retiros.forEach(retiro => {
-                    let fechaFormato = retiro.fecha;
-                    if (retiro.fecha && typeof retiro.fecha === 'string' && retiro.fecha.includes('-')) {
-                        const fechaParts = retiro.fecha.split('T')[0].split('-');
-                        fechaFormato = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
-                    }
-                    
-                    const div = document.createElement('div');
-                    div.style.cssText = 'display: grid; grid-template-columns: 70px 100px 1fr 80px; gap: 6px; align-items: center; padding: 8px; background: white; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;';
-                    div.onmouseover = function() { this.style.background='#fffbeb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; };
-                    div.onmouseout = function() { this.style.background='white'; this.style.boxShadow='none'; };
-                    div.onclick = () => RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
-                    
-                    const notasHTML = retiro.notas ? ` <span style="color: #8b5cf6; font-size: 11px; font-style: italic; margin-left: 8px; padding-left: 8px; border-left: 2px solid #8b5cf6;">💬 ${retiro.notas}</span>` : '';
-                    
-                    div.innerHTML = `
-                        <span style="font-weight: 600; color: #374151; font-size: 12px;">${fechaFormato}</span>
-                        <span style="color: #f59e0b; font-weight: 700; text-align: left; font-size: 12px;">💰 $${Math.floor(retiro.monto)}</span>
-                        <div style="color: #6b7280; text-align: left; overflow: hidden; font-size: 12px; display: flex; align-items: center;"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${retiro.concepto}</span>${notasHTML}</div>
-                        <button class="btn-touch btn-primary" style="width: 100%; height: 32px; font-size: 11px;">✏️ EDITAR</button>
-                    `;
-                    
-                    // Agregar onclick al botón específicamente
-                    const btnEditar = div.querySelector('button');
-                    btnEditar.onclick = (e) => {
-                        e.stopPropagation();
-                        RetirosModule.abrirEdicion(retiro.id, retiro.concepto, retiro.fecha, retiro.monto, retiro.metodo, retiro.notas);
-                    };
-                    fragment.appendChild(div);
-                });
-                
-                lista.appendChild(fragment);
+                this.renderizarRetiros(null);
             } else {
+                this.todosLosRetiros = [];
                 this.calcularTotalesPorConcepto([]);
                 this.actualizarTotalesEnTarjetas();
-                lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin registros de retiros</div>';
+                document.getElementById('lista-retiros').innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">Sin registros de retiros</div>';
             }
         } catch (error) {
             console.error('[RETIROS] Error:', error);
@@ -453,6 +566,7 @@ const RetirosModule = {
             if (data.status === 'success') {
                 this.cerrarModal();
                 await this.cargarRetiros();
+                this.renderizarRetiros(this.conceptoSeleccionado);
                 this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
@@ -490,6 +604,7 @@ const RetirosModule = {
             
             if (data.status === 'success') {
                 await this.cargarRetiros();
+                this.renderizarRetiros(this.conceptoSeleccionado);
                 this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
@@ -531,9 +646,9 @@ const RetirosModule = {
             
             if (data.status === 'success') {
                 mostrarAlerta('Retiro guardado', 'success');
-                // Limpiar y volver a Paso 1
-                this.volverPaso1();
+                // Cargar retiros y mantener filtro del concepto
                 await this.cargarRetiros();
+                this.renderizarRetiros(concepto);
                 this.actualizarTotalesEnTarjetas();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
