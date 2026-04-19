@@ -27,7 +27,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">Reporte de Cobros</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="descargarReporte('/api/reportes/pagos/excel', 'Pagos')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/pagos/excel', 'Cobros')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -108,7 +108,7 @@
                     <input type="checkbox" id="chk-solo-regulares-tab5" checked style="width: 18px; height: 18px; cursor: pointer;">
                     Solo Regulares
                 </label>
-                <button onclick="descargarReporte('/api/reportes/pagos-calendario/excel', 'Pagos_Mes')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/pagos-calendario/excel', 'Cobros_Mes')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
                 <button onclick="descargarPDF('/api/reportes/pagos-calendario/pdf')" class="btn-touch btn-export" style="font-size: 12px;">Exportar PDF</button>
             </div>
         </div>
@@ -1168,7 +1168,7 @@ function descargarPDF(url) {
             const now = new Date();
             const fecha = now.toISOString().split('T')[0];
             const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-            a.download = 'Pagos_Mes_' + fecha + '-' + hhmm + '.pdf';
+            a.download = 'Cobros_Mes_' + fecha + '-' + hhmm + '.pdf';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(urlBlob);
