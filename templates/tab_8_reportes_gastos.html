@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Gastos por Mes - Instituto Jorge Müller{% endblock %}
+{% block page_id %}reportes-gastos{% endblock %}
+
+{% block header_actions %}
+<a href="/" class="btn-volver">◀ VOLVER</a>
+{% endblock %}
+
+{% block content %}
+
+<h2 style="font-size: 16px; margin-bottom: 8px; text-align: center;">
+    💰 REPORTE DE GASTOS POR MES
+</h2>
+
+<div style="text-align: center; margin-bottom: 15px;">
+    <button id="btn-recargar" onclick="cargarReporte()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px;">
+        🔄 Recargar
+    </button>
+</div>
+
+<div style="background: white; border-radius: 7px; padding: 18px; overflow-x: auto;">
+    <table id="tabla-gastos-mes" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+            <tr style="background: #f0f0f0; position: sticky; top: 0;">
+                <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 120px; font-weight: bold;">📋 Categoría</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">03 MAR</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">04 ABR</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">05 MAY</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">06 JUN</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">07 JUL</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">08 AGO</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">09 SEP</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">10 OCT</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 70px;">11 NOV</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 80px; font-weight: bold;">💰 TOTAL</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-gastos">
+            <tr>
+                <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
+                    Cargando datos...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div style="text-align: center; margin-top: 18px; color: #666; font-size: 11px;">
+    ✓ Reporte de Gastos agrupados por mes (Marzo - Noviembre 2026)
+</div>
+
+<script>
+let reporteData = null;
+
+async function cargarReporte() {
+    try {
+        const response = await fetch('/api/reportes/gastos-calendario?t=' + new Date().getTime());
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            document.getElementById('tbody-gastos').innerHTML = '<tr><td colspan="11" style="color: #ef4444; text-align: center; padding: 20px;">Error al cargar datos</td></tr>';
+            return;
+        }
+        
+        reporteData = data;
+        renderizarTabla(data);
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('tbody-gastos').innerHTML = '<tr><td colspan="11" style="color: #ef4444; text-align: center; padding: 20px;">Error al cargar: ' + error.message + '</td></tr>';
+    }
+}
+
+function renderizarTabla(data) {
+    const tbody = document.getElementById('tbody-gastos');
+    tbody.innerHTML = '';
+    
+    const fragment = document.createDocumentFragment();
+    const meses = ['03', '04', '05', '06', '07', '08', '09', '10', '11'];
+    const categorias = ['Gastos', 'Pago Instituto', 'Pago Extra'];
+    
+    // Renderizar filas de categorías
+    categorias.forEach(categoria => {
+        const tr = document.createElement('tr');
+        tr.style.cssText = 'background: white; border-bottom: 1px solid #ddd;';
+        
+        // Columna de categoría
+        let html = `<td style="padding: 10px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600; color: #333;">${categoria}</td>`;
+        
+        // Columnas de meses
+        let total = 0;
+        meses.forEach(mes => {
+            const monto = data.reporte[categoria][mes] || 0;
+            total += monto;
+            html += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: 500;">$${Math.floor(monto).toLocaleString('es-AR')}</td>`;
+        });
+        
+        // Columna de total
+        html += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: #f59e0b; background: #fffbeb;">$${Math.floor(total).toLocaleString('es-AR')}</td>`;
+        
+        tr.innerHTML = html;
+        fragment.appendChild(tr);
+    });
+    
+    // Fila de TOTAL MES
+    const trTotal = document.createElement('tr');
+    trTotal.style.cssText = 'background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);';
+    
+    let htmlTotal = `<td style="padding: 10px 8px; text-align: left; border: 1px solid #ddd; font-weight: bold; color: white;">📊 TOTAL MES</td>`;
+    
+    meses.forEach(mes => {
+        const totalMes = data.totales_mes[mes] || 0;
+        htmlTotal += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: white;">$${Math.floor(totalMes).toLocaleString('es-AR')}</td>`;
+    });
+    
+    // Total general
+    const totalGeneral = Object.values(data.totales_mes).reduce((a, b) => a + b, 0);
+    htmlTotal += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: white;">$${Math.floor(totalGeneral).toLocaleString('es-AR')}</td>`;
+    
+    trTotal.innerHTML = htmlTotal;
+    fragment.appendChild(trTotal);
+    
+    tbody.appendChild(fragment);
+}
+
+// Cargar reporte al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarReporte();
+});
+</script>
+
+<style>
+table {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+tbody tr:hover {
+    background: #f9f9f9;
+}
+</style>
+
+{% endblock %}

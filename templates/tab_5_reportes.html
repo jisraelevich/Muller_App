@@ -11,11 +11,12 @@
 </h2>
 
 <!-- TABS PARA SELECCIONAR REPORTE -->
-<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px;">
     <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: var(--color-primary); color: white; min-height: 40px; font-size: 13px;">💰 Pagos</button>
     <button onclick="mostrarReporte('asistencia')" class="btn-touch" id="tab-asistencia" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">✓ Asistencia</button>
     <button onclick="mostrarReporte('miembros')" class="btn-touch" id="tab-miembros" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">👥 Miembros</button>
     <button onclick="mostrarReporte('pagos-mes')" class="btn-touch" id="tab-pagos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">📅 Pagos/Mes</button>
+    <button onclick="mostrarReporte('gastos-mes')" class="btn-touch" id="tab-gastos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">💳 Gastos/Mes</button>
 </div>
 
 <!-- CONTENEDOR DE REPORTES -->
@@ -144,6 +145,45 @@
         </div>
     </div>
     
+    <!-- REPORTE GASTOS POR MES -->
+    <div id="reporte-gastos-mes" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">💰 REPORTE DE GASTOS POR MES</h3>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="descargarReporte('/api/reportes/gastos-calendario/excel', 'Gastos_Mes')" class="btn-touch btn-export" style="font-size: 12px; display: none;">Exportar Excel</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tabla-gastos-mes-tab" style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f0f0f0; position: sticky; top: 0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd; min-width: 120px; font-weight: bold;">📋 Categoría</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">03 MAR</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">04 ABR</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">05 MAY</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">06 JUN</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">07 JUL</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">08 AGO</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">09 SEP</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">10 OCT</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 60px;">11 NOV</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; min-width: 80px; font-weight: bold;">💰 TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-gastos-mes-tab">
+                    <tr>
+                        <td colspan="11" style="text-align: center; padding: 40px; color: #999;">
+                            Cargando datos...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="text-align: center; margin-top: 12px; color: #666; font-size: 10px;">
+            ✓ Reporte de Gastos agrupados por mes (Marzo - Noviembre 2026)
+        </div>
+    </div>
+    
 </div>
 
 <!-- Librería para exportación a Excel -->
@@ -187,6 +227,8 @@ function mostrarReporte(tipo) {
             cargarReporteMiembros();
         } else if (tipo === 'pagos-mes') {
             cargarReporteCalendario();
+        } else if (tipo === 'gastos-mes') {
+            cargarReporteGastos();
         }
     } catch(e) {
         console.error('[REPORT] Error in mostrarReporte:', e);
@@ -461,7 +503,70 @@ async function cargarReporteCalendario() {
     }
 }
 
-
+async function cargarReporteGastos() {
+    try {
+        const response = await fetch('/api/reportes/gastos-calendario?t=' + new Date().getTime());
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            document.getElementById('tbody-gastos-mes-tab').innerHTML = '<tr><td colspan="11" style="color: #ef4444; text-align: center; padding: 20px;">Error al cargar datos</td></tr>';
+            return;
+        }
+        
+        const tbody = document.getElementById('tbody-gastos-mes-tab');
+        tbody.innerHTML = '';
+        
+        const fragment = document.createDocumentFragment();
+        const meses = ['03', '04', '05', '06', '07', '08', '09', '10', '11'];
+        const categorias = ['Gastos', 'Pago Instituto', 'Pago Extra'];
+        
+        // Renderizar filas de categorías
+        categorias.forEach(categoria => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = 'background: white; border-bottom: 1px solid #ddd;';
+            
+            // Columna de categoría
+            let html = `<td style="padding: 10px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600; color: #333;">${categoria}</td>`;
+            
+            // Columnas de meses
+            let total = 0;
+            meses.forEach(mes => {
+                const monto = data.reporte[categoria][mes] || 0;
+                total += monto;
+                html += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: 500;">$${Math.floor(monto).toLocaleString('es-AR')}</td>`;
+            });
+            
+            // Columna de total
+            html += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: #f59e0b; background: #fffbeb;">$${Math.floor(total).toLocaleString('es-AR')}</td>`;
+            
+            tr.innerHTML = html;
+            fragment.appendChild(tr);
+        });
+        
+        // Fila de TOTAL MES
+        const trTotal = document.createElement('tr');
+        trTotal.style.cssText = 'background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);';
+        
+        let htmlTotal = `<td style="padding: 10px 8px; text-align: left; border: 1px solid #ddd; font-weight: bold; color: white;">📊 TOTAL MES</td>`;
+        
+        meses.forEach(mes => {
+            const totalMes = data.totales_mes[mes] || 0;
+            htmlTotal += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: white;">$${Math.floor(totalMes).toLocaleString('es-AR')}</td>`;
+        });
+        
+        // Total general
+        const totalGeneral = Object.values(data.totales_mes).reduce((a, b) => a + b, 0);
+        htmlTotal += `<td style="padding: 10px 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: white;">$${Math.floor(totalGeneral).toLocaleString('es-AR')}</td>`;
+        
+        trTotal.innerHTML = htmlTotal;
+        fragment.appendChild(trTotal);
+        
+        tbody.appendChild(fragment);
+    } catch (error) {
+        console.error('[ERROR] cargarReporteGastos:', error);
+        document.getElementById('tbody-gastos-mes-tab').innerHTML = '<tr><td colspan="11" style="text-align: center; color: #ef4444; padding: 20px;">Error: ' + error.message + '</td></tr>';
+    }
+}
 
 async function exportarExcelNuevo() {
     // Verificar que XLSX esté cargado - reintentar si no

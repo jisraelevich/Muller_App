@@ -1488,6 +1488,74 @@ def get_resumen_pagos():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# ========== API ENDPOINTS - REPORTES GASTOS ==========
+
+@app.route('/api/reportes/gastos-calendario', methods=['GET'])
+def reportes_gastos_calendario():
+    """Reporte de gastos por mes (tabla pivot: categorías × meses)"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener todos los retiros (gastos)
+        retiros = db.get_retiros()
+        
+        # Estructura: {"Gastos": {03: 100, 04: 200}, ...}
+        reporte = {
+            'Gastos': {},
+            'Pago Instituto': {},
+            'Pago Extra': {}
+        }
+        
+        # Inicializar meses (03=Marzo a 11=Noviembre)
+        for categoria in reporte:
+            for mes in range(3, 12):
+                reporte[categoria][f'{mes:02d}'] = 0
+        
+        # Agregar gastos a la estructura
+        for retiro in retiros:
+            retiro_dict = dict(retiro)
+            fecha = retiro_dict.get('fecha')
+            monto = float(retiro_dict.get('monto', 0))
+            concepto = retiro_dict.get('tipo_retiro', 'Gastos')
+            
+            # Extraer mes de la fecha
+            if fecha:
+                if hasattr(fecha, 'month'):
+                    mes = f'{fecha.month:02d}'
+                else:
+                    # Si es string, parsear
+                    try:
+                        from datetime import datetime
+                        fecha_obj = datetime.fromisoformat(str(fecha))
+                        mes = f'{fecha_obj.month:02d}'
+                    except:
+                        continue
+                
+                # Solo incluir meses 03-11
+                mes_num = int(mes)
+                if 3 <= mes_num <= 11 and concepto in reporte:
+                    reporte[concepto][mes] += monto
+        
+        # Calcular totales por mes
+        totales_mes = {}
+        for mes in range(3, 12):
+            mes_str = f'{mes:02d}'
+            total = sum(reporte[cat][mes_str] for cat in reporte)
+            totales_mes[mes_str] = total
+        
+        return jsonify({
+            "status": "success",
+            "reporte": reporte,
+            "totales_mes": totales_mes
+        })
+    except Exception as e:
+        print(f"[ERROR] Error al obtener reporte de gastos: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # ========== API ENDPOINTS - REPORTES CALENDARIO ==========
 
 @app.route('/api/reportes/pagos-calendario', methods=['GET'])
