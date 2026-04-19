@@ -1760,7 +1760,7 @@ def export_pagos_calendario_excel():
         # Crear Excel con xlsxwriter
         output = io.BytesIO()
         workbook = Workbook(output)
-        worksheet = workbook.add_worksheet("Pagos por Mes")
+        worksheet = workbook.add_worksheet("Cobros por Mes")
         
         # Formatos - CON COLORES Y ESTILOS
         header_fmt = workbook.add_format({
@@ -2229,7 +2229,7 @@ def export_pagos_calendario_pdf():
             alignment=1,  # 1 = CENTER
             spaceAfter=8
         )
-        titulo = Paragraph('Reporte de Pagos - Instituto Jorge Müller - 2026', titulo_style)
+        titulo = Paragraph('Reporte de Cobros - Instituto Jorge Müller - 2026', titulo_style)
         
         # Build PDF con título + tabla
         doc.build([titulo, table])
