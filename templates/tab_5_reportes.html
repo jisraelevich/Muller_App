@@ -150,7 +150,8 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="margin: 0;">💰 REPORTE DE GASTOS POR MES</h3>
             <div style="display: flex; gap: 8px;">
-                <button onclick="descargarReporte('/api/reportes/gastos-calendario/excel', 'Gastos_Mes')" class="btn-touch btn-export" style="font-size: 12px; display: none;">📊 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/gastos-calendario/excel', 'Gastos_Mes')" class="btn-touch btn-export" style="font-size: 12px;">📊 Exportar Excel</button>
+                <button onclick="descargarReporte('/api/reportes/gastos-calendario/pdf', 'Gastos_Mes')" class="btn-touch btn-export" style="font-size: 12px;">📄 Exportar PDF</button>
             </div>
         </div>
         <div style="overflow-x: auto;">
@@ -1130,7 +1131,7 @@ async function exportarExcelReporteCalendario() {
     }
 }
 
-// Función para descargar reportes
+// Función para descargar reportes (Excel o PDF)
 function descargarReporte(url, nombreArchivo) {
     fetch(url, {
         method: 'POST',
@@ -1145,7 +1146,12 @@ function descargarReporte(url, nombreArchivo) {
             const now = new Date();
             const fecha = now.toISOString().split('T')[0];
             const hhmm = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-            a.download = nombreArchivo + '_' + fecha + '-' + hhmm + '.xlsx';
+            
+            // Detectar si es PDF o Excel según la URL
+            const esPDF = url.includes('/pdf');
+            const extension = esPDF ? '.pdf' : '.xlsx';
+            
+            a.download = nombreArchivo + '_' + fecha + '-' + hhmm + extension;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(urlBlob);

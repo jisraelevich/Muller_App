@@ -1556,6 +1556,369 @@ def reportes_gastos_calendario():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/reportes/gastos-calendario/excel', methods=['POST'])
+def export_gastos_calendario_excel():
+    """Exportar reporte de gastos por mes - Excel"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener todos los retiros (gastos)
+        retiros = db.get_retiros()
+        
+        # Estructura: {"Gastos": {03: 100, 04: 200}, ...}
+        reporte = {
+            'Gastos': {},
+            'Pago Instituto': {},
+            'Pago Extra': {}
+        }
+        
+        # Inicializar meses (03=Marzo a 11=Noviembre)
+        for categoria in reporte:
+            for mes in range(3, 12):
+                reporte[categoria][f'{mes:02d}'] = 0
+        
+        # Agregar gastos a la estructura
+        for retiro in retiros:
+            retiro_dict = dict(retiro)
+            fecha = retiro_dict.get('fecha')
+            monto = float(retiro_dict.get('monto', 0))
+            concepto = retiro_dict.get('tipo_retiro', 'Gastos')
+            
+            # Extraer mes de la fecha
+            if fecha:
+                if hasattr(fecha, 'month'):
+                    mes = f'{fecha.month:02d}'
+                else:
+                    # Si es string, parsear
+                    try:
+                        from datetime import datetime
+                        fecha_obj = datetime.fromisoformat(str(fecha))
+                        mes = f'{fecha_obj.month:02d}'
+                    except:
+                        continue
+                
+                # Solo incluir meses 03-11
+                mes_num = int(mes)
+                if 3 <= mes_num <= 11 and concepto in reporte:
+                    reporte[concepto][mes] += monto
+        
+        # Calcular totales por mes
+        totales_mes = {}
+        for mes in range(3, 12):
+            mes_str = f'{mes:02d}'
+            total = sum(reporte[cat][mes_str] for cat in reporte)
+            totales_mes[mes_str] = total
+        
+        # Crear Excel con xlsxwriter
+        output = io.BytesIO()
+        workbook = Workbook(output)
+        worksheet = workbook.add_worksheet("Gastos por Mes")
+        
+        # Formatos
+        header_fmt = workbook.add_format({
+            'bg_color': '#F0F0F0',
+            'font_color': '#000000',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        categoria_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri',
+            'bold': True
+        })
+        
+        cell_fmt = workbook.add_format({
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        total_fmt = workbook.add_format({
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'left',
+            'valign': 'vcenter',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        total_number_fmt = workbook.add_format({
+            'bg_color': '#E8F5E9',
+            'font_color': '#1B5E20',
+            'bold': True,
+            'border': 1,
+            'border_color': '#CCCCCC',
+            'align': 'right',
+            'valign': 'vcenter',
+            'num_format': '#,##0',
+            'font_size': 10,
+            'font_name': 'Calibri'
+        })
+        
+        # Headers
+        meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
+        
+        headers = ['CATEGORÍA'] + [f'{m:02d} {meses_nombres[m]}' for m in meses] + ['TOTAL']
+        
+        for col, h in enumerate(headers):
+            worksheet.write(0, col, h, header_fmt)
+        
+        # Ancho de columnas
+        worksheet.set_column(0, 0, 18)
+        for i in range(1, 11):
+            worksheet.set_column(i, i, 12)
+        
+        # Datos de categorías
+        row_num = 1
+        categorias_orden = ['Gastos', 'Pago Instituto', 'Pago Extra']
+        
+        for categoria in categorias_orden:
+            worksheet.write(row_num, 0, categoria, categoria_fmt)
+            
+            total_row = 0
+            for i, mes in enumerate(meses):
+                mes_str = f'{mes:02d}'
+                monto = reporte[categoria].get(mes_str, 0)
+                total_row += monto
+                
+                # Mostrar vacío si es 0 (ocultar ceros)
+                if monto > 0:
+                    worksheet.write_number(row_num, i + 1, monto, cell_fmt)
+                else:
+                    worksheet.write(row_num, i + 1, '', cell_fmt)
+            
+            # Total de categoría
+            if total_row > 0:
+                worksheet.write_number(row_num, 10, total_row, cell_fmt)
+            else:
+                worksheet.write(row_num, 10, '', cell_fmt)
+            
+            row_num += 1
+        
+        # Fila TOTAL MES
+        worksheet.write(row_num, 0, 'TOTAL MES', total_fmt)
+        
+        for i, mes in enumerate(meses):
+            mes_str = f'{mes:02d}'
+            total_mes_amount = totales_mes.get(mes_str, 0)
+            
+            # Mostrar vacío si es 0 (ocultar ceros)
+            if total_mes_amount > 0:
+                worksheet.write_number(row_num, i + 1, total_mes_amount, total_number_fmt)
+            else:
+                worksheet.write(row_num, i + 1, '', total_number_fmt)
+        
+        # Total general
+        total_general = sum(totales_mes.values())
+        if total_general > 0:
+            worksheet.write_number(row_num, 10, total_general, total_number_fmt)
+        else:
+            worksheet.write(row_num, 10, '', total_number_fmt)
+        
+        worksheet.freeze_panes(1, 0)
+        workbook.close()
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='Gastos_por_Mes.xlsx'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando gastos a Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/reportes/gastos-calendario/pdf', methods=['POST'])
+def export_gastos_calendario_pdf():
+    """Exportar reporte de gastos por mes - PDF"""
+    db_check, error, code = check_db()
+    if error:
+        return error, code
+    
+    try:
+        # Obtener todos los retiros (gastos)
+        retiros = db.get_retiros()
+        
+        # Estructura: {"Gastos": {03: 100, 04: 200}, ...}
+        reporte = {
+            'Gastos': {},
+            'Pago Instituto': {},
+            'Pago Extra': {}
+        }
+        
+        # Inicializar meses (03=Marzo a 11=Noviembre)
+        for categoria in reporte:
+            for mes in range(3, 12):
+                reporte[categoria][f'{mes:02d}'] = 0
+        
+        # Agregar gastos a la estructura
+        for retiro in retiros:
+            retiro_dict = dict(retiro)
+            fecha = retiro_dict.get('fecha')
+            monto = float(retiro_dict.get('monto', 0))
+            concepto = retiro_dict.get('tipo_retiro', 'Gastos')
+            
+            # Extraer mes de la fecha
+            if fecha:
+                if hasattr(fecha, 'month'):
+                    mes = f'{fecha.month:02d}'
+                else:
+                    # Si es string, parsear
+                    try:
+                        from datetime import datetime
+                        fecha_obj = datetime.fromisoformat(str(fecha))
+                        mes = f'{fecha_obj.month:02d}'
+                    except:
+                        continue
+                
+                # Solo incluir meses 03-11
+                mes_num = int(mes)
+                if 3 <= mes_num <= 11 and concepto in reporte:
+                    reporte[concepto][mes] += monto
+        
+        # Calcular totales por mes
+        totales_mes = {}
+        for mes in range(3, 12):
+            mes_str = f'{mes:02d}'
+            total = sum(reporte[cat][mes_str] for cat in reporte)
+            totales_mes[mes_str] = total
+        
+        # Crear PDF con reportlab
+        output = io.BytesIO()
+        doc = SimpleDocTemplate(output, pagesize=landscape(letter), topMargin=0.5*inch, bottomMargin=0.5*inch)
+        elements = []
+        
+        # Título
+        title = Paragraph("<b>REPORTE DE GASTOS POR MES</b>", ParagraphStyle(name='Title', fontSize=14, alignment=1, spaceAfter=12))
+        elements.append(title)
+        
+        # Tabla de datos
+        meses = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+        meses_nombres = {3: 'MAR', 4: 'ABR', 5: 'MAY', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SEP', 10: 'OCT', 11: 'NOV'}
+        
+        # Armar datos de tabla
+        table_data = []
+        
+        # Header
+        header_row = ['CATEGORÍA'] + [f'{m:02d}\n{meses_nombres[m]}' for m in meses] + ['TOTAL']
+        table_data.append(header_row)
+        
+        # Estilos para tabla
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('RIGHTPADDING', (1, 0), (-1, -1), 10),
+            ('LEFTPADDING', (1, 0), (-1, -1), 10),
+        ])
+        
+        # Datos de categorías
+        categorias_orden = ['Gastos', 'Pago Instituto', 'Pago Extra']
+        
+        for cat_idx, categoria in enumerate(categorias_orden):
+            row = [categoria]
+            total_row = 0
+            
+            for mes in meses:
+                mes_str = f'{mes:02d}'
+                monto = reporte[categoria].get(mes_str, 0)
+                total_row += monto
+                
+                # Mostrar vacío si es 0 (ocultar ceros)
+                if monto > 0:
+                    row.append(f'${int(monto):,}')
+                else:
+                    row.append('')
+            
+            # Total de categoría
+            if total_row > 0:
+                row.append(f'${int(total_row):,}')
+            else:
+                row.append('')
+            
+            table_data.append(row)
+        
+        # Fila TOTAL MES
+        total_row_data = ['TOTAL MES']
+        
+        for mes in meses:
+            mes_str = f'{mes:02d}'
+            total_mes_amount = totales_mes.get(mes_str, 0)
+            
+            # Mostrar vacío si es 0 (ocultar ceros)
+            if total_mes_amount > 0:
+                total_row_data.append(f'${int(total_mes_amount):,}')
+            else:
+                total_row_data.append('')
+        
+        # Total general
+        total_general = sum(totales_mes.values())
+        if total_general > 0:
+            total_row_data.append(f'${int(total_general):,}')
+        else:
+            total_row_data.append('')
+        
+        table_data.append(total_row_data)
+        
+        # Agregar estilos para fila de totales
+        style.add('BACKGROUND', (0, len(table_data) - 1), (-1, len(table_data) - 1), colors.HexColor('#E8F5E9'))
+        style.add('FONTNAME', (0, len(table_data) - 1), (-1, len(table_data) - 1), 'Helvetica-Bold')
+        
+        # Crear tabla
+        table = Table(table_data, colWidths=[1.2*inch] + [0.8*inch]*9 + [1*inch])
+        table.setStyle(style)
+        elements.append(table)
+        
+        # Pie de página
+        footer = Paragraph("<br/><font size=8>✓ Reporte de Gastos agrupados por mes (Marzo - Noviembre 2026)</font>", ParagraphStyle(name='Footer', alignment=1, textColor=colors.grey))
+        elements.append(footer)
+        
+        doc.build(elements)
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='Gastos_por_Mes.pdf'
+        )
+    except Exception as e:
+        print(f"[ERROR] Error exportando gastos a PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # ========== API ENDPOINTS - REPORTES CALENDARIO ==========
 
 @app.route('/api/reportes/pagos-calendario', methods=['GET'])
