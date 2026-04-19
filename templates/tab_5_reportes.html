@@ -12,20 +12,20 @@
 
 <!-- TABS PARA SELECCIONAR REPORTE -->
 <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px;">
-    <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: var(--color-primary); color: white; min-height: 40px; font-size: 13px;">💰 Pagos</button>
+    <button onclick="mostrarReporte('pagos')" class="btn-touch" id="tab-pagos" style="background: var(--color-primary); color: white; min-height: 40px; font-size: 13px;">💰 Cobros</button>
     <button onclick="mostrarReporte('asistencia')" class="btn-touch" id="tab-asistencia" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">✓ Asistencia</button>
     <button onclick="mostrarReporte('miembros')" class="btn-touch" id="tab-miembros" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">👥 Miembros</button>
-    <button onclick="mostrarReporte('pagos-mes')" class="btn-touch" id="tab-pagos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">📅 Pagos/Mes</button>
+    <button onclick="mostrarReporte('pagos-mes')" class="btn-touch" id="tab-pagos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">📅 Cobros/Mes</button>
     <button onclick="mostrarReporte('gastos-mes')" class="btn-touch" id="tab-gastos-mes" style="background: var(--color-secondary); color: var(--color-text); min-height: 40px; font-size: 13px;">💳 Gastos/Mes</button>
 </div>
 
 <!-- CONTENEDOR DE REPORTES -->
 <div id="contenedor-reportes" style="background: white; border-radius: 12px; padding: 16px; border: 1px solid var(--color-border); height: 500px; overflow-y: auto;">
     
-    <!-- REPORTE PAGOS -->
+    <!-- REPORTE COBROS -->
     <div id="reporte-pagos" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0;">Reporte de Pagos</h3>
+            <h3 style="margin: 0;">Reporte de Cobros</h3>
             <div style="display: flex; gap: 8px;">
                 <button onclick="descargarReporte('/api/reportes/pagos/excel', 'Pagos')" class="btn-touch btn-export" style="font-size: 12px;">Exportar Excel</button>
             </div>
@@ -99,10 +99,10 @@
         </div>
     </div>
     
-    <!-- REPORTE PAGOS POR MES -->
+    <!-- REPORTE COBROS POR MES -->
     <div id="reporte-pagos-mes" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0;">� REPORTE DE PAGOS POR MES</h3>
+            <h3 style="margin: 0;">📊 REPORTE DE COBROS POR MES</h3>
             <div style="display: flex; gap: 8px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #333; font-size: 12px;">
                     <input type="checkbox" id="chk-solo-regulares-tab5" checked style="width: 18px; height: 18px; cursor: pointer;">
