@@ -489,37 +489,38 @@ def get_asistencia_clase(clase_id):
 # ========== API ENDPOINTS - CLASES ==========
 
 @app.route('/api/clases/todas', methods=['GET'])
-@cache_route(timeout=120, cache_key='get_todas_clases')  # Cache for 2 minutes
 def get_todas_clases():
-    """Obtener TODAS las clases disponibles"""
+    """Obtener TODAS las clases disponibles (sin cache)"""
     try:
         if db:
-            # Get clases with orador info
-            clases = db.get_clases()[:50]
+            # Get clases with orador info using optimized SQL JOIN
+            with db.get_cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        c.id, 
+                        c.nombre, 
+                        c.descripcion, 
+                        c.fecha, 
+                        c.hora_inicio, 
+                        c.modalidad, 
+                        c.estado, 
+                        c.link_meet, 
+                        c.orador_id,
+                        CONCAT(COALESCE(o.nombre, ''), ' ', COALESCE(o.apellido, '')) as orador_nombre
+                    FROM clases c 
+                    LEFT JOIN oradores o ON c.orador_id = o.id 
+                    ORDER BY c.fecha ASC 
+                    LIMIT 50
+                """)
+                clases_result = cursor.fetchall()
             
             # Convert to expected format for frontend
             clases_formatted = []
-            for c in clases:
+            for c in clases_result:
                 c_dict = dict(c) if hasattr(c, 'items') else c
                 
-                # Get orador name if orador_id exists
-                orador_nombre = ''
-                orador_id = c_dict.get('orador_id')
-                if orador_id:
-                    try:
-                        with db.get_cursor() as cursor:
-                            cursor.execute(
-                                "SELECT nombre, apellido FROM oradores WHERE id=%s",
-                                (orador_id,)
-                            )
-                            result = cursor.fetchone()
-                            if result:
-                                orador_nombre = f"{result[0]} {result[1]}".strip()
-                    except Exception as e:
-                        print(f"Error fetching orador {orador_id}: {e}")
-                
-                # Fallback to descripcion if no orador found
-                orador_display = orador_nombre or c_dict.get('descripcion', '')
+                # Get orador display name
+                orador_display = (c_dict.get('orador_nombre', '') or '').strip() or c_dict.get('descripcion', '')
                 
                 clases_formatted.append({
                     'id': c_dict.get('id'),
@@ -530,14 +531,28 @@ def get_todas_clases():
                     'estado': c_dict.get('estado', ''),
                     'link_meet': c_dict.get('link_meet', '')
                 })
-            return jsonify({"status": "success", "clases": clases_formatted})
+            
+            # Build response with cache-busting headers
+            response = jsonify({"status": "success", "clases": clases_formatted})
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
         else:
-            return jsonify({"status": "success", "clases": []})
+            response = jsonify({"status": "success", "clases": []})
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
     except Exception as e:
         print(f"Error en /api/clases/todas: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({"status": "success", "clases": []})  # Devolver vacío en error
+        response = jsonify({"status": "success", "clases": []})
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 @app.route('/api/clases/por-fecha/<fecha>', methods=['GET'])
 def get_clase_por_fecha(fecha):
@@ -556,18 +571,29 @@ def get_clase_por_fecha(fecha):
         return jsonify({"status": "success", "clase": None})
 
 @app.route('/api/clases/hoy', methods=['GET'])
-@cache_route(timeout=60, cache_key='get_clases_hoy')  # Cache for 1 minute
 def get_clases_hoy_api():
-    """Obtener clases de hoy (última, hoy, próxima)"""
+    """Obtener clases de hoy (última, hoy, próxima) - sin cache"""
     try:
         if db:
             clases = get_clase_hoy()
-            return jsonify({"status": "success", "clases": [dict(c) for c in clases]})
+            response = jsonify({"status": "success", "clases": [dict(c) for c in clases]})
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
         else:
-            return jsonify({"status": "success", "clases": []})
+            response = jsonify({"status": "success", "clases": []})
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"status": "success", "clases": []})
+        response = jsonify({"status": "success", "clases": []})
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 @app.route('/api/clases/update', methods=['POST'])
 def update_clase():
