@@ -494,20 +494,31 @@ def get_todas_clases():
     """Obtener TODAS las clases disponibles"""
     try:
         if db:
-            # Limit to 50 most recent classes for performance
-            clases = db.get_clases()[:50]  
+            # Get clases with orador names joined
+            with db.get_cursor() as cursor:
+                query = """
+                    SELECT c.id, c.nombre, c.descripcion, c.fecha, c.hora_inicio, c.modalidad, c.estado, c.link_meet,
+                           c.orador_id,
+                           COALESCE(o.nombre || ' ' || o.apellido, '') as orador_nombre
+                    FROM clases c
+                    LEFT JOIN oradores o ON c.orador_id = o.id
+                    ORDER BY c.fecha DESC
+                    LIMIT 50
+                """
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            
             # Convert to expected format for frontend
             clases_formatted = []
-            for c in clases:
-                c_dict = dict(c) if hasattr(c, 'items') else c
+            for row in rows:
                 clases_formatted.append({
-                    'id': c_dict.get('id'),
-                    'fecha': str(c_dict.get('fecha', '')),
-                    'tema': c_dict.get('nombre', ''),  # Map nombre to tema
-                    'orador': c_dict.get('descripcion', ''),  # Map descripcion to orador
-                    'modalidad': c_dict.get('modalidad', ''),
-                    'estado': c_dict.get('estado', ''),
-                    'link_meet': c_dict.get('link_meet', '')
+                    'id': row[0],
+                    'fecha': str(row[3]),
+                    'tema': row[1],  # nombre
+                    'orador': row[8] or row[2] or '',  # Use orador_nombre first, then descripcion
+                    'modalidad': row[5],
+                    'estado': row[6],
+                    'link_meet': row[7]
                 })
             return jsonify({"status": "success", "clases": clases_formatted})
         else:
@@ -515,6 +526,8 @@ def get_todas_clases():
             return jsonify({"status": "success", "clases": []})
     except Exception as e:
         print(f"Error en /api/clases/todas: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "success", "clases": []})  # Devolver vacío en error
 
 @app.route('/api/clases/por-fecha/<fecha>', methods=['GET'])
