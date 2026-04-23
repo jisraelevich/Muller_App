@@ -1091,8 +1091,11 @@ const PagosModule = {
             if (data.status === 'success') {
                 mostrarAlerta('✅ Pago registrado correctamente', 'success');
                 
-                // Limpiar TODOS los campos del formulario
+                // Limpiar TODOS los campos del formulario a valores por defecto
                 document.getElementById('monto-pago').value = '';
+                document.getElementById('fecha-pago').value = '';
+                document.getElementById('tipo-pago').value = '';
+                document.getElementById('metodo-pago').value = 'Efectivo';
                 document.getElementById('notas-pago').value = '';
                 this.limpiarMesesSeleccionados();
                 document.getElementById('monto-pago').focus();

@@ -708,6 +708,7 @@ def add_orador_endpoint():
         orador_id = db.add_orador(nombre, apellido, email, telefono, especialidad)
         
         if orador_id:
+            clear_cache()  # Clear all caches after adding orador
             return jsonify({"status": "success", "message": "Orador agregado correctamente", "id": orador_id})
         else:
             return jsonify({"status": "error", "message": "Error al agregar orador"}), 500
@@ -737,6 +738,7 @@ def update_orador_endpoint(id_orador):
         success = db.update_orador(id_orador, nombre, apellido, email, telefono, especialidad)
         
         if success:
+            clear_cache()  # Clear all caches after updating orador
             return jsonify({"status": "success", "message": "Orador actualizado correctamente"})
         else:
             return jsonify({"status": "error", "message": "Orador no encontrado"}), 404
@@ -756,6 +758,7 @@ def delete_orador_endpoint(id_orador):
         success = db.delete_orador(id_orador)
         
         if success:
+            clear_cache()  # Clear all caches after deleting orador
             return jsonify({"status": "success", "message": "Orador eliminado correctamente"})
         else:
             return jsonify({"status": "error", "message": "Orador no encontrado"}), 404

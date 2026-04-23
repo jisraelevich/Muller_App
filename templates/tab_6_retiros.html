@@ -645,11 +645,20 @@ const RetirosModule = {
             const data = await response.json();
             
             if (data.status === 'success') {
-                mostrarAlerta('Retiro guardado', 'success');
+                mostrarAlerta('✅ Retiro guardado correctamente', 'success');
+                
+                // Limpiar formulario a valores por defecto
+                document.getElementById('monto-retiro').value = '';
+                document.getElementById('metodo-retiro').value = 'Efectivo';
+                document.getElementById('notas-retiro').value = '';
+                const hoy = new Date().toISOString().split('T')[0];
+                document.getElementById('fecha-retiro').value = hoy;
+                
                 // Cargar retiros y mantener filtro del concepto
                 await this.cargarRetiros();
                 this.renderizarRetiros(concepto);
                 this.actualizarTotalesEnTarjetas();
+                document.getElementById('monto-retiro').focus();
             } else {
                 mostrarAlerta('Error: ' + data.message, 'error');
             }

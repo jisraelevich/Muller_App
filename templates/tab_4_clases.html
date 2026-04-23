@@ -605,8 +605,8 @@ const ClasesModule = {
                 // Mostrar alerta de éxito
                 mostrarAlerta('✅ Clase actualizada correctamente', 'success');
                 
-                // Cerrar modal
-                this.cerrarModal();
+                // Recargar página para ver los cambios
+                setTimeout(() => location.reload(), 500);
             } else {
                 console.log('Update failed with message:', data.message);
                 mostrarAlerta('Error al guardar: ' + data.message, 'error');
