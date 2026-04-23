@@ -494,35 +494,44 @@ def get_todas_clases():
     """Obtener TODAS las clases disponibles"""
     try:
         if db:
-            # Get clases with orador names joined
-            with db.get_cursor() as cursor:
-                query = """
-                    SELECT c.id, c.nombre, c.descripcion, c.fecha, c.hora_inicio, c.modalidad, c.estado, c.link_meet,
-                           c.orador_id,
-                           COALESCE(o.nombre || ' ' || o.apellido, '') as orador_nombre
-                    FROM clases c
-                    LEFT JOIN oradores o ON c.orador_id = o.id
-                    ORDER BY c.fecha DESC
-                    LIMIT 50
-                """
-                cursor.execute(query)
-                rows = cursor.fetchall()
+            # Get clases with orador info
+            clases = db.get_clases()[:50]
             
             # Convert to expected format for frontend
             clases_formatted = []
-            for row in rows:
+            for c in clases:
+                c_dict = dict(c) if hasattr(c, 'items') else c
+                
+                # Get orador name if orador_id exists
+                orador_nombre = ''
+                orador_id = c_dict.get('orador_id')
+                if orador_id:
+                    try:
+                        with db.get_cursor() as cursor:
+                            cursor.execute(
+                                "SELECT nombre, apellido FROM oradores WHERE id=%s",
+                                (orador_id,)
+                            )
+                            result = cursor.fetchone()
+                            if result:
+                                orador_nombre = f"{result[0]} {result[1]}".strip()
+                    except Exception as e:
+                        print(f"Error fetching orador {orador_id}: {e}")
+                
+                # Fallback to descripcion if no orador found
+                orador_display = orador_nombre or c_dict.get('descripcion', '')
+                
                 clases_formatted.append({
-                    'id': row[0],
-                    'fecha': str(row[3]),
-                    'tema': row[1],  # nombre
-                    'orador': row[8] or row[2] or '',  # Use orador_nombre first, then descripcion
-                    'modalidad': row[5],
-                    'estado': row[6],
-                    'link_meet': row[7]
+                    'id': c_dict.get('id'),
+                    'fecha': str(c_dict.get('fecha', '')),
+                    'tema': c_dict.get('nombre', ''),
+                    'orador': orador_display,
+                    'modalidad': c_dict.get('modalidad', ''),
+                    'estado': c_dict.get('estado', ''),
+                    'link_meet': c_dict.get('link_meet', '')
                 })
             return jsonify({"status": "success", "clases": clases_formatted})
         else:
-            # Sin base de datos - devolver ejemplo vacío
             return jsonify({"status": "success", "clases": []})
     except Exception as e:
         print(f"Error en /api/clases/todas: {e}")
